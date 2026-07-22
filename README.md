@@ -89,3 +89,13 @@ export default tseslint.config([
 - Local: use `VITE_API_BASE=http://localhost:8000` e backend Django apontando para o Postgres local em `127.0.0.1:55432`.
 - Online protegido: mantenha `VITE_API_BASE` apontando para o backend Render. Nesse modo, o backend pode bloquear `PUT/PATCH/DELETE` via `ONLINE_MUTATION_LOCK_ENABLED=True`, preservando os dados reais enquanto o frontend continua navegavel para login, leitura e criacao controlada.
 - Usuario foco de validacao funcional: `brunadentista@mail.com`.
+
+## Deploy Vercel
+
+- Se a Vercel estiver conectada a este repositório isolado do frontend, use a raiz do repositório como `Root Directory`.
+- Nao use `frontend-clinic/` como root neste caso; esse path so faz sentido quando o frontend ainda esta dentro de um monorepo.
+- Build command: `npm run build`
+- Output directory: `dist`
+- Configure `VITE_API_BASE=https://<seu-backend>.onrender.com` nas envs do projeto.
+- `BASE_API_VITE` continua aceito como legado, mas o padrao oficial agora e `VITE_API_BASE`.
+- Sem essa env, o frontend nao deve mais cair em backend hardcoded antigo.

@@ -53,11 +53,10 @@ function runtimeResolveApiBase(): string {
         return `${protocol}//${host}:8000`.replace(/\/+$/, '');
     }
 
-    // If running on Vercel (preview/prod) and no valid build-time API, fall back to Render URL
-    if (inWindow) {
-        if (host.includes('vercel.app')) {
-            return 'https://clinic-system-swzd.onrender.com';
-        }
+    // In Vercel/production the API URL must come from env config.
+    // Avoid silently calling an outdated backend when envs are missing.
+    if (inWindow && host.includes('vercel.app')) {
+        return '';
     }
 
     // Final fallback to localhost dev only.
