@@ -1,0 +1,92 @@
+.timeGrid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    align-items: end;
+    margin-top: 8px;
+}
+
+.timeGrid :global(label > span) {
+    font-size: 14px !important;
+    color: var(--color-text-muted);
+}
+
+.timeGrid > label {
+    min-width: 0;
+}
+
+.timeGrid > label > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 4px;
+    align-items: center;
+}
+
+.timeGrid select {
+    width: 100%;
+    min-height: 44px;
+    font-size: 16px;
+    padding: 6px 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: var(--color-bg-section);
+}
+
+.visitTypeField {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.fieldLabel {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.visitTypeSelect {
+    width: 100%;
+    min-height: 44px;
+    font-size: 16px;
+    padding: 6px 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: var(--color-bg-section);
+}
+
+.notesInput {
+    padding: 10px;
+    resize: vertical;
+    background: #f8fafc;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 16px;
+    line-height: 1.35;
+}
+
+.notesInput::placeholder {
+    font-size: 15px;
+    color: var(--color-text-muted);
+}
+
+@media screen and (max-width: 640px) {
+    .timeGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .timeGrid :global(label > span),
+    .fieldLabel {
+        font-size: 15px !important;
+    }
+
+    .timeGrid select,
+    .visitTypeSelect {
+        min-height: 46px;
+        font-size: 17px;
+    }
+
+    .notesInput,
+    .notesInput::placeholder {
+        font-size: 16px;
+    }
+}

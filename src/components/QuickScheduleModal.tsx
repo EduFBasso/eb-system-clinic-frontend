@@ -25,6 +25,7 @@ import { pad2, toMinutes, fromMinutes, weekdayLabel } from '../utils/hmTime';
 import { useAgendaFinalizeAction } from '../hooks/useAgendaFinalizeAction';
 import { useConflictFlow } from '../hooks/useConflictFlow';
 import { useAppointmentCancel } from '../hooks/useAppointmentCancel';
+import qsStyles from './QuickScheduleModal.module.css';
 
 type VisitType = Appointment['visit_type'];
 type ClientMaybeNext = ClientBasic & { next_appointment_id?: number };
@@ -81,7 +82,13 @@ export default function QuickScheduleModal({
         () => getWorkTimesFromSnapshot(agendaSettings),
         [agendaSettings],
     );
-    const slotInterval = agendaSettings.slotInterval as 1 | 5 | 10 | 15 | 20 | 30;
+    const slotInterval = agendaSettings.slotInterval as
+        | 1
+        | 5
+        | 10
+        | 15
+        | 20
+        | 30;
 
     const [selectedDate, setSelectedDate] = React.useState<Date>(() => {
         if (isInitialEdit && editAppointment)
@@ -161,7 +168,8 @@ export default function QuickScheduleModal({
     });
 
     const isEditing = !!currentEdit;
-    const baseClientFullName = `${client.first_name} ${client.last_name}`.trim();
+    const baseClientFullName =
+        `${client.first_name} ${client.last_name}`.trim();
     const currentEditClientFullName = React.useMemo(
         () => getAppointmentClientFullName(currentEdit),
         [currentEdit],
@@ -178,7 +186,12 @@ export default function QuickScheduleModal({
             );
             return fromMinutes(nextEndMinutes);
         },
-        [agendaSettings.defaultDuration, endHM, workTimes.endHour, workTimes.endMin],
+        [
+            agendaSettings.defaultDuration,
+            endHM,
+            workTimes.endHour,
+            workTimes.endMin,
+        ],
     );
 
     React.useEffect(() => {
@@ -193,7 +206,9 @@ export default function QuickScheduleModal({
         const startDate = new Date(currentEdit.start_at);
         const endDate = new Date(currentEdit.end_at);
         setSelectedDate(startDate);
-        setStartHM(`${pad2(startDate.getHours())}:${pad2(startDate.getMinutes())}`);
+        setStartHM(
+            `${pad2(startDate.getHours())}:${pad2(startDate.getMinutes())}`,
+        );
         setEndHM(`${pad2(endDate.getHours())}:${pad2(endDate.getMinutes())}`);
         setEndManuallyEdited(true);
         setVisitType((currentEdit.visit_type || 'consulta') as VisitType);
@@ -278,7 +293,9 @@ export default function QuickScheduleModal({
             setReloadKey(k => k + 1);
             if (updatedId) setLastEditedId(updatedId);
             if (wasEdit && conflictFocusId !== null && conflictReturnDraft) {
-                const parsedDate = new Date(conflictReturnDraft.selectedDateISO);
+                const parsedDate = new Date(
+                    conflictReturnDraft.selectedDateISO,
+                );
                 if (!Number.isNaN(parsedDate.getTime())) {
                     setSelectedDate(parsedDate);
                 }
@@ -411,34 +428,35 @@ export default function QuickScheduleModal({
         };
     }, [client.first_name, isConflictEditing]);
 
-    const finalizeReturnContext = React.useMemo<QuickScheduleReturnContext | null>(() => {
-        if (!open || client.id <= 0) return null;
-        if (conflictReturnDraft) {
-            return { kind: 'quick-schedule', draft: conflictReturnDraft };
-        }
-        if (currentEdit) return null;
-        return {
-            kind: 'quick-schedule',
-            draft: {
-                clientId: client.id,
-                selectedDateISO: selectedDate.toISOString(),
-                startHM,
-                endHM,
-                visitType,
-                notes,
-            },
-        };
-    }, [
-        client.id,
-        conflictReturnDraft,
-        currentEdit,
-        endHM,
-        notes,
-        open,
-        selectedDate,
-        startHM,
-        visitType,
-    ]);
+    const finalizeReturnContext =
+        React.useMemo<QuickScheduleReturnContext | null>(() => {
+            if (!open || client.id <= 0) return null;
+            if (conflictReturnDraft) {
+                return { kind: 'quick-schedule', draft: conflictReturnDraft };
+            }
+            if (currentEdit) return null;
+            return {
+                kind: 'quick-schedule',
+                draft: {
+                    clientId: client.id,
+                    selectedDateISO: selectedDate.toISOString(),
+                    startHM,
+                    endHM,
+                    visitType,
+                    notes,
+                },
+            };
+        }, [
+            client.id,
+            conflictReturnDraft,
+            currentEdit,
+            endHM,
+            notes,
+            open,
+            selectedDate,
+            startHM,
+            visitType,
+        ]);
 
     const { handleCancel } = useAppointmentCancel({
         clientId: client.id,
@@ -543,15 +561,7 @@ export default function QuickScheduleModal({
                         />
                     )}
 
-                    <div
-                        style={{
-                            display: 'flex',
-                            gap: 12,
-                            alignItems: 'center',
-                            flexWrap: 'wrap',
-                            marginTop: 8,
-                        }}
-                    >
+                    <div className={qsStyles.timeGrid}>
                         <TimePicker10
                             label='Início'
                             value={startHM}
@@ -591,19 +601,15 @@ export default function QuickScheduleModal({
                             )}`}
                             stepMinutes={slotInterval}
                         />
-                        <label
-                            style={{ display: 'flex', flexDirection: 'column' }}
-                        >
-                            <span style={{ fontSize: 12, color: '#6b7280' }}>
-                                Tipo
-                            </span>
+                        <label className={qsStyles.visitTypeField}>
+                            <span className={qsStyles.fieldLabel}>Tipo</span>
                             <select
+                                className={qsStyles.visitTypeSelect}
                                 value={visitType}
                                 onChange={e => {
                                     clearError();
                                     setVisitType(e.target.value as VisitType);
                                 }}
-                                style={{ padding: '6px 8px' }}
                             >
                                 <option value='consulta'>Consulta</option>
                                 <option value='avaliacao'>Avaliação</option>
@@ -615,19 +621,13 @@ export default function QuickScheduleModal({
                     </div>
 
                     <textarea
+                        className={qsStyles.notesInput}
                         value={notes}
                         onChange={e => {
                             clearError();
                             setNotes(e.target.value);
                         }}
                         rows={3}
-                        style={{
-                            padding: '8px',
-                            resize: 'vertical',
-                            background: '#f8fafc',
-                            border: '1px solid var(--color-border)',
-                            borderRadius: 8,
-                        }}
                         placeholder='Anotações rápidas...'
                     />
 
@@ -666,7 +666,9 @@ export default function QuickScheduleModal({
                                         ? 'ui-btn--disabled'
                                         : 'ui-btn--theme'
                                 }`}
-                                disabled={saving || (!isEditing && isSelectedPast)}
+                                disabled={
+                                    saving || (!isEditing && isSelectedPast)
+                                }
                                 title={
                                     !isEditing && isSelectedPast
                                         ? 'Não é permitido agendar no passado'

@@ -47,14 +47,7 @@ export const DateControlsHeader: React.FC<DateControlsHeaderProps> = ({
                     onClick={onToday}
                     aria-label='Ir para hoje'
                     aria-pressed={isToday}
-                    style={{
-                        border: 'none',
-                        background: 'var(--color-primary)',
-                        color: '#fff',
-                        padding: '6px 10px',
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                    }}
+                    className='ui-btn ui-btn--theme'
                 >
                     Hoje
                 </button>

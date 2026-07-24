@@ -135,6 +135,7 @@ export const NavBar: React.FC<NavBarProps> = ({
             document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    const navBarRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
         const token = getAccessToken();
         if (isTokenExpired(token)) {
@@ -216,7 +217,8 @@ export const NavBar: React.FC<NavBarProps> = ({
                         isUserVerifyingPlatformAuthenticatorAvailable: () => Promise<boolean>;
                     }
                 ).isUserVerifyingPlatformAuthenticatorAvailable();
-                if (active) setPlatformAuthenticatorAvailable(Boolean(available));
+                if (active)
+                    setPlatformAuthenticatorAvailable(Boolean(available));
             } catch {
                 if (active) setPlatformAuthenticatorAvailable(false);
             }
@@ -230,8 +232,9 @@ export const NavBar: React.FC<NavBarProps> = ({
 
     const openSessionExpiredState = React.useCallback(
         (
-            reason: 'session_expired' | 'device_session_invalid' =
-                'session_expired',
+            reason:
+                | 'session_expired'
+                | 'device_session_invalid' = 'session_expired',
         ) => {
             dispatchLogout(reason);
         },
@@ -249,6 +252,44 @@ export const NavBar: React.FC<NavBarProps> = ({
         },
         [openSessionExpiredState],
     );
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const root = document.documentElement;
+        const nav = navBarRef.current;
+        if (!nav) return;
+
+        let rafId = 0;
+        const syncNavbarHeight = () => {
+            if (rafId) window.cancelAnimationFrame(rafId);
+            rafId = window.requestAnimationFrame(() => {
+                const height = Math.ceil(nav.getBoundingClientRect().height);
+                if (height > 0) {
+                    root.style.setProperty('--navbar-height', `${height}px`);
+                }
+            });
+        };
+
+        syncNavbarHeight();
+
+        const hasResizeObserver = typeof window.ResizeObserver !== 'undefined';
+        const observer = hasResizeObserver
+            ? new window.ResizeObserver(syncNavbarHeight)
+            : null;
+        observer?.observe(nav);
+
+        window.addEventListener('resize', syncNavbarHeight);
+        window.addEventListener('orientationchange', syncNavbarHeight);
+
+        return () => {
+            if (rafId) window.cancelAnimationFrame(rafId);
+            observer?.disconnect();
+            window.removeEventListener('resize', syncNavbarHeight);
+            window.removeEventListener('orientationchange', syncNavbarHeight);
+            root.style.removeProperty('--navbar-height');
+        };
+    }, []);
 
     // Handler para abrir modal de novo cliente (integração futura)
     // ...existing code...
@@ -293,7 +334,11 @@ export const NavBar: React.FC<NavBarProps> = ({
         setBiometricLoading(true);
         try {
             const token = getAccessToken();
-            const email = (loggedProfessional?.email || loginEmail || '').trim();
+            const email = (
+                loggedProfessional?.email ||
+                loginEmail ||
+                ''
+            ).trim();
             if (!token || !email) {
                 throw new Error('Entre na conta antes de ativar a biometria.');
             }
@@ -336,10 +381,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                 },
             );
             if (!completeRes.ok) throw new Error('Erro ao concluir registro.');
-            localStorage.setItem(
-                biometricStorageKey(email),
-                '1',
-            );
+            localStorage.setItem(biometricStorageKey(email), '1');
             setBiometricConfigured(true);
             setOfferBiometricOpen(false);
             setModalMessage('Face ID ativado para futuros logins!');
@@ -398,10 +440,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                 setModalOpen(true);
                 localStorage.setItem('accessToken', data.access);
                 localStorage.setItem('lastLoginEmail', loginEmail);
-                localStorage.setItem(
-                    biometricStorageKey(loginEmail),
-                    '1',
-                );
+                localStorage.setItem(biometricStorageKey(loginEmail), '1');
                 setBiometricConfigured(true);
                 localStorage.setItem(
                     'loggedProfessional',
@@ -443,7 +482,7 @@ export const NavBar: React.FC<NavBarProps> = ({
     };
 
     return (
-        <div className={styles.navBar}>
+        <div className={styles.navBar} ref={navBarRef}>
             <div className={styles.menuContainer}>
                 <div className={styles.dropdownWrapper} ref={dropdownRef}>
                     <button
@@ -798,8 +837,13 @@ export const NavBar: React.FC<NavBarProps> = ({
                                         setModalOpen(true);
                                     }
                                 } catch (err) {
-                                    const detail = err instanceof Error ? err.message : String(err);
-                                    setModalMessage(`Erro ao validar código: ${detail}`);
+                                    const detail =
+                                        err instanceof Error
+                                            ? err.message
+                                            : String(err);
+                                    setModalMessage(
+                                        `Erro ao validar código: ${detail}`,
+                                    );
                                     setModalOpen(true);
                                 }
                                 setLoadingOtp(false);
@@ -884,4 +928,3 @@ export const NavBar: React.FC<NavBarProps> = ({
         </div>
     );
 };
-

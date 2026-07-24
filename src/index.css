@@ -4,8 +4,8 @@
 :root {
     --header-h: 80px;
     --faixa-h: 8px;
-    --navbar-h: 63px; /* ajuste para desktop */
-    --navbar-h-mobile: 138px; /* ajuste para mobile (soma resulta em ~196px) */
+    --navbar-h: 63px; /* fallback inicial antes da medição da navbar */
+    --navbar-height: var(--navbar-h);
 }
 
 /* ── Print / Salvar como PDF ─────────────────────────────── */
