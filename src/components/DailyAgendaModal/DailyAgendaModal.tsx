@@ -14,7 +14,7 @@ import {
 } from '../../utils/appointments/agendaHelpers';
 import { useNowTick } from '../../hooks/useNowTick';
 import { openPendingActionsForAppointment } from '../../utils/appointments/openPendingActions';
-import QuickScheduleModal from '../QuickScheduleModal';
+import QuickScheduleModal from '../QuickScheduleModal/QuickScheduleModal';
 // PendingActionsModal é global (Home)
 import type { Appointment } from '../../hooks/useAppointments';
 import { useAppointmentsRange } from '../../hooks/useAppointments';
@@ -380,7 +380,8 @@ export function DailyAgendaModal({
                                     border: 'none',
                                     cursor: 'pointer',
                                     color: 'var(--color-primary)',
-                                    fontSize: 'clamp(15px, 4vw, var(--font-title-md))',
+                                    fontSize:
+                                        'clamp(15px, 4vw, var(--font-title-md))',
                                     fontWeight: 600,
                                     whiteSpace: 'nowrap',
                                     userSelect: 'none',
@@ -525,7 +526,11 @@ export function DailyAgendaModal({
                                         (a.status === 'scheduled' ||
                                             a.status === 'ongoing' ||
                                             a._isOngoing) &&
-                                        !(a.status === 'scheduled' && !a._isOngoing && a._end < effectiveNowRef)
+                                        !(
+                                            a.status === 'scheduled' &&
+                                            !a._isOngoing &&
+                                            a._end < effectiveNowRef
+                                        )
                                             ? handleCancel
                                             : undefined
                                     }

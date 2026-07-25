@@ -11,7 +11,7 @@ import { ClientView } from '../components/ClientView/ClientView';
 import { UpdateBanner } from '../components/UpdateBanner/UpdateBanner';
 import styles from '../styles/pages/Home.module.css';
 // ScheduleModal removido — usamos apenas QuickScheduleModal
-import QuickScheduleModal from '../components/QuickScheduleModal';
+import QuickScheduleModal from '../components/QuickScheduleModal/QuickScheduleModal';
 import { MonthlyAgendaModal } from '../components/MonthlyAgendaModal/MonthlyAgendaModal';
 import { WeeklyAgendaModal } from '../components/WeeklyAgendaModal/WeeklyAgendaModal';
 import { SystemMessageModal } from '../components/SystemMessageModal/SystemMessageModal';
@@ -55,9 +55,12 @@ export default function Home() {
     const [selectedClientId, setSelectedClientId] = useState<number | null>(
         null,
     );
-    const [quickInitialDraft, setQuickInitialDraft] = useState<QuickScheduleInitialDraft | null>(null);
+    const [quickInitialDraft, setQuickInitialDraft] =
+        useState<QuickScheduleInitialDraft | null>(null);
     const [clientViewOpen, setClientViewOpen] = useState(false);
-    const [clientViewData, setClientViewData] = useState<ClientData | null>(null);
+    const [clientViewData, setClientViewData] = useState<ClientData | null>(
+        null,
+    );
     const [clientViewOpenToken, setClientViewOpenToken] = useState(0);
     const {
         monthlyOpen,
@@ -106,8 +109,7 @@ export default function Home() {
         pendingAppt,
         pendingReturnContext,
         closePendingActions,
-    } =
-        usePendingActionsListeners();
+    } = usePendingActionsListeners();
 
     // Seleciona o cliente via ?client=ID e abre modais conforme params (?new, ?edit, ?mode)
     useEffect(() => {

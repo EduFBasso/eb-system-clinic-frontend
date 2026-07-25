@@ -1,30 +1,30 @@
 import React from 'react';
-import { AppModal } from './Modal/Modal';
-import { TimePicker10 } from './TimePicker10/TimePicker10';
-import FloatingDatePicker from './FloatingDatePicker';
-import QuickScheduleHeader from './quickschedule/QuickScheduleHeader';
-import DateControlsHeader from './shared/DateControlsHeader';
-import PendingBanner from './quickschedule/PendingBanner';
+import { AppModal } from '../Modal/Modal';
+import { TimePicker10 } from '../TimePicker10/TimePicker10';
+import FloatingDatePicker from '../FloatingDatePicker';
+import QuickScheduleHeader from '../quickschedule/QuickScheduleHeader';
+import DateControlsHeader from '../shared/DateControlsHeader';
+import PendingBanner from '../quickschedule/PendingBanner';
 import QuickScheduleDayList, {
     type DayFilter,
-} from './quickschedule/QuickScheduleDayList';
-import { AppointmentDetailsModal } from './AppointmentDetailsModal/AppointmentDetailsModal';
-import type { ClientBasic } from '../types/ClientBasic';
-import type { Appointment } from '../hooks/useAppointments';
+} from '../quickschedule/QuickScheduleDayList';
+import { AppointmentDetailsModal } from '../AppointmentDetailsModal/AppointmentDetailsModal';
+import type { ClientBasic } from '../../types/ClientBasic';
+import type { Appointment } from '../../hooks/useAppointments';
 import type {
     QuickScheduleInitialDraft,
     QuickScheduleReturnContext,
-} from '../types/agendaFlow';
-import { useAppointmentsRange } from '../hooks/useAppointments';
-import { getNow } from '../utils/now';
-import { getWorkTimesFromSnapshot } from '../utils/agendaSettings';
-import { usePendingGuard } from '../hooks/usePendingGuard';
-import { useQuickScheduleSave } from '../hooks/useQuickScheduleSave';
-import { useAgendaSettings } from '../hooks/useAgendaSettings';
-import { pad2, toMinutes, fromMinutes, weekdayLabel } from '../utils/hmTime';
-import { useAgendaFinalizeAction } from '../hooks/useAgendaFinalizeAction';
-import { useConflictFlow } from '../hooks/useConflictFlow';
-import { useAppointmentCancel } from '../hooks/useAppointmentCancel';
+} from '../../types/agendaFlow';
+import { useAppointmentsRange } from '../../hooks/useAppointments';
+import { getNow } from '../../utils/now';
+import { getWorkTimesFromSnapshot } from '../../utils/agendaSettings';
+import { usePendingGuard } from '../../hooks/usePendingGuard';
+import { useQuickScheduleSave } from '../../hooks/useQuickScheduleSave';
+import { useAgendaSettings } from '../../hooks/useAgendaSettings';
+import { pad2, toMinutes, fromMinutes, weekdayLabel } from '../../utils/hmTime';
+import { useAgendaFinalizeAction } from '../../hooks/useAgendaFinalizeAction';
+import { useConflictFlow } from '../../hooks/useConflictFlow';
+import { useAppointmentCancel } from '../../hooks/useAppointmentCancel';
 import qsStyles from './QuickScheduleModal.module.css';
 
 type VisitType = Appointment['visit_type'];

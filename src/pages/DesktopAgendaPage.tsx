@@ -2,7 +2,7 @@ import React from 'react';
 import FloatingDatePicker from '../components/FloatingDatePicker';
 import { FaArrowLeft, FaArrowRight, FaCalendarAlt } from 'react-icons/fa';
 import ClientCardRow from '../components/shared/ClientCardRow';
-import QuickScheduleModal from '../components/QuickScheduleModal';
+import QuickScheduleModal from '../components/QuickScheduleModal/QuickScheduleModal';
 // PendingActionsModal agora é gerenciado globalmente em Home via evento 'pendingActions:open'
 import { AppointmentDetailsModal } from '../components/AppointmentDetailsModal/AppointmentDetailsModal';
 import type { Appointment } from '../hooks/useAppointments';
@@ -93,9 +93,8 @@ export default function DesktopAgendaPage() {
     const [detailsAppt, setDetailsAppt] = React.useState<Appointment | null>(
         null,
     );
-    const [detailsReturnContext, setDetailsReturnContext] = React.useState<PendingReturnContext>(
-        null,
-    );
+    const [detailsReturnContext, setDetailsReturnContext] =
+        React.useState<PendingReturnContext>(null);
     const buildReturnContext = React.useCallback(
         (appointmentId?: number): PendingReturnContext => ({
             kind: 'desktop-agenda',
@@ -142,7 +141,9 @@ export default function DesktopAgendaPage() {
                     setDetailsOpen(true);
                 }
             })
-            .catch(() => { /* noop */ });
+            .catch(() => {
+                /* noop */
+            });
     }, [location]);
 
     const dayStart = React.useMemo(
@@ -549,7 +550,9 @@ export default function DesktopAgendaPage() {
                                                     : undefined
                                             }
                                             onResolvePending={appt => {
-                                                openPendingActionsForAppointment(appt);
+                                                openPendingActionsForAppointment(
+                                                    appt,
+                                                );
                                             }}
                                             onDetails={
                                                 a.status === 'done'
@@ -570,9 +573,11 @@ export default function DesktopAgendaPage() {
                                                 (a.status === 'scheduled' ||
                                                     a.status === 'ongoing' ||
                                                     a._isOngoing) &&
-                                                !(a.status === 'scheduled' &&
+                                                !(
+                                                    a.status === 'scheduled' &&
                                                     !a._isOngoing &&
-                                                    a._end < effectiveNowRef)
+                                                    a._end < effectiveNowRef
+                                                )
                                                     ? handleCancel
                                                     : undefined
                                             }
@@ -631,7 +636,10 @@ export default function DesktopAgendaPage() {
                     client={qsClient}
                     editAppointment={qsEdit}
                     afterPersist={(_, action) => {
-                        if (action === 'created' || (action === 'updated' && !!qsEdit)) {
+                        if (
+                            action === 'created' ||
+                            (action === 'updated' && !!qsEdit)
+                        ) {
                             setQsOpen(false);
                         }
                         setReloadKey(x => x + 1);

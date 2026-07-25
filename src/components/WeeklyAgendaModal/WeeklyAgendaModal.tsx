@@ -20,10 +20,10 @@ import { cancelAppointment } from '../../services/appointments';
 import { dispatchers } from '../../events/dispatchers';
 import { useAgendaFinalizeAction } from '../../hooks/useAgendaFinalizeAction';
 import type { PendingReturnContext } from '../../types/agendaFlow';
-import QuickScheduleModal from '../QuickScheduleModal';
+import QuickScheduleModal from '../QuickScheduleModal/QuickScheduleModal';
 import { makeClientBasic } from '../../utils/appointments/agendaHelpers';
 import type { ClientBasic } from '../../types/ClientBasic';
- 
+
 function startOfDay(d: Date) {
     const x = new Date(d);
     x.setHours(0, 0, 0, 0);
@@ -540,59 +540,73 @@ function WeeklyAgendaContent({
                                             effectiveNowRef,
                                         );
                                         return (
-                                        <div key={a.id}>
-                                            <ClientCardRow<Appointment>
-                                                appt={a as Appointment}
-                                                timeSize='sm'
-                                                cardContainerStyle={{
-                                                    // Allow full column width for better name readability
-                                                    maxWidth: '100%',
-                                                    width: '100%',
-                                                }}
-                                                showEditAction={false}
-                                                onEdit={
-                                                    derivedStatus === 'scheduled'
-                                                        ? appt => {
-                                                              const client = makeClientBasic(appt);
-                                                              setQsClient(client);
-                                                              setQsEdit(appt as Appointment);
-                                                              setQsOpen(true);
-                                                          }
-                                                        : undefined
-                                                }
-                                                onClick={() =>
-                                                    setSelected(iso, 'user')
-                                                }
-                                                onResolvePending={appt => {
-                                                    openPendingActionsForAppointment(
-                                                        appt,
-                                                        buildReturnContext(),
-                                                    );
-                                                }}
-                                                finalizeRequestContext={buildReturnContext()}
-                                                onDetails={
-                                                    a.status === 'done'
-                                                        ? appt =>
-                                                              openDetails(
-                                                                  appt as Appointment,
-                                                                  buildReturnContext(),
-                                                              )
-                                                        : undefined
-                                                }
-                                                onCancel={
-                                                        derivedStatus === 'scheduled' ||
-                                                        derivedStatus === 'ongoing'
-                                                        ? handleCancel
-                                                        : undefined
-                                                }
-                                                onFinalize={
-                                                        derivedStatus === 'ongoing'
-                                                        ? handleFinalize
-                                                        : undefined
-                                                }
-                                            />
-                                        </div>
-                                    )})}
+                                            <div key={a.id}>
+                                                <ClientCardRow<Appointment>
+                                                    appt={a as Appointment}
+                                                    timeSize='sm'
+                                                    cardContainerStyle={{
+                                                        // Allow full column width for better name readability
+                                                        maxWidth: '100%',
+                                                        width: '100%',
+                                                    }}
+                                                    showEditAction={false}
+                                                    onEdit={
+                                                        derivedStatus ===
+                                                        'scheduled'
+                                                            ? appt => {
+                                                                  const client =
+                                                                      makeClientBasic(
+                                                                          appt,
+                                                                      );
+                                                                  setQsClient(
+                                                                      client,
+                                                                  );
+                                                                  setQsEdit(
+                                                                      appt as Appointment,
+                                                                  );
+                                                                  setQsOpen(
+                                                                      true,
+                                                                  );
+                                                              }
+                                                            : undefined
+                                                    }
+                                                    onClick={() =>
+                                                        setSelected(iso, 'user')
+                                                    }
+                                                    onResolvePending={appt => {
+                                                        openPendingActionsForAppointment(
+                                                            appt,
+                                                            buildReturnContext(),
+                                                        );
+                                                    }}
+                                                    finalizeRequestContext={buildReturnContext()}
+                                                    onDetails={
+                                                        a.status === 'done'
+                                                            ? appt =>
+                                                                  openDetails(
+                                                                      appt as Appointment,
+                                                                      buildReturnContext(),
+                                                                  )
+                                                            : undefined
+                                                    }
+                                                    onCancel={
+                                                        derivedStatus ===
+                                                            'scheduled' ||
+                                                        derivedStatus ===
+                                                            'ongoing'
+                                                            ? handleCancel
+                                                            : undefined
+                                                    }
+                                                    onFinalize={
+                                                        derivedStatus ===
+                                                        'ongoing'
+                                                            ? handleFinalize
+                                                            : undefined
+                                                    }
+                                                />
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>

@@ -9,7 +9,7 @@ import {
 } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
-import QuickScheduleModal from '../components/QuickScheduleModal';
+import QuickScheduleModal from '../components/QuickScheduleModal/QuickScheduleModal';
 import type { ClientBasic } from '../types/ClientBasic';
 import type { Appointment } from '../hooks/useAppointments';
 
@@ -89,7 +89,10 @@ beforeEach(() => {
     fixedNow.setMilliseconds(0);
     vi.useFakeTimers({ now: fixedNow.getTime(), toFake: ['Date'] });
     // Torna requestAnimationFrame síncrono para que runAfterPromptClose dispare imediatamente.
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0; });
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(cb => {
+        cb(0);
+        return 0;
+    });
     vi.stubGlobal('fetch', vi.fn());
     vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(() => {});
     vi.spyOn(window.localStorage, 'getItem').mockReturnValue('token');
@@ -335,7 +338,9 @@ describe('QuickScheduleModal', () => {
             type?: string;
         }>;
         expect(event.detail?.type).toBe('error');
-        expect(event.detail?.text).toMatch(/existe um compromisso neste período/i);
+        expect(event.detail?.text).toMatch(
+            /existe um compromisso neste período/i,
+        );
 
         fireEvent.click(screen.getByText('C L'));
         fireEvent.click(screen.getByRole('button', { name: 'Editar' }));
@@ -546,14 +551,18 @@ describe('QuickScheduleModal', () => {
         await waitFor(() => {
             expect(
                 screen.getByText((_content, node) => {
-                    return node?.tagName === 'H2' &&
+                    return (
+                        node?.tagName === 'H2' &&
                         node.textContent?.replace(/\s+/g, ' ').trim() ===
-                            'Eduardo Figueiredo Basso';
+                            'Eduardo Figueiredo Basso'
+                    );
                 }),
             ).toBeInTheDocument();
         });
 
-        expect(screen.queryByRole('heading', { level: 2, name: 'Elisa' })).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('heading', { level: 2, name: 'Elisa' }),
+        ).not.toBeInTheDocument();
         expect(
             screen.getByText(
                 /Este compromisso esta ocupando o horario que Elisa quer agendar/i,
@@ -656,9 +665,11 @@ describe('QuickScheduleModal', () => {
         await waitFor(() => {
             expect(
                 screen.getByText((_content, node) => {
-                    return node?.tagName === 'H2' &&
+                    return (
+                        node?.tagName === 'H2' &&
                         node.textContent?.replace(/\s+/g, ' ').trim() ===
-                            'Elisa Figueiredo';
+                            'Elisa Figueiredo'
+                    );
                 }),
             ).toBeInTheDocument();
         });
@@ -668,8 +679,10 @@ describe('QuickScheduleModal', () => {
         await waitFor(() => {
             expect(
                 screen.getByText((_content, node) => {
-                    return node?.tagName === 'H2' &&
-                        node.textContent?.replace(/\s+/g, ' ').trim() === 'C L';
+                    return (
+                        node?.tagName === 'H2' &&
+                        node.textContent?.replace(/\s+/g, ' ').trim() === 'C L'
+                    );
                 }),
             ).toBeInTheDocument();
         });

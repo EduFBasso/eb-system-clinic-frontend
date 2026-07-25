@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, act } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
-import QuickScheduleModal from '../components/QuickScheduleModal';
+import QuickScheduleModal from '../components/QuickScheduleModal/QuickScheduleModal';
 
 // Minimal client stub
 // Provide minimal superset of ClientBasic fields used by component paths.

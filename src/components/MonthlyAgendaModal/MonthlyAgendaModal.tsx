@@ -18,7 +18,7 @@ import { cancelAppointment } from '../../services/appointments';
 import { dispatchers } from '../../events/dispatchers';
 import { useAgendaFinalizeAction } from '../../hooks/useAgendaFinalizeAction';
 import type { PendingReturnContext } from '../../types/agendaFlow';
-import QuickScheduleModal from '../QuickScheduleModal';
+import QuickScheduleModal from '../QuickScheduleModal/QuickScheduleModal';
 import { makeClientBasic } from '../../utils/appointments/agendaHelpers';
 import { toISODate } from '../../utils/date';
 
@@ -378,12 +378,23 @@ export function MonthlyAgendaModal({
                                                     appt={a as Appointment}
                                                     showEditAction={false}
                                                     onEdit={
-                                                        derivedStatus === 'scheduled' && !isPending
+                                                        derivedStatus ===
+                                                            'scheduled' &&
+                                                        !isPending
                                                             ? appt => {
-                                                                  const client = makeClientBasic(appt);
-                                                                  setQsClient(client);
-                                                                  setQsEdit(appt as Appointment);
-                                                                  setQsOpen(true);
+                                                                  const client =
+                                                                      makeClientBasic(
+                                                                          appt,
+                                                                      );
+                                                                  setQsClient(
+                                                                      client,
+                                                                  );
+                                                                  setQsEdit(
+                                                                      appt as Appointment,
+                                                                  );
+                                                                  setQsOpen(
+                                                                      true,
+                                                                  );
                                                               }
                                                             : undefined
                                                     }
@@ -452,9 +463,7 @@ export function MonthlyAgendaModal({
                                                                       } catch {
                                                                           /* noop */
                                                                       }
-                                                                  } catch (
-                                                                      err
-                                                                  ) {
+                                                                  } catch (err) {
                                                                       const msg =
                                                                           err &&
                                                                           typeof err ===
