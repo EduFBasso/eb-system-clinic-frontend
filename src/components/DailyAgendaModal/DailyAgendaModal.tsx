@@ -25,6 +25,7 @@ import { cancelAppointment } from '../../services/appointments';
 import { dispatchers } from '../../events/dispatchers';
 import { useAgendaFinalizeAction } from '../../hooks/useAgendaFinalizeAction';
 import type { PendingReturnContext } from '../../types/agendaFlow';
+import { addDays, startOfDay } from '../../utils/dateHelpers';
 
 interface DailyAgendaModalProps {
     open: boolean;
@@ -33,16 +34,6 @@ interface DailyAgendaModalProps {
     focusAppointmentId?: number;
 }
 
-function startOfDay(d: Date) {
-    const x = new Date(d);
-    x.setHours(0, 0, 0, 0);
-    return x;
-}
-function addDays(d: Date, n: number) {
-    const x = new Date(d);
-    x.setDate(x.getDate() + n);
-    return x;
-}
 type StatusKey = 'scheduled' | 'done' | 'canceled' | 'ongoing';
 export function DailyAgendaModal({
     open,

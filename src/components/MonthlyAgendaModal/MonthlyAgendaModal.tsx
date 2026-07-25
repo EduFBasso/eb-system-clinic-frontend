@@ -21,13 +21,8 @@ import type { PendingReturnContext } from '../../types/agendaFlow';
 import QuickScheduleModal from '../QuickScheduleModal/QuickScheduleModal';
 import { makeClientBasic } from '../../utils/appointments/agendaHelpers';
 import { toISODate } from '../../utils/date';
+import { startOfMonth } from '../../utils/dateHelpers';
 
-function startOfMonth(d: Date) {
-    const x = new Date(d);
-    x.setDate(1);
-    x.setHours(0, 0, 0, 0);
-    return x;
-}
 function endOfMonth(d: Date) {
     const x = startOfMonth(d);
     x.setMonth(x.getMonth() + 1);

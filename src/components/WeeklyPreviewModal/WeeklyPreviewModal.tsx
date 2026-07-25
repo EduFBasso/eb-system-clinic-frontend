@@ -17,24 +17,12 @@ import { cancelAppointment } from '../../services/appointments';
 import { dispatchers } from '../../events/dispatchers';
 import { useAgendaFinalizeAction } from '../../hooks/useAgendaFinalizeAction';
 import { toISODate } from '../../utils/date';
- 
-function startOfDay(d: Date) {
-    const x = new Date(d);
-    x.setHours(0, 0, 0, 0);
-    return x;
-}
-function addDays(d: Date, n: number) {
-    const x = new Date(d);
-    x.setDate(x.getDate() + n);
-    return x;
-}
-function startOfWeekMonday(d: Date) {
-    const x = startOfDay(d);
-    const day = x.getDay();
-    const diff = (day + 6) % 7; // Mon-based offset
-    x.setDate(x.getDate() - diff);
-    return x;
-}
+import {
+    addDays,
+    startOfDay,
+    startOfWeekMonday,
+} from '../../utils/dateHelpers';
+
 function groupByDay(items: Appointment[]) {
     const map: Record<string, Appointment[]> = {};
     items.forEach(a => {

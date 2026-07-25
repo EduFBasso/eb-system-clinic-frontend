@@ -90,7 +90,10 @@ function App() {
                 <Routes>
                     <Route path='/' element={<Home />} />
                     <Route path='/clients/new' element={<ClientFormPage />} />
-                    <Route path='/clients/edit/:id' element={<ClientFormPage />} />
+                    <Route
+                        path='/clients/edit/:id'
+                        element={<ClientFormPage />}
+                    />
                     {/* AgendaPage removida: consolidamos em modais no Home */}
                     <Route path='/agenda' element={<Home />} />
                     <Route
@@ -109,8 +112,14 @@ function App() {
                         path='/catalog/services/:id'
                         element={<ServiceFormPage />}
                     />
-                    <Route path='/catalog/products' element={<ProductListPage />} />
-                    <Route path='/catalog/services' element={<ServiceListPage />} />
+                    <Route
+                        path='/catalog/products'
+                        element={<ProductListPage />}
+                    />
+                    <Route
+                        path='/catalog/services'
+                        element={<ServiceListPage />}
+                    />
                     <Route path='/admin' element={<AdminPage />} />
                     <Route path='/consulta' element={<ConsultaPage />} />
                     <Route

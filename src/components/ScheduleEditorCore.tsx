@@ -5,29 +5,18 @@ import type { ClientBasic } from '../types/ClientBasic';
 import { useAppointments } from '../hooks/useAppointments';
 import type { Appointment } from '../hooks/useAppointments';
 import { FaArrowLeft, FaArrowRight } from 'react-icons/fa';
-import {
-    getWorkTimesFromSnapshot,
-} from '../utils/agendaSettings';
+import { getWorkTimesFromSnapshot } from '../utils/agendaSettings';
 import { useAgendaSettings } from '../hooks/useAgendaSettings';
 import { pad2 } from '../utils/hmTime';
 import { toISODate } from '../utils/date';
 import { useAvailabilityCalc } from '../hooks/useAvailabilityCalc';
 import { useScheduleSave } from '../hooks/useScheduleSave';
+import { addDays, startOfDay } from '../utils/dateHelpers';
 
 type DurationOption = 30 | 60 | 90 | 120 | 150;
 
 function makeDayTime(day: string, h: number, m: number) {
     return new Date(`${day}T${pad2(h)}:${pad2(m)}:00`);
-}
-function startOfDay(d: Date) {
-    const x = new Date(d);
-    x.setHours(0, 0, 0, 0);
-    return x;
-}
-function addDays(d: Date, n: number) {
-    const x = new Date(d);
-    x.setDate(x.getDate() + n);
-    return x;
 }
 function toHHMM(d: Date) {
     // Centraliza via util para consistência e futura UTC/locale troca
@@ -96,8 +85,8 @@ export default function ScheduleEditorCore({
     }, [items, loading]);
     const effectiveItems = loading ? stableItems : items;
 
-    const [duration, setDuration] = React.useState<DurationOption>(() =>
-        agendaSettings.defaultDuration,
+    const [duration, setDuration] = React.useState<DurationOption>(
+        () => agendaSettings.defaultDuration,
     );
     const initialHM = React.useMemo(() => {
         const ws = workTimes;

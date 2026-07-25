@@ -2,6 +2,11 @@ import React from 'react';
 import type { AnamnesisField } from '../../types/AnamnesisTypes';
 import styles from './ClientAnamnesisForm.module.css';
 import { useTheme } from '../../contexts/ThemeContext';
+import {
+    ChoiceDetailInput,
+    ChoicePillRow,
+    FieldShell,
+} from '../FormElements/AnamnesisPreview/AnamnesisPreviewFields';
 
 interface Props {
     fields: AnamnesisField[];
@@ -51,6 +56,11 @@ export default function ClientAnamnesisForm({
         return currentValue;
     };
 
+    const getOtherText = (fieldId: number): string => {
+        const currentValue = values[fieldId] ?? '';
+        return currentValue.startsWith('Outro: ') ? currentValue.slice(7) : '';
+    };
+
     return (
         <div data-theme={theme} className={styles.wrapper}>
             <div className={styles.form}>
@@ -97,12 +107,7 @@ export default function ClientAnamnesisForm({
                             (field.options ?? []).includes('Outro');
                         const otherIsSelected =
                             hasOtherOption && currentValue.startsWith('Outro');
-                        const otherText = (() => {
-                            const entry = currentValue.startsWith('Outro: ')
-                                ? currentValue
-                                : '';
-                            return entry ? entry.slice(7) : '';
-                        })();
+                        const otherText = getOtherText(field.id);
 
                         const selectOption = (opt: string) => {
                             if (opt === 'Outro') {
@@ -113,77 +118,49 @@ export default function ClientAnamnesisForm({
                         };
 
                         return (
-                            <div key={field.id} className={styles.fieldRow}>
-                                <span className={styles.fieldLabel}>
-                                    {field.label}
-                                </span>
-
+                            <FieldShell
+                                key={field.id}
+                                label={field.label}
+                                helper={
+                                    field.field_type === 'radio'
+                                        ? 'Escolha uma opção.'
+                                        : field.field_type === 'textarea'
+                                          ? 'Resposta descritiva.'
+                                          : 'Resposta curta.'
+                                }
+                            >
                                 {field.field_type === 'radio' &&
                                     field.options && (
-                                        <div className={styles.radioGroup}>
-                                            {field.options.map(opt => {
-                                                const selected =
-                                                    opt === 'Outro'
-                                                        ? otherIsSelected ||
-                                                          selectedRadioValue ===
-                                                              'Outro'
-                                                        : selectedRadioValue ===
-                                                          opt;
-                                                return (
-                                                    <label
-                                                        key={opt}
-                                                        data-anamnesis-pill=''
-                                                        data-selected={
-                                                            selected
-                                                                ? ''
-                                                                : undefined
-                                                        }
-                                                        className={
-                                                            selected
-                                                                ? `${styles.checkBtn} ${styles.checkBtnSelected}`
-                                                                : styles.checkBtn
-                                                        }
-                                                    >
-                                                        <input
-                                                            type='radio'
-                                                            name={`anamnesis-${field.id}`}
-                                                            checked={selected}
-                                                            onChange={() =>
-                                                                selectOption(
-                                                                    opt,
-                                                                )
-                                                            }
-                                                            className={
-                                                                styles.checkHidden
-                                                            }
-                                                        />
-                                                        {opt}
-                                                    </label>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
+                                        <>
+                                            <ChoicePillRow
+                                                value={selectedRadioValue}
+                                                options={field.options}
+                                                name={`anamnesis-${field.id}`}
+                                                onSelect={selectOption}
+                                            />
 
-                                {otherIsSelected && (
-                                    <>
-                                        <span className={styles.fieldLabel}>
-                                            Qual?
-                                        </span>
-                                        <input
-                                            type='text'
-                                            className={styles.textInput}
-                                            value={otherText}
-                                            placeholder='Informe...'
-                                            onChange={e => {
-                                                const text = e.target.value;
-                                                const newEntry = text
-                                                    ? `Outro: ${text}`
-                                                    : 'Outro';
-                                                onChange(field.id, newEntry);
-                                            }}
-                                        />
-                                    </>
-                                )}
+                                            {hasOtherOption && (
+                                                <ChoiceDetailInput
+                                                    visible={otherIsSelected}
+                                                    label='Outro'
+                                                    value={otherText}
+                                                    placeholder={
+                                                        field.placeholder ||
+                                                        'Informe...'
+                                                    }
+                                                    onChange={text => {
+                                                        const newEntry = text
+                                                            ? `Outro: ${text}`
+                                                            : 'Outro';
+                                                        onChange(
+                                                            field.id,
+                                                            newEntry,
+                                                        );
+                                                    }}
+                                                />
+                                            )}
+                                        </>
+                                    )}
 
                                 {field.field_type === 'text' && (
                                     <input
@@ -216,7 +193,7 @@ export default function ClientAnamnesisForm({
                                 {childFields.map(childField =>
                                     renderField(childField),
                                 )}
-                            </div>
+                            </FieldShell>
                         );
                     }
 

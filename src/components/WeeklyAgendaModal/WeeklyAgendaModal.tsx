@@ -23,25 +23,11 @@ import type { PendingReturnContext } from '../../types/agendaFlow';
 import QuickScheduleModal from '../QuickScheduleModal/QuickScheduleModal';
 import { makeClientBasic } from '../../utils/appointments/agendaHelpers';
 import type { ClientBasic } from '../../types/ClientBasic';
-
-function startOfDay(d: Date) {
-    const x = new Date(d);
-    x.setHours(0, 0, 0, 0);
-    return x;
-}
-function addDays(d: Date, n: number) {
-    const x = new Date(d);
-    x.setDate(x.getDate() + n);
-    return x;
-}
-function startOfWeekMonday(d: Date) {
-    // Normalize to local Monday as week start
-    const x = startOfDay(d);
-    const day = x.getDay(); // 0..6 (Sun..Sat)
-    const diff = (day + 6) % 7; // days since Monday
-    x.setDate(x.getDate() - diff);
-    return x;
-}
+import {
+    addDays,
+    startOfDay,
+    startOfWeekMonday,
+} from '../../utils/dateHelpers';
 
 function groupByDay(items: Appointment[]) {
     const map: Record<string, Appointment[]> = {};

@@ -5,21 +5,10 @@ import { getNow } from '../utils/now';
 import { toISODate } from '../utils/date';
 import { pad2 } from '../utils/hmTime';
 import type { AgendaSettingsSnapshot } from '../utils/agendaSettings';
-
-// ─── Pure helpers (module-level, no hook) ────────────────────────────────────
+import { addMinutes, overlaps } from '../utils/dateHelpers';
 
 function makeDayTime(day: string, h: number, m: number) {
     return new Date(`${day}T${pad2(h)}:${pad2(m)}:00`);
-}
-
-function addMinutes(d: Date, mins: number) {
-    const x = new Date(d);
-    x.setMinutes(x.getMinutes() + mins);
-    return x;
-}
-
-function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
-    return aStart < bEnd && aEnd > bStart;
 }
 
 function toHHMM(d: Date) {
@@ -152,17 +141,34 @@ export function useAvailabilityCalc({
             const be = b.end > end ? end : b.end;
             if (bs > cursor) {
                 const len = (bs.getTime() - cursor.getTime()) / 60000;
-                if (len >= 15) segs.push({ start: new Date(cursor), end: new Date(bs), lengthMin: len });
+                if (len >= 15)
+                    segs.push({
+                        start: new Date(cursor),
+                        end: new Date(bs),
+                        lengthMin: len,
+                    });
             }
             if (be > cursor) cursor = new Date(be);
             if (cursor >= end) break;
         }
         if (cursor < end) {
             const len = (end.getTime() - cursor.getTime()) / 60000;
-            if (len >= 15) segs.push({ start: new Date(cursor), end: new Date(end), lengthMin: len });
+            if (len >= 15)
+                segs.push({
+                    start: new Date(cursor),
+                    end: new Date(end),
+                    lengthMin: len,
+                });
         }
         return segs.sort((a, b) => a.start.getTime() - b.start.getTime());
-    }, [rawBusy, selectedDay, workTimes.startHour, workTimes.startMin, workTimes.endHour, workTimes.endMin]);
+    }, [
+        rawBusy,
+        selectedDay,
+        workTimes.startHour,
+        workTimes.startMin,
+        workTimes.endHour,
+        workTimes.endMin,
+    ]);
 
     const startCandidate = React.useMemo(
         () => makeDayTime(dayISO, hour, minute),
@@ -186,7 +192,9 @@ export function useAvailabilityCalc({
         () =>
             startCandidate >= workStartBound &&
             endCandidate <= workEndBound &&
-            !busy.some(b => overlaps(startCandidate, endCandidate, b.start, b.end)),
+            !busy.some(b =>
+                overlaps(startCandidate, endCandidate, b.start, b.end),
+            ),
         [busy, startCandidate, endCandidate, workStartBound, workEndBound],
     );
 
@@ -219,7 +227,15 @@ export function useAvailabilityCalc({
             map[h] = ok;
         }
         return map;
-    }, [hoursRange, minutesList, dayISO, duration, busy, workStartBound, workEndBound]);
+    }, [
+        hoursRange,
+        minutesList,
+        dayISO,
+        duration,
+        busy,
+        workStartBound,
+        workEndBound,
+    ]);
 
     const clientConflicts = React.useMemo(() => {
         const s = new Date(`${dayISO}T${toHHMM(startCandidate)}:00`);

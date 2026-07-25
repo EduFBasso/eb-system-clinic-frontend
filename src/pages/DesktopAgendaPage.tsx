@@ -29,17 +29,8 @@ import { cancelAppointment } from '../services/appointments';
 import { dispatchers } from '../events/dispatchers';
 import { useAgendaFinalizeAction } from '../hooks/useAgendaFinalizeAction';
 import { openPendingActionsForAppointment } from '../utils/appointments/openPendingActions';
+import { addDays, startOfDay } from '../utils/dateHelpers';
 
-function startOfDay(d: Date) {
-    const x = new Date(d);
-    x.setHours(0, 0, 0, 0);
-    return x;
-}
-function addDays(d: Date, n: number) {
-    const x = new Date(d);
-    x.setDate(x.getDate() + n);
-    return x;
-}
 type StatusKey = 'scheduled' | 'done' | 'canceled' | 'ongoing';
 type RawClientField = ClientLike | number | undefined | null;
 type EnrichedAppt = Appointment & {
