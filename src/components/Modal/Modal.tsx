@@ -5,6 +5,11 @@ import Modal from '@mui/material/Modal';
 import Box from '@mui/material/Box';
 import { ModalActionsBar } from '../ModalActionsBar/ModalActionsBar';
 import { useModalCloseHotkeys } from '../../hooks/useModalCloseHotkeys';
+import {
+    applyBottomCompVar,
+    computeBottomComp as computeViewportBottomComp,
+    updateDynamicVhVar,
+} from '../../modal/viewportCompensation';
 
 interface AppModalProps {
     open: boolean;
@@ -88,73 +93,45 @@ export function AppModal(props: AppModalProps) {
             .slice(2, 8)}`;
     }
 
+    const buildViewportMetricPayload = React.useCallback(
+        (nextBottomComp: number) => {
+            const metrics = computeViewportBottomComp();
+            return {
+                bottomComp: nextBottomComp,
+                vhUnit: metrics.vhUnit,
+                innerHeight: metrics.innerHeight,
+                visualViewportHeight: metrics.visualViewportHeight,
+                timestamp: Date.now(),
+                userAgent:
+                    typeof navigator !== 'undefined'
+                        ? navigator.userAgent
+                        : undefined,
+            };
+        },
+        [],
+    );
+
     // Função extraída para (re)calcular compensação inferior e emitir métrica.
     const recomputeBottomCompRef = React.useRef<() => void>(() => {});
     const computeBottomComp = React.useCallback(() => {
-        try {
-            const vv = window.visualViewport;
-            if (!vv) {
-                setBottomComp(0);
-                emitModalViewportMetric({
-                    modalId: modalIdRef.current,
-                    bottomComp: 0,
-                    vhUnit:
-                        (window.visualViewport?.height || window.innerHeight) /
-                            100 || 0,
-                    innerHeight: window.innerHeight,
-                    visualViewportHeight: window.visualViewport?.height,
-                    timestamp: Date.now(),
-                    phase: 'update',
-                    userAgent:
-                        typeof navigator !== 'undefined'
-                            ? navigator.userAgent
-                            : undefined,
-                });
-                return;
-            }
-            const delta = window.innerHeight - vv.height;
-            const safe = Number(
-                getComputedStyle(document.documentElement)
-                    .getPropertyValue('--_fake_safe_area_bottom')
-                    .replace(/px/, '') || 0,
-            );
-            const adj = delta > 8 ? Math.max(0, delta - safe) : 0;
-            setBottomComp(prev => (prev !== adj ? adj : prev));
-            emitModalViewportMetric({
-                modalId: modalIdRef.current,
-                bottomComp: adj,
-                vhUnit:
-                    (window.visualViewport?.height || window.innerHeight) /
-                        100 || 0,
-                innerHeight: window.innerHeight,
-                visualViewportHeight: window.visualViewport?.height,
-                timestamp: Date.now(),
-                phase: 'update',
-                userAgent:
-                    typeof navigator !== 'undefined'
-                        ? navigator.userAgent
-                        : undefined,
-            });
-        } catch {
-            setBottomComp(0);
-            emitModalViewportMetric({
-                modalId: modalIdRef.current,
-                bottomComp: 0,
-                vhUnit:
-                    (window.visualViewport?.height || window.innerHeight) /
-                        100 || 0,
-                innerHeight: window.innerHeight,
-                visualViewportHeight: window.visualViewport?.height,
-                timestamp: Date.now(),
-                phase: 'update',
-                userAgent:
-                    typeof navigator !== 'undefined'
-                        ? navigator.userAgent
-                        : undefined,
-            });
-        }
-    }, []);
+        const nextBottomComp = computeViewportBottomComp().bottomComp;
+        setBottomComp(prev =>
+            prev !== nextBottomComp ? nextBottomComp : prev,
+        );
+        emitModalViewportMetric({
+            modalId: modalIdRef.current,
+            phase: 'update',
+            ...buildViewportMetricPayload(nextBottomComp),
+        });
+    }, [buildViewportMetricPayload]);
     recomputeBottomCompRef.current = computeBottomComp;
+
+    React.useEffect(() => {
+        const contentEl = contentRef.current;
+        if (!fullScreen || !contentEl) return;
+        applyBottomCompVar(contentEl, bottomComp);
+        return () => applyBottomCompVar(contentEl, 0);
+    }, [bottomComp, fullScreen]);
 
     // Observa mudanças de visualViewport e eventos customizados para recalcular compensação.
     React.useEffect(() => {
@@ -209,24 +186,15 @@ export function AppModal(props: AppModalProps) {
     }, []);
 
     const isCoarsePointerDevice = React.useMemo(() => {
-        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+        if (
+            typeof window === 'undefined' ||
+            typeof window.matchMedia !== 'function'
+        ) {
             return false;
         }
         return window.matchMedia('(hover: none) and (pointer: coarse)').matches;
     }, []);
 
-    const updateVhVar = React.useCallback(() => {
-        try {
-            const vhPx =
-                (window.visualViewport?.height ?? window.innerHeight) * 0.01;
-            document.documentElement.style.setProperty(
-                '--appmodal-vh',
-                `${vhPx}px`,
-            );
-        } catch {
-            /* noop */
-        }
-    }, []);
     React.useEffect(() => {
         if (!open) return;
         try {
@@ -308,8 +276,8 @@ export function AppModal(props: AppModalProps) {
             /* noop */
         }
         // Define var de viewport dinâmica e listeners enquanto o modal está aberto
-        updateVhVar();
-        const onResize = () => updateVhVar();
+        updateDynamicVhVar(document);
+        const onResize = () => updateDynamicVhVar(document);
         window.addEventListener('resize', onResize);
         (window.visualViewport || null)?.addEventListener?.(
             'resize',
@@ -412,7 +380,7 @@ export function AppModal(props: AppModalProps) {
                 /* noop */
             }
         };
-    }, [open, isIOS, updateVhVar]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [open, isIOS]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Telemetria de fase 'open' (executa após montagem / abertura)
     React.useEffect(() => {
@@ -423,22 +391,12 @@ export function AppModal(props: AppModalProps) {
         const raf = requestAnimationFrame(() => {
             emitModalViewportMetric({
                 modalId: id,
-                bottomComp: currentBottomComp,
-                vhUnit:
-                    (window.visualViewport?.height || window.innerHeight) /
-                        100 || 0,
-                innerHeight: window.innerHeight,
-                visualViewportHeight: window.visualViewport?.height,
-                timestamp: Date.now(),
                 phase: 'open',
-                userAgent:
-                    typeof navigator !== 'undefined'
-                        ? navigator.userAgent
-                        : undefined,
+                ...buildViewportMetricPayload(currentBottomComp),
             });
         });
         return () => cancelAnimationFrame(raf);
-    }, [open, bottomComp]);
+    }, [open, bottomComp, buildViewportMetricPayload]);
 
     // Telemetria de fase 'close'
     React.useEffect(() => {
@@ -446,20 +404,10 @@ export function AppModal(props: AppModalProps) {
         if (!modalIdRef.current) return;
         emitModalViewportMetric({
             modalId: modalIdRef.current,
-            bottomComp,
-            vhUnit:
-                (window.visualViewport?.height || window.innerHeight) / 100 ||
-                0,
-            innerHeight: window.innerHeight,
-            visualViewportHeight: window.visualViewport?.height,
-            timestamp: Date.now(),
             phase: 'close',
-            userAgent:
-                typeof navigator !== 'undefined'
-                    ? navigator.userAgent
-                    : undefined,
+            ...buildViewportMetricPayload(bottomComp),
         });
-    }, [open, bottomComp]);
+    }, [open, bottomComp, buildViewportMetricPayload]);
     // Hotkeys reutilizáveis para fechar modal
     useModalCloseHotkeys({
         open,
@@ -520,7 +468,7 @@ export function AppModal(props: AppModalProps) {
                 }
                 const body = document.body as HTMLBodyElement;
                 const html = document.documentElement as HTMLElement;
-                
+
                 // Verifica se ainda há outro AppModal aberto usando nosso contador próprio.
                 // NÃO usamos aria-hidden aqui porque o MUI seta aria-hidden="true" no modal
                 // de baixo quando um modal de cima está aberto (acessibilidade), tornando-o
@@ -530,7 +478,7 @@ export function AppModal(props: AppModalProps) {
                         0,
                 );
                 if (openModalCount > 0) return; // outro AppModal ainda aberto, não restaurar
-                
+
                 // Se a página marcou que o scroll deve permanecer como está, não tentar restaurar
                 // MAS: só pula se não há outro modal aberto (checagem acima confirmou)
                 if (body.dataset.keepScroll === '1') {
@@ -576,9 +524,9 @@ export function AppModal(props: AppModalProps) {
                     hiddenRoots.forEach(root => {
                         root.style.pointerEvents = 'none';
                         root.style.zIndex = '0';
-                        const dialog = root.querySelector('[role="dialog"]') as
-                            | HTMLElement
-                            | null;
+                        const dialog = root.querySelector(
+                            '[role="dialog"]',
+                        ) as HTMLElement | null;
                         if (dialog) {
                             dialog.style.pointerEvents = 'none';
                             try {
@@ -889,22 +837,14 @@ export function AppModal(props: AppModalProps) {
                                   // Permite ajustar a altura máxima por modal
                                   maxHeight: `calc(var(--appmodal-vh, 1vh) * ${maxHeightVh})`,
                                   position: 'absolute' as const,
-                                    // Conteúdo deve ficar acima do backdrop global do MUI.
-                                    zIndex: 3001,
+                                  // Conteúdo deve ficar acima do backdrop global do MUI.
+                                  zIndex: 3001,
                                   WebkitOverflowScrolling: 'touch',
                               }
                     }
                     tabIndex={-1}
                     data-appmodal-fullscreen={fullScreen ? '1' : undefined}
                     data-bottom-comp={bottomComp || undefined}
-                    style={
-                        fullScreen && bottomComp
-                            ? {
-                                  // Expor CSS var para pseudo-element
-                                  ['--appmodal-bottom-comp' as string]: `${bottomComp}px`,
-                              }
-                            : undefined
-                    }
                 >
                     {showCloseButton && (
                         <ModalActionsBar
