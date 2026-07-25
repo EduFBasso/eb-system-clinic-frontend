@@ -4,6 +4,7 @@ import AppointmentCard, {
     type AppointmentCardProps,
     type SharedAppointmentLike,
 } from './AppointmentCard';
+import styles from './ClientCardRow.module.css';
 
 export interface ClientCardRowProps<T extends SharedAppointmentLike>
     extends Omit<AppointmentCardProps<T>, 'showTime'> {
@@ -29,13 +30,8 @@ export default function ClientCardRow<T extends SharedAppointmentLike>(
     } = props;
     return (
         <div
+            className={styles.row}
             style={{
-                display: 'grid',
-                gridTemplateColumns: '56px 1fr',
-                columnGap: 10,
-                alignItems: 'flex-start',
-                minWidth: 0,
-                width: '100%',
                 ...containerStyle,
             }}
         >
@@ -45,7 +41,7 @@ export default function ClientCardRow<T extends SharedAppointmentLike>(
                 size={timeSize}
                 order={props.timeOrder}
             />
-            <div style={{ minWidth: 0, width: '100%', ...cardContainerStyle }}>
+            <div className={styles.cardContainer} style={cardContainerStyle}>
                 <AppointmentCard
                     {...(card as AppointmentCardProps<T>)}
                     appt={appt}

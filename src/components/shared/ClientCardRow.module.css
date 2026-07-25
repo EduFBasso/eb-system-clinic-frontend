@@ -1,0 +1,13 @@
+.row {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    column-gap: 10px;
+    align-items: flex-start;
+    min-width: 0;
+    width: 100%;
+}
+
+.cardContainer {
+    min-width: 0;
+    width: 100%;
+}
