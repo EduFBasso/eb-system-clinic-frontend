@@ -8,6 +8,21 @@ export type MultiChoiceValue = {
     otherText: string;
 };
 
+export function parseMultiChoiceValue(value: string, options: string[]) {
+    const entries = parseConcatenatedEntries(value);
+    const selected = options.filter(option =>
+        option !== 'Outros'
+            ? entries.includes(option)
+            : entries.includes('Outros') ||
+              entries.some(item => item.startsWith('Outros:')),
+    );
+    const otherEntry = entries.find(item => item.startsWith('Outros: '));
+    return {
+        selected,
+        otherText: otherEntry ? otherEntry.slice(8).trim() : '',
+    } satisfies MultiChoiceValue;
+}
+
 export function parseConcatenatedEntries(value: string): string[] {
     return (value || '')
         .split(',')
@@ -31,8 +46,12 @@ export function parseYesNoDetail(value: YesNoDetailValue) {
 
 export function formatMultiChoiceValue(value: MultiChoiceValue) {
     const base = value.selected.filter(option => option !== 'Outros');
-    if (value.selected.includes('Outros') && value.otherText.trim()) {
-        base.push(`Outros: ${value.otherText.trim()}`);
+    if (value.selected.includes('Outros')) {
+        base.push(
+            value.otherText.trim()
+                ? `Outros: ${value.otherText.trim()}`
+                : 'Outros',
+        );
     }
     return buildConcatenatedEntries(base) || 'Sem resposta';
 }
@@ -144,9 +163,11 @@ export function MultiChoiceWithOtherPills({
 }) {
     function toggleOption(option: string) {
         const exists = value.selected.includes(option);
-        const selected = exists
+        const nextSelected = exists
             ? value.selected.filter(item => item !== option)
             : [...value.selected, option];
+
+        const selected = options.filter(item => nextSelected.includes(item));
 
         onChange({
             selected,
@@ -155,7 +176,7 @@ export function MultiChoiceWithOtherPills({
     }
 
     return (
-        <div className={styles.checkboxGrid}>
+        <div className={styles.multiChoiceList}>
             {options.map(option => {
                 const selected = value.selected.includes(option);
                 return (
@@ -163,20 +184,17 @@ export function MultiChoiceWithOtherPills({
                         key={option}
                         className={
                             selected
-                                ? `${styles.checkPill} ${styles.checkPillSelected}`
-                                : styles.checkPill
+                                ? `${styles.multiChoiceItem} ${styles.multiChoiceItemSelected}`
+                                : styles.multiChoiceItem
                         }
                     >
                         <input
                             type='checkbox'
-                            className={styles.hiddenInput}
+                            className={styles.multiChoiceInput}
                             checked={selected}
                             onChange={() => toggleOption(option)}
                         />
-                        <span className={styles.checkIcon} aria-hidden='true'>
-                            {selected ? '✓' : '+'}
-                        </span>
-                        {option}
+                        <span className={styles.multiChoiceText}>{option}</span>
                     </label>
                 );
             })}

@@ -5,6 +5,7 @@ export interface AnamnesisField {
     sector_order: number;
     label: string;
     field_type: 'radio' | 'text' | 'textarea';
+    selection_mode: 'single' | 'multiple';
     options: string[] | null;
     placeholder: string;
     depends_on: number | null;

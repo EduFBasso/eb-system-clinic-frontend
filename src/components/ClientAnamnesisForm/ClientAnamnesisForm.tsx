@@ -6,6 +6,9 @@ import {
     ChoiceDetailInput,
     ChoicePillRow,
     FieldShell,
+    MultiChoiceWithOtherPills,
+    formatMultiChoiceValue,
+    parseMultiChoiceValue,
 } from '../FormElements/AnamnesisPreview/AnamnesisPreviewFields';
 
 interface Props {
@@ -56,6 +59,9 @@ export default function ClientAnamnesisForm({
         return currentValue;
     };
 
+    const getMultiChoiceValue = (field: AnamnesisField) =>
+        parseMultiChoiceValue(values[field.id] ?? '', field.options ?? []);
+
     const getOtherText = (fieldId: number): string => {
         const currentValue = values[fieldId] ?? '';
         return currentValue.startsWith('Outro: ') ? currentValue.slice(7) : '';
@@ -101,6 +107,7 @@ export default function ClientAnamnesisForm({
                         const currentValue = values[field.id] ?? '';
 
                         const selectedRadioValue = getRadioValue(field);
+                        const selectedMultiValue = getMultiChoiceValue(field);
 
                         const hasOtherOption =
                             field.field_type === 'radio' &&
@@ -123,14 +130,67 @@ export default function ClientAnamnesisForm({
                                 label={field.label}
                                 helper={
                                     field.field_type === 'radio'
-                                        ? 'Escolha uma opção.'
+                                        ? field.selection_mode === 'multiple'
+                                            ? 'Marque uma ou mais opções.'
+                                            : 'Escolha uma opção.'
                                         : field.field_type === 'textarea'
                                           ? 'Resposta descritiva.'
                                           : 'Resposta curta.'
                                 }
                             >
                                 {field.field_type === 'radio' &&
-                                    field.options && (
+                                    field.options &&
+                                    field.selection_mode === 'multiple' && (
+                                        <>
+                                            <MultiChoiceWithOtherPills
+                                                options={field.options}
+                                                value={selectedMultiValue}
+                                                onChange={next =>
+                                                    onChange(
+                                                        field.id,
+                                                        formatMultiChoiceValue(
+                                                            next,
+                                                        ),
+                                                    )
+                                                }
+                                            />
+
+                                            {(field.options ?? []).includes(
+                                                'Outros',
+                                            ) && (
+                                                <ChoiceDetailInput
+                                                    visible={selectedMultiValue.selected.includes(
+                                                        'Outros',
+                                                    )}
+                                                    label='Outros'
+                                                    value={
+                                                        selectedMultiValue.otherText
+                                                    }
+                                                    placeholder={
+                                                        field.placeholder ||
+                                                        'Descreva...'
+                                                    }
+                                                    onChange={text =>
+                                                        onChange(
+                                                            field.id,
+                                                            formatMultiChoiceValue(
+                                                                {
+                                                                    selected:
+                                                                        selectedMultiValue.selected,
+                                                                    otherText:
+                                                                        text,
+                                                                },
+                                                            ),
+                                                        )
+                                                    }
+                                                />
+                                            )}
+                                        </>
+                                    )}
+
+                                {field.field_type === 'radio' &&
+                                    field.options &&
+                                    field.selection_mode === 'single' && (
                                         <>
                                             <ChoicePillRow
                                                 value={selectedRadioValue}

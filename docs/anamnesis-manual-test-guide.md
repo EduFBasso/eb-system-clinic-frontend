@@ -88,6 +88,7 @@ O frontend monta a tela dinamicamente a partir dessa lista.
 - `sector_order`: ordem do setor
 - `label`: texto da pergunta
 - `field_type`: `radio`, `text` ou `textarea`
+- `selection_mode`: `single` para escolha única, `multiple` para checklist com concatenação textual
 - `options`: lista de opções para `radio`
 - `placeholder`: dica visual
 - `depends_on`: campo pai
@@ -114,6 +115,23 @@ O serializer de `bulk_save` valida se o campo pertence ao profissional autentica
 
 Então, se você estiver logado como um profissional, só conseguirá salvar campos que pertençam a esse mesmo profissional/tenant.
 
+## Como o campo de múltipla seleção funciona
+
+Alguns campos de `radio` podem ser configurados com `selection_mode = multiple`.
+
+Nesse modo:
+
+- várias opções podem ficar marcadas ao mesmo tempo
+- a UI mostra checkbox com texto ao lado
+- se existir `Outros`, o frontend abre um input complementar
+- o valor salvo continua sendo uma string concatenada
+
+Exemplo salvo:
+
+`Diabetes, Hipertensão, Outros: Hérnia de hiato`
+
+Se o usuário marcar `Outros` sem preencher texto ainda, o valor fica apenas `Outros`.
+
 ## Fluxo de persistência
 
 - O frontend busca os campos em `GET /anamnesis/fields/`
@@ -126,6 +144,7 @@ Então, se você estiver logado como um profissional, só conseguirá salvar cam
 - se os setores aparecem na ordem correta
 - se os campos dependentes só abrem quando o valor do pai corresponde
 - se `Outro: detalhe` grava e reabre corretamente
+- se um campo `selection_mode = multiple` salva múltiplas marcações e o texto complementar de `Outros`
 - se um campo removido no backend some da tela após refresh
 - se a resposta salva preserva o label em `field_label_snap`
 
@@ -134,3 +153,42 @@ Então, se você estiver logado como um profissional, só conseguirá salvar cam
 Depois de criar ou alterar um campo no backend, basta recarregar o frontend e abrir a mesma cliente.
 
 Se o campo estiver ativo e pertencer ao profissional autenticado, ele deve aparecer automaticamente sem ajuste adicional no frontend.
+
+## Cenário recomendado para podologia
+
+Para validar o caso que você descreveu, use este fluxo:
+
+1. Atualizar os campos da profissional
+
+```bash
+cd /Users/eduardofigueiredobasso/Documents/Dev/eb_micro_SaaS/eb-system/backend
+./.venv/bin/python manage.py seed_anamnesis --professional-email=<email-da-profissional> --seed=podologia_unhas
+```
+
+Se você também estiver usando os campos comuns no ambiente local:
+
+```bash
+cd /Users/eduardofigueiredobasso/Documents/Dev/eb_micro_SaaS/eb-system/backend
+./.venv/bin/python scripts/seed_common_anamnesis_fields.py
+```
+
+2. Criar uma cliente nova manualmente no frontend
+- abrir cadastro de cliente
+- salvar com dados mínimos
+- reabrir o cadastro para preencher anamnese
+
+3. Validar checklist múltiplo
+- no campo de doenças principais, confirmar que Não não aparece
+- marcar Diabetes e Hipertensão
+- marcar Outros e preencher texto
+- salvar e reabrir para validar persistência
+
+Resultado esperado no valor salvo:
+
+`Diabetes, Hipertensão, Outros: Hérnia de hiato`
+
+4. Validar campo de calçados em múltipla seleção
+- campo: Calçados que mais usa
+- marcar mais de uma opção
+- marcar Outros e preencher detalhe
+- salvar e reabrir para confirmar concatenação

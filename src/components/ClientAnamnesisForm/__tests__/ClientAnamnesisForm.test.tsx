@@ -13,8 +13,15 @@ const fields: AnamnesisField[] = [
         sector_order: 1,
         label: 'Comorbidades',
         field_type: 'radio',
-        options: ['Não', 'Sim', 'Outro'],
-        placeholder: 'Informe...',
+        selection_mode: 'multiple',
+        options: [
+            'Diabetes',
+            'Hipertensão',
+            'Cardiopatia',
+            'Alergias',
+            'Outros',
+        ],
+        placeholder: 'Descreva...',
         depends_on: null,
         show_when_value: '',
         order: 1,
@@ -36,13 +43,14 @@ const fields: AnamnesisField[] = [
     },
     {
         id: 3,
-        code: 'clinical_notes',
+        code: 'history_single_choice',
         sector: 'Observações',
         sector_order: 2,
-        label: 'Observações',
-        field_type: 'textarea',
-        options: null,
-        placeholder: 'Descreva',
+        label: 'Toma medicação?',
+        field_type: 'radio',
+        selection_mode: 'single',
+        options: ['Sim', 'Não', 'Outro'],
+        placeholder: 'Informe a medicação',
         depends_on: null,
         show_when_value: '',
         order: 1,
@@ -72,31 +80,35 @@ function Harness({
 }
 
 describe('ClientAnamnesisForm', () => {
-    it('mostra o campo dependente quando a resposta do pai atende a regra', () => {
+    it('permite múltiplas opções com detalhe em Outros', () => {
         render(<Harness />);
 
-        expect(
-            screen.queryByPlaceholderText('Explique o motivo'),
-        ).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Diabetes' }));
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Hipertensão' }));
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Outros' }));
 
-        fireEvent.click(screen.getByRole('radio', { name: 'Sim' }));
+        const otherInput = screen.getByPlaceholderText('Descreva...');
+        expect(otherInput).toBeEnabled();
 
-        const detailInput = screen.getByPlaceholderText('Explique o motivo');
-        expect(detailInput).toBeEnabled();
-
-        fireEvent.change(detailInput, {
-            target: { value: 'Losartana' },
+        fireEvent.change(otherInput, {
+            target: { value: 'Hérnia de hiato' },
         });
 
         expect(screen.getByTestId('values')).toHaveTextContent(
-            '"2":"Losartana"',
+            '"1":"Diabetes, Hipertensão, Outros: Hérnia de hiato"',
         );
     });
 
-    it('serializa Outro com detalhe usando o contrato padronizado', () => {
-        render(<Harness initialValues={{ 1: 'Outro' }} />);
+    it('mantém o fluxo Sim/Não com detalhe para campos de seleção única', () => {
+        render(<Harness initialValues={{ 3: 'Outro' }} />);
 
-        const otherInput = screen.getByPlaceholderText('Informe...');
+        expect(screen.getByRole('radio', { name: 'Outro' })).toBeChecked();
+    });
+
+    it('serializa Outro com detalhe usando o contrato padronizado', () => {
+        render(<Harness initialValues={{ 3: 'Outro' }} />);
+
+        const otherInput = screen.getByPlaceholderText('Informe a medicação');
         expect(otherInput).toBeEnabled();
 
         fireEvent.change(otherInput, {
@@ -104,7 +116,7 @@ describe('ClientAnamnesisForm', () => {
         });
 
         expect(screen.getByTestId('values')).toHaveTextContent(
-            '"1":"Outro: Cadeira ortopédica"',
+            '"3":"Outro: Cadeira ortopédica"',
         );
     });
 });

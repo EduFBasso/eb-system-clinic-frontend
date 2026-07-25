@@ -441,6 +441,7 @@ O refactor ja avancou para o conjunto central descrito neste plano:
 - os wrappers legados por pergunta foram removidos quando nao havia mais consumidores
 - o mock visual foi removido depois de cumprir o papel de validacao de linguagem visual e comportamento por tema
 - existe teste de componente cobrindo dependencia de campo e serializacao de `Outro: detalhe`
+- o backend ja expõe `selection_mode` para separar escolha unica de checklist com concatenação textual
 
 A limpeza de duplicidades da agenda tambem avançou:
 
