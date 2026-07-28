@@ -1,101 +1,18 @@
-<!-- frontend\README.md -->
+# Frontend Clinic
 
-# React + TypeScript + Vite
+Este repositório contém o frontend do sistema clínico, desenvolvido em **React + Vite**.  
+O backend é separado e roda em múltiplos servidores (Django + Postgres + JWT).
 
-This template provides a minimal setup to get React working in Vite with HMR and
-some ESLint rules.
+## 🚀 Tecnologias
+- React + Vite
+- Deploy na Vercel conforme backend implementado aqui
+  
+## 📂 Estrutura
+- `src/` → código principal do frontend
+- `docs/` → documentação interna e guias de desenvolvimento
+- `scripts/` → utilitários (ex: geração de QRCode)
 
-Currently, two official plugins are available:
-
--   [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react)
-    uses [Babel](https://babeljs.io/) for Fast Refresh
--   [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc)
-    uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the
-configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config([
-    globalIgnores(['dist']),
-    {
-        files: ['**/*.{ts,tsx}'],
-        extends: [
-            // Other configs...
-
-            // Remove tseslint.configs.recommended and replace with this
-            ...tseslint.configs.recommendedTypeChecked,
-            // Alternatively, use this for stricter rules
-            ...tseslint.configs.strictTypeChecked,
-            // Optionally, add this for stylistic rules
-            ...tseslint.configs.stylisticTypeChecked,
-
-            // Other configs...
-        ],
-        languageOptions: {
-            parserOptions: {
-                project: ['./tsconfig.node.json', './tsconfig.app.json'],
-                tsconfigRootDir: import.meta.dirname,
-            },
-            // other options...
-        },
-    },
-]);
-```
-
-You can also install
-[eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x)
-and
-[eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom)
-for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x';
-import reactDom from 'eslint-plugin-react-dom';
-
-export default tseslint.config([
-    globalIgnores(['dist']),
-    {
-        files: ['**/*.{ts,tsx}'],
-        extends: [
-            // Other configs...
-            // Enable lint rules for React
-            reactX.configs['recommended-typescript'],
-            // Enable lint rules for React DOM
-            reactDom.configs.recommended,
-        ],
-        languageOptions: {
-            parserOptions: {
-                project: ['./tsconfig.node.json', './tsconfig.app.json'],
-                tsconfigRootDir: import.meta.dirname,
-            },
-            // other options...
-        },
-    },
-]);
-```
-
-## Executar localmente
-
-1. Copie `.env.development.example` para `.env.development` e defina
-   `VITE_API_BASE` (ex.: `http://localhost:8000`).
-2. Rode `npm install` e depois `npm run dev`.
-
-## Ambientes de trabalho
-
-- Local: use `VITE_API_BASE=http://localhost:8000` e backend Django apontando para o Postgres local em `127.0.0.1:55432`.
-- Online protegido: mantenha `VITE_API_BASE` apontando para o backend Render. Nesse modo, o backend pode bloquear `PUT/PATCH/DELETE` via `ONLINE_MUTATION_LOCK_ENABLED=True`, preservando os dados reais enquanto o frontend continua navegavel para login, leitura e criacao controlada.
-- Usuario foco de validacao funcional: `brunadentista@mail.com`.
-
-## Deploy Vercel
-
-- Se a Vercel estiver conectada a este repositório isolado do frontend, use a raiz do repositório como `Root Directory`.
-- Nao use `frontend-clinic/` como root neste caso; esse path so faz sentido quando o frontend ainda esta dentro de um monorepo.
-- Build command: `npm run build`
-- Output directory: `dist`
-- Configure `VITE_API_BASE=https://<seu-backend>.onrender.com` nas envs do projeto.
-- `BASE_API_VITE` continua aceito como legado, mas o padrao oficial agora e `VITE_API_BASE`.
-- Sem essa env, o frontend nao deve mais cair em backend hardcoded antigo.
+## ▶️ Como rodar localmente
+```bash
+npm install
+npm run dev

@@ -1,12 +1,11 @@
-import { useState, useEffect } from 'react';
 import type { ClientData } from '../../types/ClientData';
 import InputField from '../FormElements/InputField/InputField';
 import SelectField from '../FormElements/SelectField/SelectField';
 import { formatPhone } from '../../utils/formatPhone';
-import { formatCpf, formatCnpj, formatRg } from '../../utils/formatCpf';
+import { formatCpf, formatCnpj } from '../../utils/formatCpf';
 import styles from './ClientPersonalDataForm.module.css';
 import { useTheme } from '../../contexts/ThemeContext';
-import { normalizeDOBForApi } from '../../utils/dateOfBirth';
+import { formatDOBInputMask } from '../../utils/dateOfBirth';
 
 type ChangeHandler = (
     fieldOrEvent:
@@ -31,18 +30,6 @@ export default function ClientPersonalDataForm({
     isEdit = false,
 }: Props) {
     const { theme } = useTheme();
-
-    // Estado local para o valor raw do input[type=date] (ISO: YYYY-MM-DD).
-    // Necessário pois o browser dispara onChange a cada dígito do ano (ex: "3" → "0003",
-    // "19" → "0019"), e um componente controlado resetaria o campo a cada tecla.
-    const [dobInputValue, setDobInputValue] = useState<string>(
-        normalizeDOBForApi(formData.date_of_birth) ?? '',
-    );
-
-    // Sincroniza quando date_of_birth muda externamente (ex: carregando cliente existente).
-    useEffect(() => {
-        setDobInputValue(normalizeDOBForApi(formData.date_of_birth) ?? '');
-    }, [formData.date_of_birth]);
 
     return (
         <div data-theme={theme} className={styles.wrapper}>
@@ -119,24 +106,16 @@ export default function ClientPersonalDataForm({
                     <InputField
                         label='Nascimento'
                         name='date_of_birth'
-                        value={dobInputValue}
-                        onChange={e => {
-                            const iso = e.target.value;
-                            setDobInputValue(iso);
-                            if (!iso) {
-                                handleChange('date_of_birth', '');
-                                return;
-                            }
-                            const parts = iso.split('-');
-                            if (parts.length !== 3) return;
-                            const [y, m, d] = parts;
-                            const year = parseInt(y, 10);
-                            // Só propaga para o formData quando o ano estiver completo
-                            if (year >= 1900 && year <= 2100) {
-                                handleChange('date_of_birth', `${d}/${m}/${y}`);
-                            }
-                        }}
-                        type='date'
+                        value={formData.date_of_birth ?? ''}
+                        onChange={e =>
+                            handleChange(
+                                'date_of_birth',
+                                formatDOBInputMask(e.target.value),
+                            )
+                        }
+                        type='text'
+                        placeholder='dd/mm/aaaa'
+                        autoComplete='bday'
                     />
                     <InputField
                         label='Profissão'
@@ -144,15 +123,6 @@ export default function ClientPersonalDataForm({
                         value={formData.profession}
                         onChange={e => handleChange(e)}
                         placeholder='Ex: Professora, Maratonista'
-                    />
-                    <InputField
-                        label='RG'
-                        name='rg'
-                        value={formData.rg ?? ''}
-                        onChange={e =>
-                            handleChange('rg', formatRg(e.target.value))
-                        }
-                        placeholder='00.000.000-0'
                     />
                     <SelectField
                         label='Tipo de documento'
@@ -198,14 +168,6 @@ export default function ClientPersonalDataForm({
                             { value: 'uniao_estavel', label: 'União estável' },
                         ]}
                         placeholder='Selecione…'
-                    />
-                    <InputField
-                        label='Nacionalidade'
-                        name='nationality'
-                        value={formData.nationality ?? ''}
-                        onChange={e => handleChange(e)}
-                        placeholder='Ex: Brasileira'
-                        autoComplete='country-name'
                     />
                 </div>
             </div>

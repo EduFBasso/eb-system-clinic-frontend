@@ -43,136 +43,130 @@
 
 .sectorTitle {
     margin: 0;
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: var(--color-primary);
     border-bottom: 1px solid var(--color-border);
-    padding-bottom: 6px;
+    padding-bottom: 8px;
 }
 
 /* ── Field row ───────────────────────────────────── */
 
 .fieldList {
     display: grid;
-    gap: 14px;
+    gap: 30px;
 }
 
 .fieldRow {
     display: grid;
-    gap: 8px;
+    gap: 10px;
 }
 
 .fieldLabel {
-    font-size: 0.88rem;
-    font-weight: 600;
-    color: var(--color-text-muted, #555);
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--color-text-main, #1c2f2a);
+    letter-spacing: 0.01em;
 }
 
-/* ── Checkbox pills (multi-select) ──────────────── */
-
-.checkHidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    opacity: 0;
-    pointer-events: none;
-}
-
-.checkBtn {
-    border: 1.5px solid var(--color-border-strong);
-    border-radius: var(--radius-pill);
-    padding: 0.42rem 0.85rem;
-    font: inherit;
-    font-size: 0.88rem;
-    font-weight: 500;
-    cursor: pointer;
-    background: var(--color-surface);
-    color: var(--color-text-main);
-    transition:
-        background 120ms ease,
-        border-color 120ms ease,
-        color 120ms ease;
-    -webkit-tap-highlight-color: transparent;
-    user-select: none;
-    line-height: 1.4;
-    display: inline-flex;
-    align-items: center;
-}
-
-.checkBtn:hover {
-    border-color: var(--color-primary);
-}
-
-.checkBtnSelected {
-    background: var(--color-primary);
-    border-color: var(--color-primary);
-    color: #ffffff;
-}
-
-/* ── Radio pills (legado — mantido para compatibilidade) ── */
-
-.radioGroup {
-    display: flex;
-    flex-wrap: wrap;
+.optionList {
+    display: grid;
     gap: 8px;
+    margin-bottom: 12px;
 }
 
-.radioBtn {
-    border: 1.5px solid var(--color-border-strong);
-    border-radius: var(--radius-pill);
-    padding: 0.42rem 0.85rem;
-    font: inherit;
-    font-size: 0.88rem;
-    font-weight: 500;
-    cursor: pointer;
-    background: var(--color-surface);
+.optionItem {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.92rem;
     color: var(--color-text-main);
-    transition:
-        background 120ms ease,
-        border-color 120ms ease,
-        color 120ms ease;
-    -webkit-tap-highlight-color: transparent;
-    user-select: none;
-    line-height: 1.4;
 }
 
-.radioBtn:hover {
-    border-color: var(--color-primary);
+.optionItem span {
+    line-height: 1.35;
 }
 
-.radioBtnSelected {
-    background: var(--color-primary);
-    border-color: var(--color-primary);
-    color: #ffffff;
+.selectorControl {
+    margin-top: 2px;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-primary);
+    flex: 0 0 auto;
 }
 
-/* ── Text inputs ─────────────────────────────────── */
-
-.textInput,
-.textarea {
+.textarea,
+.inlineTextInput {
     width: 100%;
     box-sizing: border-box;
     background: var(--color-surface);
     border: 1.5px solid var(--color-border-strong);
     border-radius: var(--radius-lg);
-    padding: 0.6rem 0.75rem;
+    padding: 0.62rem 0.8rem;
     font: inherit;
     font-size: 0.92rem;
     color: var(--color-text-main);
-    transition: border-color 150ms;
-    resize: vertical;
+    transition: border-color 150ms ease;
 }
 
-.textInput:focus,
-.textarea:focus {
+.textarea {
+    resize: vertical;
+    min-height: 90px;
+}
+
+.textarea:focus,
+.inlineTextInput:focus {
     outline: none;
     border-color: var(--color-accent);
+}
+
+.detailFieldRow,
+.otherInputRow {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.clearOtherBtn {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    border: 1px solid var(--color-border-strong);
+    background: var(--color-surface);
+    color: var(--color-text-main);
+    font-size: 1.05rem;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.clearOtherBtn:hover {
+    border-color: var(--color-danger-strong, #b3261e);
+    color: var(--color-danger-strong, #b3261e);
+}
+
+@media (max-width: 640px) {
+    .detailFieldRow,
+    .otherInputRow {
+        grid-template-columns: 1fr;
+    }
+
+    .clearOtherBtn {
+        justify-self: end;
+    }
 }
 
 @media (max-width: 520px) {
     .form {
         padding: 20px 16px;
+    }
+
+    .fieldList {
+        gap: 24px;
     }
 }

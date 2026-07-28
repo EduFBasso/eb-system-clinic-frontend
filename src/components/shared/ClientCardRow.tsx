@@ -6,8 +6,9 @@ import AppointmentCard, {
 } from './AppointmentCard';
 import styles from './ClientCardRow.module.css';
 
-export interface ClientCardRowProps<T extends SharedAppointmentLike>
-    extends Omit<AppointmentCardProps<T>, 'showTime'> {
+export interface ClientCardRowProps<
+    T extends SharedAppointmentLike,
+> extends Omit<AppointmentCardProps<T>, 'showTime'> {
     timeSize?: 'sm' | 'md';
     timeOrder?: 'start-top' | 'end-top';
     containerStyle?: React.CSSProperties;

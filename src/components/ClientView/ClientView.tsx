@@ -1,22 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import type { ClientData } from '../../types/ClientData';
+import React, { useEffect } from 'react';
 import type {
-    AnamnesisField,
-    AnamnesisResponse,
-} from '../../types/AnamnesisTypes';
+    AnamneseBaseData,
+    AnamnesePodologiaData,
+    ClientData,
+} from '../../types/ClientData';
 import styles from './ClientView.module.css';
 import { formatPhone } from '../../utils/formatPhone';
 import { formatDOBWithAge } from '../../utils/dateOfBirth';
-import { formatCpf, formatCnpj, formatRg, formatCep } from '../../utils/formatCpf';
-import { API_BASE } from '../../config/api';
-import { useAnamnesisFields } from '../../hooks/useAnamnesisFields';
+import { formatCpf, formatCnpj, formatCep } from '../../utils/formatCpf';
 import { useTheme } from '../../contexts/ThemeContext';
-import { getAccessToken } from '../../utils/auth/session';
 
 interface ClientViewProps {
     client: ClientData & {
         address_number?: string | null;
         date_of_birth?: string | null;
+        anamnesis_base?: Partial<AnamneseBaseData> | null;
+        anamnesis_podologia?: Partial<AnamnesePodologiaData> | null;
     };
     openToken?: number;
 }
@@ -62,9 +61,30 @@ function formatField(
             ? formatCnpj(String(raw))
             : formatCpf(String(raw));
     }
-    if (k === 'rg') return formatRg(String(raw));
     if (k === 'postal_code') return formatCep(String(raw));
     return String(raw);
+}
+
+function getAnamneseBase(client: ClientViewProps['client']) {
+    const alt = client as ClientData & {
+        anamnesis_base?: Partial<AnamneseBaseData> | null;
+    };
+    return (client.anamnese_base ??
+        alt.anamnesis_base ??
+        null) as Partial<AnamneseBaseData> | null;
+}
+
+function getAnamnesePodologia(client: ClientViewProps['client']) {
+    const alt = client as ClientData & {
+        anamnesis_podologia?: Partial<AnamnesePodologiaData> | null;
+    };
+    return (client.anamnese_podologia ??
+        alt.anamnesis_podologia ??
+        null) as Partial<AnamnesePodologiaData> | null;
+}
+
+function hasValue(value: unknown): boolean {
+    return value !== null && value !== undefined && String(value).trim() !== '';
 }
 
 // ── sub-component: a read-only section panel ─────────────────────────────────
@@ -74,13 +94,14 @@ function ViewSection({
     eyebrow,
     title,
     rows,
+    emptyMessage,
 }: {
     theme: string;
     eyebrow: string;
     title: string;
     rows: { label: string; value: string }[];
+    emptyMessage?: string;
 }) {
-    if (rows.length === 0) return null;
     return (
         <section data-theme={theme} className={styles.section}>
             <div className={styles.sectionInner}>
@@ -88,14 +109,24 @@ function ViewSection({
                     <span className={styles.eyebrow}>{eyebrow}</span>
                     <h2 className={styles.sectionTitle}>{title}</h2>
                 </header>
-                <div className={styles.fieldGrid}>
-                    {rows.map(({ label, value }) => (
-                        <div className={styles.fieldRow} key={label}>
-                            <span className={styles.fieldLabel}>{label}</span>
-                            <span className={styles.fieldValue}>{value}</span>
-                        </div>
-                    ))}
-                </div>
+                {rows.length === 0 ? (
+                    <div className={styles.emptyState}>
+                        {emptyMessage ?? 'Nenhum registro encontrado'}
+                    </div>
+                ) : (
+                    <div className={styles.fieldGrid}>
+                        {rows.map(({ label, value }) => (
+                            <div className={styles.fieldRow} key={label}>
+                                <span className={styles.fieldLabel}>
+                                    {label}
+                                </span>
+                                <span className={styles.fieldValue}>
+                                    {value}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </section>
     );
@@ -103,7 +134,10 @@ function ViewSection({
 
 // ── main component ───────────────────────────────────────────────────────────
 
-export const ClientView: React.FC<ClientViewProps> = ({ client, openToken }) => {
+export const ClientView: React.FC<ClientViewProps> = ({
+    client,
+    openToken,
+}) => {
     const { theme } = useTheme();
     const rootRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -122,32 +156,11 @@ export const ClientView: React.FC<ClientViewProps> = ({ client, openToken }) => 
         return ((fn[0] ?? '') + (ln[0] ?? '') || 'C').toUpperCase();
     }, [client.first_name, client.last_name]);
 
-    // Load anamnesis fields (schema) and responses (values for this client)
-    const { fields } = useAnamnesisFields();
-    const [responses, setResponses] = useState<AnamnesisResponse[]>([]);
-
-    useEffect(() => {
-        if (!client.id) return;
-        const token = getAccessToken();
-        if (!token) return;
-        fetch(`${API_BASE}/anamnesis/responses/?client=${client.id}`, {
-            headers: { Authorization: `Bearer ${token}` },
-        })
-            .then(r => (r.ok ? r.json() : []))
-            .then((data: AnamnesisResponse[]) => setResponses(data))
-            .catch(() => {
-                /* silent */
-            });
-    }, [client.id]);
-
-    // Build a map fieldId → value for quick lookup
-    const responseMap = React.useMemo(() => {
-        const m: Record<number, string> = {};
-        responses.forEach(r => {
-            if (r.field !== null) m[r.field] = r.value;
-        });
-        return m;
-    }, [responses]);
+    const anamneseBase = React.useMemo(() => getAnamneseBase(client), [client]);
+    const anamnesePodologia = React.useMemo(
+        () => getAnamnesePodologia(client),
+        [client],
+    );
 
     // ── Dados Pessoais rows ──────────────────────────────────────────────────
     const personalFields: Array<[keyof ClientData, string]> = [
@@ -158,23 +171,22 @@ export const ClientView: React.FC<ClientViewProps> = ({ client, openToken }) => 
         ['email', 'E-mail'],
         ['date_of_birth', 'Data de Nascimento'],
         ['profession', 'Profissão'],
-        ['rg', 'RG'],
         ['document_type', 'Tipo de documento'],
         ['document_number', 'Número do documento'],
         ['marital_status', 'Estado civil'],
-        ['nationality', 'Nacionalidade'],
     ];
 
-    const personalRows = personalFields.map(([k, label]) => {
-        const raw = client[k];
-        const hasValue = raw !== null && raw !== undefined && raw !== '';
-        return {
-            label,
-            value: hasValue
-                ? formatField(k, raw, client as ClientData)
-                : '-',
-        };
-    });
+    const personalRows = personalFields
+        .map(([k, label]) => {
+            const raw = client[k];
+            const hasValue = raw !== null && raw !== undefined && raw !== '';
+            if (!hasValue) return null;
+            return {
+                label,
+                value: formatField(k, raw, client as ClientData),
+            };
+        })
+        .filter((row): row is { label: string; value: string } => !!row);
 
     // Add Código at the top
     if (client.id) {
@@ -191,43 +203,87 @@ export const ClientView: React.FC<ClientViewProps> = ({ client, openToken }) => 
         ['state', 'Estado'],
     ];
 
-    const addressRows = addressFields.map(([k, label]) => {
-        const raw = client[k];
-        const hasValue = raw !== null && raw !== undefined && raw !== '';
-        return {
-            label,
-            value: hasValue
-                ? formatField(k, raw, client as ClientData)
-                : '-',
-        };
-    });
+    const addressRows = addressFields
+        .map(([k, label]) => {
+            const raw = client[k];
+            const hasValue = raw !== null && raw !== undefined && raw !== '';
+            if (!hasValue) return null;
+            return {
+                label,
+                value: formatField(k, raw, client as ClientData),
+            };
+        })
+        .filter((row): row is { label: string; value: string } => !!row);
 
-    // ── Anamnese sectors ─────────────────────────────────────────────────────
-    const sectorMap = new Map<
-        string,
-        { order: number; fields: AnamnesisField[] }
-    >();
-    for (const f of fields) {
-        if (!sectorMap.has(f.sector)) {
-            sectorMap.set(f.sector, { order: f.sector_order, fields: [] });
-        }
-        sectorMap.get(f.sector)!.fields.push(f);
-    }
-    const sectors = Array.from(sectorMap.entries()).sort(
-        (a, b) => a[1].order - b[1].order,
-    );
+    const baseRows: { label: string; value: string }[] = anamneseBase
+        ? [
+              {
+                  label: 'Toma medicação',
+                  value: anamneseBase.takes_medication || '-',
+              },
+              {
+                  label: 'Já fez cirurgia',
+                  value: anamneseBase.had_surgery || '-',
+              },
+              {
+                  label: 'Gestação',
+                  value: anamneseBase.is_pregnant === true ? 'Sim' : 'Não',
+              },
+              {
+                  label: 'Sensibilidade à dor',
+                  value: anamneseBase.pain_sensitivity || '-',
+              },
+              {
+                  label: 'Histórico clínico',
+                  value: anamneseBase.clinical_history || '-',
+              },
+              {
+                  label: 'Atividade esportiva',
+                  value: anamneseBase.sport_activity || '-',
+              },
+          ].filter(row => hasValue(row.value) && row.value !== '-')
+        : [];
+
+    const podologiaRows: { label: string; value: string }[] = anamnesePodologia
+        ? [
+              {
+                  label: 'Calçado usado',
+                  value: anamnesePodologia.footwear_used || '-',
+              },
+              {
+                  label: 'Meia usada',
+                  value: anamnesePodologia.sock_used || '-',
+              },
+              {
+                  label: 'Teste de sensibilidade',
+                  value: anamnesePodologia.sensitivity_test || '-',
+              },
+              {
+                  label: 'Alterações ungueais esquerda',
+                  value: anamnesePodologia.nail_changes_left || '-',
+              },
+              {
+                  label: 'Alterações ungueais direita',
+                  value: anamnesePodologia.nail_changes_right || '-',
+              },
+              {
+                  label: 'Outros procedimentos',
+                  value: anamnesePodologia.other_procedures || '-',
+              },
+          ].filter(row => hasValue(row.value) && row.value !== '-')
+        : [];
 
     return (
         <div ref={rootRef} className={styles.viewRoot}>
             {/* ── Header: avatar + nome ── */}
             <div data-theme={theme} className={styles.headerCard}>
                 <div
-                        className={styles.avatarFallback}
-                        data-avatar-fallback
-                        aria-hidden
-                    >
-                        {initials}
-                    </div>
+                    className={styles.avatarFallback}
+                    data-avatar-fallback
+                    aria-hidden
+                >
+                    {initials}
+                </div>
                 <div className={styles.headerText}>
                     <div className={styles.clientName}>
                         {client.first_name} {client.last_name}
@@ -246,6 +302,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ client, openToken }) => 
                 eyebrow='Visualização'
                 title='Dados Pessoais'
                 rows={personalRows}
+                emptyMessage='Nenhum dado pessoal preenchido'
             />
 
             {/* ── Endereço ── */}
@@ -254,77 +311,24 @@ export const ClientView: React.FC<ClientViewProps> = ({ client, openToken }) => 
                 eyebrow='Visualização'
                 title='Endereço'
                 rows={addressRows}
+                emptyMessage='Nenhum endereço preenchido'
             />
 
-            {/* ── Anamnese ── */}
-            {fields.length > 0 && (
-                <section data-theme={theme} className={styles.section}>
-                    <div className={styles.sectionInner}>
-                        <header className={styles.sectionHeader}>
-                            <span className={styles.eyebrow}>Visualização</span>
-                            <h2 className={styles.sectionTitle}>Anamnese</h2>
-                        </header>
-                        {sectors.map(
-                            ([sectorName, { fields: sectorFields }]) => {
-                                const sectorRows = sectorFields
-                                    .sort((a, b) => a.order - b.order)
-                                    .filter(
-                                        f =>
-                                            responseMap[f.id] !== undefined &&
-                                            responseMap[f.id] !== '',
-                                    )
-                                    .map(f => ({
-                                        label: f.label,
-                                        value: responseMap[f.id],
-                                    }));
-                                if (sectorRows.length === 0) return null;
-                                return (
-                                    <div
-                                        key={sectorName}
-                                        className={styles.anamnesisGroup}
-                                    >
-                                        <h3
-                                            className={
-                                                styles.anamnesisGroupTitle
-                                            }
-                                        >
-                                            {sectorName}
-                                        </h3>
-                                        <div className={styles.fieldGrid}>
-                                            {sectorRows.map(
-                                                ({ label, value }) => (
-                                                    <div
-                                                        className={
-                                                            styles.fieldRow
-                                                        }
-                                                        key={label}
-                                                    >
-                                                        <span
-                                                            className={
-                                                                styles.fieldLabel
-                                                            }
-                                                        >
-                                                            {label}
-                                                        </span>
-                                                        <span
-                                                            className={
-                                                                styles.fieldValue
-                                                            }
-                                                        >
-                                                            {value}
-                                                        </span>
-                                                    </div>
-                                                ),
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            },
-                        )}
-                    </div>
-                </section>
-            )}
+            <ViewSection
+                theme={theme}
+                eyebrow='Visualização'
+                title='Anamnese Geral'
+                rows={baseRows}
+                emptyMessage='Nenhum histórico registrado'
+            />
+
+            <ViewSection
+                theme={theme}
+                eyebrow='Visualização'
+                title='Anamnese Podologia'
+                rows={podologiaRows}
+                emptyMessage='Nenhum histórico registrado'
+            />
         </div>
     );
 };
-

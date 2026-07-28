@@ -13,7 +13,19 @@ import { useAvailabilityCalc } from '../hooks/useAvailabilityCalc';
 import { useScheduleSave } from '../hooks/useScheduleSave';
 import { addDays, startOfDay } from '../utils/dateHelpers';
 
-type DurationOption = 30 | 60 | 90 | 120 | 150;
+type DurationOption =
+    | 30
+    | 60
+    | 90
+    | 120
+    | 150
+    | 180
+    | 210
+    | 240
+    | 270
+    | 300
+    | 330
+    | 360;
 
 function makeDayTime(day: string, h: number, m: number) {
     return new Date(`${day}T${pad2(h)}:${pad2(m)}:00`);
@@ -159,7 +171,9 @@ export default function ScheduleEditorCore({
                 Math.round((e.getTime() - s.getTime()) / 60000),
             );
             const closest: DurationOption = (
-                [30, 60, 90, 120, 150] as DurationOption[]
+                [
+                    30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360,
+                ] as DurationOption[]
             ).reduce((prev, cur) =>
                 Math.abs(cur - diffMin) < Math.abs(prev - diffMin) ? cur : prev,
             );

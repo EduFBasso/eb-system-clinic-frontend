@@ -86,10 +86,18 @@
 
 .filterInput {
     width: 100%;
-    padding: 0.5rem 2rem 0.5rem 0.5rem;
+    padding: 0.65rem 2.1rem 0.65rem 0.7rem;
     border: 1px solid var(--color-border);
     border-radius: 4px;
     min-width: 0;
+    min-height: 44px;
+    font-size: 1rem;
+    line-height: 1.35;
+}
+
+.filterInput::placeholder {
+    font-size: 1rem;
+    color: color-mix(in oklab, var(--color-text) 50%, white);
 }
 
 .filterClearBtn {

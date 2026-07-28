@@ -8,7 +8,19 @@ export type WorkTimes = {
     endMin: number;
 };
 
-export type DefaultDuration = 30 | 60 | 90 | 120 | 150;
+export type DefaultDuration =
+    | 30
+    | 60
+    | 90
+    | 120
+    | 150
+    | 180
+    | 210
+    | 240
+    | 270
+    | 300
+    | 330
+    | 360;
 export type DefaultVisitType =
     | 'consulta'
     | 'avaliacao'
@@ -132,7 +144,9 @@ function normalizeSlotInterval(value: unknown): number {
 
 function normalizeDefaultDuration(value: unknown): DefaultDuration {
     const parsed = Number(value) as DefaultDuration;
-    return ([30, 60, 90, 120, 150] as const).includes(parsed)
+    return (
+        [30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360] as const
+    ).includes(parsed)
         ? parsed
         : DEFAULT_AGENDA_SETTINGS.defaultDuration;
 }
@@ -174,7 +188,9 @@ function emitChange(): void {
     listeners.forEach(listener => listener());
 }
 
-function replaceCurrentSettings(next: AgendaSettingsSnapshot): AgendaSettingsSnapshot {
+function replaceCurrentSettings(
+    next: AgendaSettingsSnapshot,
+): AgendaSettingsSnapshot {
     currentSettings = next;
     emitChange();
     return currentSettings;
@@ -192,10 +208,18 @@ function readLegacyPersistedSettings(): LegacyPersistedSettings | null {
     try {
         const workStart = localStorage.getItem(LEGACY_PERSISTED_KEYS.workStart);
         const workEnd = localStorage.getItem(LEGACY_PERSISTED_KEYS.workEnd);
-        const slotRaw = localStorage.getItem(LEGACY_PERSISTED_KEYS.slotInterval);
-        const durationRaw = localStorage.getItem(LEGACY_PERSISTED_KEYS.defaultDuration);
-        const visitTypeRaw = localStorage.getItem(LEGACY_PERSISTED_KEYS.defaultVisitType);
-        const slotInterval = slotRaw ? normalizeSlotInterval(slotRaw) : undefined;
+        const slotRaw = localStorage.getItem(
+            LEGACY_PERSISTED_KEYS.slotInterval,
+        );
+        const durationRaw = localStorage.getItem(
+            LEGACY_PERSISTED_KEYS.defaultDuration,
+        );
+        const visitTypeRaw = localStorage.getItem(
+            LEGACY_PERSISTED_KEYS.defaultVisitType,
+        );
+        const slotInterval = slotRaw
+            ? normalizeSlotInterval(slotRaw)
+            : undefined;
         const defaultDuration = durationRaw
             ? normalizeDefaultDuration(durationRaw)
             : undefined;
@@ -213,7 +237,10 @@ function readLegacyPersistedSettings(): LegacyPersistedSettings | null {
         }
         return {
             workStart: workStart
-                ? normalizeTimeString(workStart, DEFAULT_AGENDA_SETTINGS.workStart)
+                ? normalizeTimeString(
+                      workStart,
+                      DEFAULT_AGENDA_SETTINGS.workStart,
+                  )
                 : undefined,
             workEnd: workEnd
                 ? normalizeTimeString(workEnd, DEFAULT_AGENDA_SETTINGS.workEnd)
@@ -266,7 +293,9 @@ function normalizeApiSettings(
             DEFAULT_AGENDA_SETTINGS.workEnd,
         ),
         slotInterval: normalizeSlotInterval(data.slot_minutes),
-        defaultDuration: normalizeDefaultDuration(data.default_duration_minutes),
+        defaultDuration: normalizeDefaultDuration(
+            data.default_duration_minutes,
+        ),
         defaultVisitType: normalizeDefaultVisitType(data.default_visit_type),
         reminderEnabled: Boolean(data.reminder_enabled ?? false),
         reminderMinutesBefore: clamp(
@@ -286,7 +315,10 @@ function normalizeApiSettings(
     };
 }
 
-function parseTimeParts(value: string, fallback: string): {
+function parseTimeParts(
+    value: string,
+    fallback: string,
+): {
     hour: number;
     minute: number;
 } {
@@ -310,7 +342,10 @@ function buildApiPayload(
         | 'reminderMinutesBefore'
     >,
 ): ProfessionalSettingsResponse {
-    const start = parseTimeParts(data.workStart, DEFAULT_AGENDA_SETTINGS.workStart);
+    const start = parseTimeParts(
+        data.workStart,
+        DEFAULT_AGENDA_SETTINGS.workStart,
+    );
     const end = parseTimeParts(data.workEnd, DEFAULT_AGENDA_SETTINGS.workEnd);
     return {
         work_start_hour: start.hour,
@@ -318,7 +353,9 @@ function buildApiPayload(
         work_end_hour: end.hour,
         work_end_minute: end.minute,
         slot_minutes: normalizeSlotInterval(data.slotInterval),
-        default_duration_minutes: normalizeDefaultDuration(data.defaultDuration),
+        default_duration_minutes: normalizeDefaultDuration(
+            data.defaultDuration,
+        ),
         default_visit_type: normalizeDefaultVisitType(data.defaultVisitType),
         reminder_enabled: Boolean(data.reminderEnabled),
         reminder_minutes_before: clamp(
@@ -352,7 +389,10 @@ async function fetchProfessionalSettings(
         try {
             const data = await res.json();
             if (typeof data?.detail === 'string') detail = data.detail;
-            else if (Array.isArray(data?.non_field_errors) && data.non_field_errors[0]) {
+            else if (
+                Array.isArray(data?.non_field_errors) &&
+                data.non_field_errors[0]
+            ) {
                 detail = String(data.non_field_errors[0]);
             }
         } catch {
@@ -478,8 +518,14 @@ export async function saveAgendaSettings(
 ): Promise<AgendaSettingsSnapshot> {
     const normalizedInput: AgendaSettingsSnapshot = {
         ...currentSettings,
-        workStart: normalizeTimeString(input.workStart, DEFAULT_AGENDA_SETTINGS.workStart),
-        workEnd: normalizeTimeString(input.workEnd, DEFAULT_AGENDA_SETTINGS.workEnd),
+        workStart: normalizeTimeString(
+            input.workStart,
+            DEFAULT_AGENDA_SETTINGS.workStart,
+        ),
+        workEnd: normalizeTimeString(
+            input.workEnd,
+            DEFAULT_AGENDA_SETTINGS.workEnd,
+        ),
         slotInterval: normalizeSlotInterval(input.slotInterval),
         defaultDuration: normalizeDefaultDuration(input.defaultDuration),
         defaultVisitType: normalizeDefaultVisitType(input.defaultVisitType),

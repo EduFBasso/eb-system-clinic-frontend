@@ -3,75 +3,30 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { ThemeProvider } from '../../../contexts/ThemeContext';
 import ClientAnamnesisForm from '../ClientAnamnesisForm';
-import type { AnamnesisField } from '../../../types/AnamnesisTypes';
+import type { AnamneseBaseData } from '../../../types/ClientData';
 
-const fields: AnamnesisField[] = [
-    {
-        id: 1,
-        code: 'medical_history',
-        sector: 'Anamnese',
-        sector_order: 1,
-        label: 'Comorbidades',
-        field_type: 'radio',
-        selection_mode: 'multiple',
-        options: [
-            'Diabetes',
-            'Hipertensão',
-            'Cardiopatia',
-            'Alergias',
-            'Outros',
-        ],
-        placeholder: 'Descreva...',
-        depends_on: null,
-        show_when_value: '',
-        order: 1,
-        is_active: true,
-    },
-    {
-        id: 2,
-        code: 'medical_history_detail',
-        sector: 'Anamnese',
-        sector_order: 1,
-        label: 'Detalhe',
-        field_type: 'text',
-        options: null,
-        placeholder: 'Explique o motivo',
-        depends_on: 1,
-        show_when_value: 'Sim',
-        order: 2,
-        is_active: true,
-    },
-    {
-        id: 3,
-        code: 'history_single_choice',
-        sector: 'Observações',
-        sector_order: 2,
-        label: 'Toma medicação?',
-        field_type: 'radio',
-        selection_mode: 'single',
-        options: ['Sim', 'Não', 'Outro'],
-        placeholder: 'Informe a medicação',
-        depends_on: null,
-        show_when_value: '',
-        order: 1,
-        is_active: true,
-    },
-];
+const initialBase: AnamneseBaseData = {
+    takes_medication: '',
+    had_surgery: '',
+    is_pregnant: null,
+    pain_sensitivity: '',
+    clinical_history: '',
+    sport_activity: '',
+};
 
 function Harness({
-    initialValues = {},
+    initialValues = initialBase,
 }: {
-    initialValues?: Record<number, string>;
+    initialValues?: AnamneseBaseData;
 }) {
-    const [values, setValues] = useState<Record<number, string>>(initialValues);
+    const [values, setValues] = useState<AnamneseBaseData>(initialValues);
 
     return (
         <ThemeProvider>
             <ClientAnamnesisForm
-                fields={fields}
-                values={values}
-                onChange={(fieldId, value) =>
-                    setValues(prev => ({ ...prev, [fieldId]: value }))
+                anamneseBase={values}
+                onBaseChange={(key, value) =>
+                    setValues(prev => ({ ...prev, [key]: value }))
                 }
             />
             <output data-testid='values'>{JSON.stringify(values)}</output>
@@ -80,43 +35,90 @@ function Harness({
 }
 
 describe('ClientAnamnesisForm', () => {
-    it('permite múltiplas opções com detalhe em Outros', () => {
+    it('exibe e limpa o detalhe quando medicação fica em Sim/Não', () => {
         render(<Harness />);
 
-        fireEvent.click(screen.getByRole('checkbox', { name: 'Diabetes' }));
-        fireEvent.click(screen.getByRole('checkbox', { name: 'Hipertensão' }));
-        fireEvent.click(screen.getByRole('checkbox', { name: 'Outros' }));
+        fireEvent.click(screen.getByRole('radio', { name: 'Sim' }));
 
-        const otherInput = screen.getByPlaceholderText('Descreva...');
+        const otherInput = screen.getByPlaceholderText(
+            'Descreva a medicação...',
+        );
         expect(otherInput).toBeEnabled();
 
         fireEvent.change(otherInput, {
-            target: { value: 'Hérnia de hiato' },
+            target: { value: 'Tomar omeprazol' },
         });
 
         expect(screen.getByTestId('values')).toHaveTextContent(
-            '"1":"Diabetes, Hipertensão, Outros: Hérnia de hiato"',
+            '"takes_medication":"Sim: Tomar omeprazol"',
+        );
+
+        fireEvent.click(screen.getByRole('radio', { name: 'Não' }));
+        expect(
+            screen.queryByPlaceholderText('Descreva a medicação...'),
+        ).toBeNull();
+        expect(screen.getByTestId('values')).toHaveTextContent(
+            '"takes_medication":"Não"',
         );
     });
 
-    it('mantém o fluxo Sim/Não com detalhe para campos de seleção única', () => {
-        render(<Harness initialValues={{ 3: 'Outro' }} />);
+    it('mantém seleção de gestação como rádio Sim/Não', () => {
+        render(<Harness />);
 
-        expect(screen.getByRole('radio', { name: 'Outro' })).toBeChecked();
+        fireEvent.click(screen.getByRole('radio', { name: 'Sim' }));
+
+        expect(screen.getByTestId('values')).toHaveTextContent(
+            '"is_pregnant":true',
+        );
     });
 
-    it('serializa Outro com detalhe usando o contrato padronizado', () => {
-        render(<Harness initialValues={{ 3: 'Outro' }} />);
+    it('abre o texto de cirurgia apenas quando Sim está marcado', () => {
+        render(<Harness />);
 
-        const otherInput = screen.getByPlaceholderText('Informe a medicação');
-        expect(otherInput).toBeEnabled();
+        fireEvent.click(screen.getAllByRole('radio', { name: 'Sim' })[1]);
 
+        const surgery = screen.getByPlaceholderText(
+            'Descreva cirurgias anteriores, datas e observações...',
+        );
+        fireEvent.change(surgery, { target: { value: 'Artroscopia em 2019' } });
+
+        expect(screen.getByTestId('values')).toHaveTextContent(
+            '"had_surgery":"Artroscopia em 2019"',
+        );
+
+        fireEvent.click(screen.getAllByRole('radio', { name: 'Não' })[1]);
+        expect(
+            screen.queryByPlaceholderText(
+                'Descreva cirurgias anteriores, datas e observações...',
+            ),
+        ).toBeNull();
+        expect(screen.getByTestId('values')).toHaveTextContent(
+            '"had_surgery":"Não"',
+        );
+    });
+
+    it('permite marcar históricos clínicos com Outros e limpar o texto', () => {
+        render(<Harness />);
+
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Diabetes' }));
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Outros' }));
+
+        const otherInput = screen.getByPlaceholderText(
+            'Descreva outros históricos...',
+        );
         fireEvent.change(otherInput, {
-            target: { value: 'Cadeira ortopédica' },
+            target: { value: 'Anemia falciforme' },
         });
 
         expect(screen.getByTestId('values')).toHaveTextContent(
-            '"3":"Outro: Cadeira ortopédica"',
+            '"clinical_history":"Diabetes, Outros: Anemia falciforme"',
+        );
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Limpar histórico outros' }),
+        );
+        expect(screen.getByTestId('values')).toHaveTextContent(
+            '"clinical_history":"Diabetes"',
         );
     });
 });

@@ -17,12 +17,15 @@ import { emit } from '../../events/bus';
 interface AgendaSettingsModalProps {
     open: boolean;
     onClose: () => void;
-    onApply?: () => void; // callback após salvar
+    onApply?: () => void;
 }
 
-const intervalOptions = [5, 10, 15, 20, 30];
-const durationOptions = [30, 60, 90, 120, 150];
-const reminderMinuteOptions = [5, 10, 15, 30, 45, 60, 90, 120, 180, 240];
+const durationOptions = [
+    30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360,
+];
+const reminderMinuteOptions = [
+    5, 10, 15, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360,
+];
 const visitTypes = [
     { value: 'consulta', label: 'Consulta' },
     { value: 'avaliacao', label: 'Avaliação' },
@@ -34,13 +37,59 @@ const visitTypes = [
 function clampHM(v: string, fallback: string) {
     if (!/^\d{2}:\d{2}$/.test(v)) return fallback;
     const [h, m] = v.split(':').map(n => parseInt(n, 10));
-    if (isNaN(h) || isNaN(m)) return fallback;
+    if (Number.isNaN(h) || Number.isNaN(m)) return fallback;
     return `${String(Math.min(23, Math.max(0, h))).padStart(2, '0')}:${String(
         Math.min(59, Math.max(0, m)),
     ).padStart(2, '0')}`;
 }
 
+function formatTimeInput(raw: string): string {
+    const digits = raw.replace(/\D/g, '').slice(0, 4);
+    if (digits.length <= 2) return digits;
+    return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+}
+
+function normalizeTimeInput(raw: string, fallback: string): string {
+    const digits = raw.replace(/\D/g, '').slice(0, 4);
+    if (digits.length === 0) return fallback;
+    if (digits.length === 1) return clampHM(`0${digits}:00`, fallback);
+    if (digits.length === 2) return clampHM(`${digits}:00`, fallback);
+    if (digits.length === 3) {
+        return clampHM(`${digits.slice(0, 2)}:0${digits[2]}`, fallback);
+    }
+    return clampHM(`${digits.slice(0, 2)}:${digits.slice(2, 4)}`, fallback);
+}
+
 const DEFAULTS = DEFAULT_AGENDA_SETTINGS;
+
+function getDurationOptionLabel(minutes: number): string {
+    if (minutes === 30) return '30 min (meia hora)';
+
+    const hours = Math.floor(minutes / 60);
+    const hasHalf = minutes % 60 === 30;
+    const hourLabel = hours === 1 ? '1 hora' : `${hours} horas`;
+
+    if (hasHalf) {
+        return `${minutes} min (${hourLabel} e meia)`;
+    }
+
+    return `${minutes} min (${hourLabel})`;
+}
+
+function getReminderOptionLabel(minutes: number): string {
+    if (minutes < 30) return `${minutes} min`;
+    if (minutes === 30) return '30 min (meia hora antes)';
+
+    const hours = Math.floor(minutes / 60);
+    const hasHalf = minutes % 60 === 30;
+    const hourLabel = hours === 1 ? '1 hora' : `${hours} horas`;
+
+    if (hasHalf) {
+        return `${minutes} min (${hourLabel} e meia antes)`;
+    }
+
+    return `${minutes} min (${hourLabel} antes)`;
+}
 
 export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
     open,
@@ -50,6 +99,10 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
     const [compactViewport, setCompactViewport] = React.useState(false);
     const [workStart, setWorkStart] = React.useState(DEFAULTS.workStart);
     const [workEnd, setWorkEnd] = React.useState(DEFAULTS.workEnd);
+    const [workStartInput, setWorkStartInput] = React.useState(
+        DEFAULTS.workStart,
+    );
+    const [workEndInput, setWorkEndInput] = React.useState(DEFAULTS.workEnd);
     const [slotInterval, setSlotInterval] = React.useState(
         DEFAULTS.slotInterval,
     );
@@ -87,14 +140,67 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
     const [msgType, setMsgType] = React.useState<'success' | 'error' | null>(
         null,
     );
-    const firstFieldRef = React.useRef<HTMLInputElement | null>(null);
-    const openRef = React.useRef(false);
+
+    const workStartInputRef = React.useRef<HTMLInputElement | null>(null);
+    const workEndInputRef = React.useRef<HTMLInputElement | null>(null);
+    const hasUserEditedRef = React.useRef(false);
+
+    const selectAllOnFocus = React.useCallback(
+        (e: React.FocusEvent<HTMLInputElement>) => {
+            e.currentTarget.select();
+        },
+        [],
+    );
+
+    const handleTimeInputChange = React.useCallback(
+        (
+            field: 'start' | 'end',
+            rawValue: string,
+            nextRef?: React.RefObject<HTMLInputElement | null>,
+        ) => {
+            hasUserEditedRef.current = true;
+            const formatted = formatTimeInput(rawValue);
+            const digits = rawValue.replace(/\D/g, '').slice(0, 4);
+
+            if (field === 'start') setWorkStartInput(formatted);
+            else setWorkEndInput(formatted);
+
+            if (digits.length === 4 && nextRef?.current) {
+                nextRef.current.focus();
+                nextRef.current.select();
+            }
+        },
+        [],
+    );
+
+    const commitTimeInput = React.useCallback(
+        (field: 'start' | 'end') => {
+            if (field === 'start') {
+                const normalized = normalizeTimeInput(
+                    workStartInput,
+                    DEFAULTS.workStart,
+                );
+                setWorkStart(normalized);
+                setWorkStartInput(normalized);
+                return;
+            }
+
+            const normalized = normalizeTimeInput(
+                workEndInput,
+                DEFAULTS.workEnd,
+            );
+            setWorkEnd(normalized);
+            setWorkEndInput(normalized);
+        },
+        [workStartInput, workEndInput],
+    );
 
     React.useEffect(() => {
         if (typeof window === 'undefined') return;
 
         const updateCompactViewport = () => {
-            const vvHeight = window.visualViewport?.height ?? window.innerHeight;
+            const vvHeight =
+                window.visualViewport?.height ?? window.innerHeight;
             const isNarrow = window.innerWidth <= 640;
             const isShort = vvHeight <= 560;
             setCompactViewport(isNarrow || isShort);
@@ -103,7 +209,10 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
         updateCompactViewport();
         window.addEventListener('resize', updateCompactViewport);
         window.addEventListener('orientationchange', updateCompactViewport);
-        window.visualViewport?.addEventListener('resize', updateCompactViewport);
+        window.visualViewport?.addEventListener(
+            'resize',
+            updateCompactViewport,
+        );
 
         return () => {
             window.removeEventListener('resize', updateCompactViewport);
@@ -121,14 +230,21 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
     React.useEffect(() => {
         if (!open) return;
         let active = true;
+
+        hasUserEditedRef.current = false;
         setSavedMsg(null);
         setMsgType(null);
         setTelegramStartUrl('');
         setTelegramStartToken('');
 
         const current = getAgendaSettingsSnapshot();
-        setWorkStart(clampHM(current.workStart, DEFAULTS.workStart));
-        setWorkEnd(clampHM(current.workEnd, DEFAULTS.workEnd));
+        const currentStart = clampHM(current.workStart, DEFAULTS.workStart);
+        const currentEnd = clampHM(current.workEnd, DEFAULTS.workEnd);
+
+        setWorkStart(currentStart);
+        setWorkEnd(currentEnd);
+        setWorkStartInput(currentStart);
+        setWorkEndInput(currentEnd);
         setSlotInterval(current.slotInterval);
         setDefaultDuration(current.defaultDuration);
         setDefaultVisitType(current.defaultVisitType);
@@ -142,9 +258,17 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
 
         void hydrateAgendaSettings()
             .then(settings => {
-                if (!active) return;
-                setWorkStart(clampHM(settings.workStart, DEFAULTS.workStart));
-                setWorkEnd(clampHM(settings.workEnd, DEFAULTS.workEnd));
+                if (!active || hasUserEditedRef.current) return;
+                const hydratedStart = clampHM(
+                    settings.workStart,
+                    DEFAULTS.workStart,
+                );
+                const hydratedEnd = clampHM(settings.workEnd, DEFAULTS.workEnd);
+
+                setWorkStart(hydratedStart);
+                setWorkEnd(hydratedEnd);
+                setWorkStartInput(hydratedStart);
+                setWorkEndInput(hydratedEnd);
                 setSlotInterval(settings.slotInterval);
                 setDefaultDuration(settings.defaultDuration);
                 setDefaultVisitType(settings.defaultVisitType);
@@ -160,28 +284,36 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
                 /* silencioso */
             });
 
-        // Manage initial focus only first time after open flag toggles true
-        requestAnimationFrame(() => {
-            if (firstFieldRef.current) {
-                firstFieldRef.current.focus();
-            }
-        });
-        openRef.current = true;
         return () => {
             active = false;
         };
     }, [open]);
 
     async function save() {
-        if (workEnd <= workStart) {
-            setSavedMsg('Fim deve ser maior que início.');
+        const normalizedWorkStart = normalizeTimeInput(
+            workStartInputRef.current?.value ?? workStartInput,
+            DEFAULTS.workStart,
+        );
+        const normalizedWorkEnd = normalizeTimeInput(
+            workEndInputRef.current?.value ?? workEndInput,
+            DEFAULTS.workEnd,
+        );
+
+        setWorkStart(normalizedWorkStart);
+        setWorkEnd(normalizedWorkEnd);
+        setWorkStartInput(normalizedWorkStart);
+        setWorkEndInput(normalizedWorkEnd);
+
+        if (normalizedWorkEnd <= normalizedWorkStart) {
+            setSavedMsg('Fim deve ser maior que inicio.');
             setMsgType('error');
             return;
         }
+
         try {
             await saveAgendaSettings({
-                workStart,
-                workEnd,
+                workStart: normalizedWorkStart,
+                workEnd: normalizedWorkEnd,
                 slotInterval,
                 defaultDuration,
                 defaultVisitType,
@@ -192,7 +324,7 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
             setSavedMsg(
                 error instanceof Error
                     ? error.message
-                    : 'Erro ao salvar configurações.',
+                    : 'Erro ao salvar configuracoes.',
             );
             setMsgType('error');
             return;
@@ -201,50 +333,51 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
         setSavedMsg(null);
         setMsgType(null);
         emit('systemMessage', {
-            text: 'Configurações salvas.',
+            text: 'Configuracoes salvas.',
             type: 'success',
         });
         if (onApply) onApply();
     }
 
-    function isAtDefaults() {
+    function hasUnsavedChanges() {
+        const snapshot = getAgendaSettingsSnapshot();
+        const normalizedWorkStart = normalizeTimeInput(
+            workStartInput,
+            DEFAULTS.workStart,
+        );
+        const normalizedWorkEnd = normalizeTimeInput(
+            workEndInput,
+            DEFAULTS.workEnd,
+        );
         return (
-            workStart === DEFAULTS.workStart &&
-            workEnd === DEFAULTS.workEnd &&
-            slotInterval === DEFAULTS.slotInterval &&
-            defaultDuration === DEFAULTS.defaultDuration &&
-            defaultVisitType === DEFAULTS.defaultVisitType &&
-            reminderEnabled === DEFAULTS.reminderEnabled &&
-            reminderMinutesBefore === DEFAULTS.reminderMinutesBefore
+            normalizedWorkStart !== workStart ||
+            normalizedWorkEnd !== workEnd ||
+            workStart !== snapshot.workStart ||
+            workEnd !== snapshot.workEnd ||
+            slotInterval !== snapshot.slotInterval ||
+            defaultDuration !== snapshot.defaultDuration ||
+            defaultVisitType !== snapshot.defaultVisitType ||
+            reminderEnabled !== snapshot.reminderEnabled ||
+            reminderMinutesBefore !== snapshot.reminderMinutesBefore
         );
     }
 
-    function resetDefaults() {
-        setWorkStart(DEFAULTS.workStart);
-        setWorkEnd(DEFAULTS.workEnd);
-        setSlotInterval(DEFAULTS.slotInterval);
-        setDefaultDuration(DEFAULTS.defaultDuration);
-        setDefaultVisitType(DEFAULTS.defaultVisitType);
-        setReminderEnabled(DEFAULTS.reminderEnabled);
-        setRemindersGloballyEnabled(DEFAULTS.remindersGloballyEnabled);
-        setTelegramLinked(DEFAULTS.telegramLinked);
-        setTelegramLinkActive(DEFAULTS.telegramLinkActive);
-        setTelegramUsername(DEFAULTS.telegramUsername);
-        setTelegramLastError(DEFAULTS.telegramLastError);
-        setReminderMinutesBefore(DEFAULTS.reminderMinutesBefore);
-        setSavedMsg('Padrões restaurados (não salvos ainda).');
-        setMsgType('success');
+    function handleClose() {
+        if (hasUnsavedChanges()) {
+            emit('systemMessage', {
+                text: 'Alteracoes nao salvas foram descartadas.',
+                type: 'info',
+            });
+        }
+        onClose();
     }
-
-    const remindersEffectiveActive =
-        reminderEnabled && remindersGloballyEnabled;
 
     async function handleStartTelegramLink() {
         setTelegramLinkBusy(true);
         try {
             const result = await startTelegramLink();
             if (!result.linkUrl || !result.startToken) {
-                throw new Error('Não foi possível gerar o link de vínculo.');
+                throw new Error('Nao foi possivel gerar o link de vinculo.');
             }
             setTelegramStartUrl(result.linkUrl);
             setTelegramStartToken(result.startToken);
@@ -294,12 +427,12 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
         try {
             await navigator.clipboard.writeText(url);
             emit('systemMessage', {
-                text: 'Link copiado. Cole no Safari/Telegram para abrir.',
+                text: 'Link copiado.',
                 type: 'success',
             });
         } catch {
             emit('systemMessage', {
-                text: 'Não foi possível copiar automaticamente. Copie manualmente abaixo.',
+                text: 'Nao foi possivel copiar automaticamente.',
                 type: 'warning',
             });
         }
@@ -329,7 +462,7 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
     async function handleVerifyTelegramLink() {
         if (!telegramStartToken) {
             emit('systemMessage', {
-                text: 'Primeiro gere o link de conexão do Telegram.',
+                text: 'Primeiro gere o link de conexao do Telegram.',
                 type: 'warning',
             });
             return;
@@ -352,7 +485,7 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
                 text:
                     error instanceof Error
                         ? error.message
-                        : 'Ainda não foi possível confirmar o vínculo.',
+                        : 'Ainda nao foi possivel confirmar o vinculo.',
                 type: 'warning',
             });
         } finally {
@@ -363,9 +496,16 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
     function handleKeyDown(e: React.KeyboardEvent) {
         if (e.key === 'Enter') {
             e.preventDefault();
-            save();
+            void save();
         }
     }
+
+    const telegramConnected = telegramLinked && telegramLinkActive;
+    const telegramStatusLabel = telegramConnected
+        ? 'Conectado'
+        : telegramStartToken
+          ? 'Pendente de confirmação'
+          : 'Não conectado';
 
     return (
         <AppModal
@@ -394,28 +534,28 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
                             >
                                 Início expediente
                             </label>
-                            <div className={modalStyles.timeInputWrapper}>
-                                <input
-                                    id='agenda-workStart'
-                                    ref={firstFieldRef}
-                                    type='time'
-                                    className={modalStyles.input}
-                                    value={workStart}
-                                    onChange={e =>
-                                        setWorkStart(
-                                            clampHM(
-                                                e.target.value,
-                                                DEFAULTS.workStart,
-                                            ),
-                                        )
-                                    }
-                                />
-                                <span aria-hidden className={modalStyles.caret}>
-                                    ▾
-                                </span>
-                            </div>
+                            <input
+                                id='agenda-workStart'
+                                ref={workStartInputRef}
+                                type='text'
+                                inputMode='numeric'
+                                enterKeyHint='next'
+                                pattern='[0-9:]*'
+                                maxLength={5}
+                                className={modalStyles.input}
+                                placeholder='06:00'
+                                value={workStartInput}
+                                onChange={e =>
+                                    handleTimeInputChange(
+                                        'start',
+                                        e.target.value,
+                                        workEndInputRef,
+                                    )
+                                }
+                                onBlur={() => commitTimeInput('start')}
+                                onFocus={selectAllOnFocus}
+                            />
                         </div>
-                        <div aria-hidden className={modalStyles.divider} />
                         <div className={modalStyles.fieldGroup}>
                             <label
                                 htmlFor='agenda-workEnd'
@@ -423,59 +563,33 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
                             >
                                 Fim expediente
                             </label>
-                            <div className={modalStyles.timeInputWrapper}>
-                                <input
-                                    id='agenda-workEnd'
-                                    type='time'
-                                    className={modalStyles.input}
-                                    value={workEnd}
-                                    onChange={e =>
-                                        setWorkEnd(
-                                            clampHM(
-                                                e.target.value,
-                                                DEFAULTS.workEnd,
-                                            ),
-                                        )
-                                    }
-                                />
-                                <span aria-hidden className={modalStyles.caret}>
-                                    ▾
-                                </span>
-                            </div>
+                            <input
+                                id='agenda-workEnd'
+                                ref={workEndInputRef}
+                                type='text'
+                                inputMode='numeric'
+                                enterKeyHint='done'
+                                pattern='[0-9:]*'
+                                maxLength={5}
+                                className={modalStyles.input}
+                                placeholder='21:00'
+                                value={workEndInput}
+                                onChange={e =>
+                                    handleTimeInputChange('end', e.target.value)
+                                }
+                                onBlur={() => commitTimeInput('end')}
+                                onFocus={selectAllOnFocus}
+                            />
                         </div>
                     </div>
 
                     <div className={modalStyles.inlineRow}>
                         <div className={modalStyles.fieldGroup}>
                             <label
-                                htmlFor='agenda-slotInterval'
-                                className={modalStyles.label}
-                            >
-                                Intervalo (min)
-                            </label>
-                            <select
-                                id='agenda-slotInterval'
-                                className={modalStyles.select}
-                                value={slotInterval}
-                                onChange={e =>
-                                    setSlotInterval(
-                                        parseInt(e.target.value, 10),
-                                    )
-                                }
-                            >
-                                {intervalOptions.map(i => (
-                                    <option key={i} value={i}>
-                                        {i}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className={modalStyles.fieldGroup}>
-                            <label
                                 htmlFor='agenda-defaultDuration'
                                 className={modalStyles.label}
                             >
-                                Duração padrão (min)
+                                Duração padrão
                             </label>
                             <select
                                 id='agenda-defaultDuration'
@@ -492,112 +606,126 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
                             >
                                 {durationOptions.map(i => (
                                     <option key={i} value={i}>
-                                        {i}
+                                        {getDurationOptionLabel(i)}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className={modalStyles.fieldGroup}>
+                            <label
+                                htmlFor='agenda-defaultVisitType'
+                                className={modalStyles.label}
+                            >
+                                Tipo padrão
+                            </label>
+                            <select
+                                id='agenda-defaultVisitType'
+                                className={modalStyles.select}
+                                value={defaultVisitType}
+                                onChange={e =>
+                                    setDefaultVisitType(
+                                        e.target.value as DefaultVisitType,
+                                    )
+                                }
+                            >
+                                {visitTypes.map(v => (
+                                    <option key={v.value} value={v.value}>
+                                        {v.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div className={modalStyles.telegramSection}>
+                    <p className={modalStyles.telegramTitle}>
+                        Lembretes Telegram
+                    </p>
+                    <p className={modalStyles.telegramSubtitle}>
+                        Ative os lembretes, conecte sua conta e valide com um
+                        teste.
+                    </p>
+
+                    <div className={modalStyles.telegramStepCard}>
+                        <div className={modalStyles.telegramStepHeader}>
+                            <span className={modalStyles.telegramStepTitle}>
+                                1. Receber lembretes
+                            </span>
+                            <button
+                                type='button'
+                                role='switch'
+                                aria-checked={reminderEnabled}
+                                className={
+                                    reminderEnabled
+                                        ? `${modalStyles.switchButton} ${modalStyles.switchButtonOn}`
+                                        : `${modalStyles.switchButton} ${modalStyles.switchButtonOff}`
+                                }
+                                onClick={() =>
+                                    setReminderEnabled(prev => !prev)
+                                }
+                            >
+                                <span
+                                    className={
+                                        reminderEnabled
+                                            ? `${modalStyles.switchKnob} ${modalStyles.switchKnobOn}`
+                                            : `${modalStyles.switchKnob} ${modalStyles.switchKnobOff}`
+                                    }
+                                />
+                                <span className={modalStyles.switchText}>
+                                    {reminderEnabled ? 'Ativado' : 'Desativado'}
+                                </span>
+                            </button>
+                        </div>
+
+                        <div className={modalStyles.inlineTelegramSelect}>
+                            <label
+                                htmlFor='agenda-reminderMinutesBefore'
+                                className={modalStyles.label}
+                            >
+                                Antecedência do lembrete (min)
+                            </label>
+                            <select
+                                id='agenda-reminderMinutesBefore'
+                                className={modalStyles.select}
+                                value={reminderMinutesBefore}
+                                disabled={!reminderEnabled}
+                                onChange={e =>
+                                    setReminderMinutesBefore(
+                                        parseInt(e.target.value, 10),
+                                    )
+                                }
+                            >
+                                {reminderMinuteOptions.map(i => (
+                                    <option key={i} value={i}>
+                                        {getReminderOptionLabel(i)}
                                     </option>
                                 ))}
                             </select>
                         </div>
                     </div>
 
-                    <div className={modalStyles.fullRow}>
-                        <label
-                            htmlFor='agenda-defaultVisitType'
-                            className={modalStyles.label}
-                        >
-                            Tipo padrão
-                        </label>
-                        <select
-                            id='agenda-defaultVisitType'
-                            className={modalStyles.select}
-                            value={defaultVisitType}
-                            onChange={e =>
-                                setDefaultVisitType(
-                                    e.target.value as DefaultVisitType,
-                                )
-                            }
-                        >
-                            {visitTypes.map(v => (
-                                <option key={v.value} value={v.value}>
-                                    {v.label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
-
-                {/* ── Lembretes Telegram ─────────────────────────────── */}
-                <div
-                    style={{
-                        borderTop: '1px solid #e5e7eb',
-                        paddingTop: '1rem',
-                    }}
-                >
-                    <p
-                        style={{
-                            margin: '0 0 0.75rem',
-                            fontWeight: 600,
-                            fontSize: '0.95rem',
-                            color: '#374151',
-                        }}
-                    >
-                        Lembretes Telegram
-                    </p>
-
-                    <div className={modalStyles.fieldGroup}>
-                        <label
-                            htmlFor='agenda-reminderEnabled'
-                            className={modalStyles.label}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                            }}
-                        >
-                            <input
-                                id='agenda-reminderEnabled'
-                                type='checkbox'
-                                checked={reminderEnabled}
-                                onChange={e =>
-                                    setReminderEnabled(e.target.checked)
+                    <div className={modalStyles.telegramStepCard}>
+                        <div className={modalStyles.telegramStatusRow}>
+                            <span className={modalStyles.telegramStepTitle}>
+                                2. Conectar Telegram
+                            </span>
+                            <strong
+                                className={
+                                    telegramConnected
+                                        ? modalStyles.telegramStatusConnected
+                                        : modalStyles.telegramStatusDisconnected
                                 }
-                            />
-                            Notificações ativas
-                        </label>
-                    </div>
+                            >
+                                {telegramStatusLabel}
+                            </strong>
+                        </div>
 
-                    <div className={modalStyles.fieldGroup}>
-                        <label
-                            htmlFor='agenda-reminderEffective'
-                            className={modalStyles.label}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                            }}
-                        >
-                            <input
-                                id='agenda-reminderEffective'
-                                type='checkbox'
-                                checked={remindersEffectiveActive}
-                                disabled
-                                readOnly
-                            />
-                            Envio efetivo:{' '}
-                            {remindersEffectiveActive ? 'Ativo' : 'Inativo'}
-                        </label>
-                    </div>
-
-                    <div className={modalStyles.fieldGroup}>
-                        <label className={modalStyles.label}>
-                            Vínculo Telegram:{' '}
-                            {telegramLinked && telegramLinkActive
-                                ? 'Conectado'
-                                : 'Não conectado'}
-                        </label>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <div className={modalStyles.telegramActionRow}>
                             <button
                                 type='button'
-                                className='ui-btn ui-btn--secondary'
+                                className='ui-btn ui-btn--theme'
                                 onClick={() => {
                                     void handleStartTelegramLink();
                                 }}
@@ -607,144 +735,79 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
                             </button>
                             <button
                                 type='button'
-                                className='ui-btn ui-btn--neutral'
+                                className='ui-btn ui-btn--secondary'
                                 onClick={() => {
                                     void handleVerifyTelegramLink();
                                 }}
-                                disabled={telegramLinkBusy || !telegramStartToken}
+                                disabled={
+                                    telegramLinkBusy || !telegramStartToken
+                                }
                             >
                                 Verificar conexão
                             </button>
                             <button
                                 type='button'
-                                className='ui-btn ui-btn--theme'
+                                className='ui-btn ui-btn--secondary'
                                 onClick={() => {
                                     void handleSendTelegramTest();
                                 }}
-                                disabled={telegramTestBusy || !(telegramLinked && telegramLinkActive)}
-                                title={!(telegramLinked && telegramLinkActive) ? 'Conecte o Telegram primeiro' : ''}
+                                disabled={
+                                    telegramTestBusy || !telegramConnected
+                                }
+                                title={
+                                    !telegramConnected
+                                        ? 'Conecte o Telegram primeiro'
+                                        : ''
+                                }
                             >
-                                {telegramTestBusy ? 'Enviando…' : 'Enviar teste'}
+                                {telegramTestBusy
+                                    ? 'Enviando...'
+                                    : 'Enviar teste'}
                             </button>
                         </div>
-                        {!!telegramStartUrl && (
-                            <div
-                                style={{
-                                    marginTop: '0.75rem',
-                                    border: '1px solid #d1d5db',
-                                    borderRadius: 10,
-                                    padding: '0.75rem',
-                                    background: '#f8fafc',
-                                }}
-                            >
-                                <p
-                                    style={{
-                                        margin: '0 0 0.5rem',
-                                        fontSize: '0.95rem',
-                                        color: '#1f2937',
-                                        fontWeight: 600,
+
+                        {!!telegramStartUrl && !telegramConnected && (
+                            <div className={modalStyles.telegramHelperRow}>
+                                <button
+                                    type='button'
+                                    className='ui-btn ui-btn--neutral'
+                                    onClick={() =>
+                                        openTelegramLink(telegramStartUrl)
+                                    }
+                                >
+                                    Abrir Telegram
+                                </button>
+                                <button
+                                    type='button'
+                                    className='ui-btn ui-btn--neutral'
+                                    onClick={() => {
+                                        void copyTelegramLink(telegramStartUrl);
                                     }}
                                 >
-                                    Se não abriu automaticamente:
-                                </p>
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        gap: '0.5rem',
-                                        flexWrap: 'wrap',
-                                        marginBottom: '0.5rem',
-                                    }}
-                                >
-                                    <button
-                                        type='button'
-                                        className='ui-btn ui-btn--secondary'
-                                        onClick={() => openTelegramLink(telegramStartUrl)}
-                                    >
-                                        Abrir Telegram
-                                    </button>
-                                    <button
-                                        type='button'
-                                        className='ui-btn ui-btn--neutral'
-                                        onClick={() => {
-                                            void copyTelegramLink(telegramStartUrl);
-                                        }}
-                                    >
-                                        Copiar link
-                                    </button>
-                                </div>
-                                <a
-                                    href={telegramStartUrl}
-                                    target='_blank'
-                                    rel='noreferrer'
-                                    style={{
-                                        display: 'block',
-                                        fontSize: '0.95rem',
-                                        lineHeight: 1.45,
-                                        wordBreak: 'break-all',
-                                        color: '#1d4ed8',
-                                        textDecoration: 'underline',
-                                    }}
-                                >
-                                    {telegramStartUrl}
-                                </a>
+                                    Copiar link de conexão
+                                </button>
                             </div>
                         )}
+
                         {telegramUsername && (
                             <small className={modalStyles.smallNote}>
-                                Usuário: @{telegramUsername}
+                                Conta conectada: @{telegramUsername}
                             </small>
                         )}
                         {!!telegramLastError && (
-                            <small
-                                className={modalStyles.smallNote}
-                                style={{ color: '#b91c1c' }}
-                            >
-                                Último erro do Telegram: {telegramLastError}
+                            <small className={modalStyles.telegramErrorNote}>
+                                Último erro: {telegramLastError}
                             </small>
                         )}
                     </div>
 
-                    <div className={modalStyles.fieldGroup}>
-                        <label
-                            htmlFor='agenda-reminderMinutesBefore'
-                            className={modalStyles.label}
-                        >
-                            Avisar com antecedência (min)
-                        </label>
-                        <select
-                            id='agenda-reminderMinutesBefore'
-                            className={modalStyles.select}
-                            value={reminderMinutesBefore}
-                            disabled={!reminderEnabled}
-                            onChange={e =>
-                                setReminderMinutesBefore(
-                                    parseInt(e.target.value, 10),
-                                )
-                            }
-                        >
-                            {reminderMinuteOptions.map(i => (
-                                <option key={i} value={i}>
-                                    {i}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div
-                        style={{
-                            marginTop: '0.75rem',
-                            fontSize: '0.85rem',
-                            color: remindersGloballyEnabled
-                                ? '#6b7280'
-                                : '#b45309',
-                            lineHeight: 1.5,
-                        }}
-                    >
-                        Ative para enviar lembretes para a profissional no
-                        Telegram. Se o ambiente estiver com a flag global
-                        APPOINTMENT_REMINDERS_ENABLED=false, o envio permanece
-                        bloqueado mesmo com este toggle ativo.
-                    </div>
+                    {!remindersGloballyEnabled && (
+                        <div className={modalStyles.telegramEnvironmentWarning}>
+                            O envio global de lembretes está desativado no
+                            ambiente. Mesmo ativando aqui, as mensagens não
+                            serão enviadas até essa liberação.
+                        </div>
+                    )}
                 </div>
 
                 <div
@@ -769,24 +832,13 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
                 </div>
 
                 <div className={modalStyles.buttonBar}>
-                    <button
-                        type='button'
-                        className='ui-btn ui-btn--neutral'
-                        onClick={resetDefaults}
-                        disabled={isAtDefaults()}
-                    >
-                        Restaurar padrões
-                    </button>
-                    <button
-                        type='submit'
-                        className='ui-btn ui-btn--theme'
-                    >
+                    <button type='submit' className='ui-btn ui-btn--theme'>
                         Salvar
                     </button>
                     <button
                         type='button'
                         className='ui-btn ui-btn--neutral'
-                        onClick={onClose}
+                        onClick={handleClose}
                     >
                         Fechar
                     </button>
@@ -795,4 +847,3 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
         </AppModal>
     );
 };
-

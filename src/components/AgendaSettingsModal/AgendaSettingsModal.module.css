@@ -26,7 +26,7 @@
 
 .timeRow {
     display: grid;
-    grid-template-columns: 1fr minmax(8px, 16px) 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: stretch;
     gap: 0.75rem; /* 12px */
 }
@@ -39,9 +39,9 @@
 
 @media (max-width: 520px) {
     .timeRow {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem; /* 12px */
     }
     .divider {
         display: none;
@@ -57,7 +57,7 @@
 
 .inlineRow {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem; /* 12px */
 }
 
@@ -94,38 +94,211 @@
     box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 30%, transparent);
 }
 
-.timeInputWrapper {
-    position: relative;
+.telegramSection {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.telegramTitle {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1rem;
+    color: #374151;
+}
+
+.telegramSubtitle {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    color: #4b5563;
+}
+
+.telegramStepCard {
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    background: var(--color-bg-soft, var(--color-bg));
+    padding: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.telegramStepHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.telegramStepTitle {
+    font-size: 0.93rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.switchButton {
+    border: 1px solid transparent;
+    border-radius: 999px;
+    min-width: 110px;
+    padding: 0.3rem 0.5rem 0.3rem 0.35rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font: inherit;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: filter 0.15s ease;
+}
+
+.switchButton:hover {
+    filter: brightness(0.97);
+}
+
+.switchButtonOn {
+    background: color-mix(in oklab, var(--color-primary) 18%, white);
+    border-color: color-mix(in oklab, var(--color-primary) 30%, white);
+    color: #14532d;
+}
+
+.switchButtonOff {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+    color: #374151;
+}
+
+.switchKnob {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    display: inline-block;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.switchKnobOn {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.switchKnobOff {
+    background: #fff;
+}
+
+.switchText {
+    font-weight: 600;
+}
+
+.telegramStatusRow {
     display: flex;
     align-items: center;
-    border: 1px solid var(--color-border);
-    border-radius: 0.5rem;
-    background: var(--color-input, var(--color-bg));
+    justify-content: space-between;
+    gap: 0.5rem;
 }
 
-/* Remove inner border of time input to avoid double border when wrapped */
-.timeInputWrapper .input {
-    border: none;
-    border-radius: 0.5rem;
-    padding-right: 2rem; /* ensure text doesn't overlap caret */
+.telegramStatusLabel {
+    font-size: 0.85rem;
+    color: #6b7280;
 }
 
-/* Focus ring on wrapper when input inside is focused */
-.timeInputWrapper:focus-within {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 30%, transparent);
+.telegramStatusConnected,
+.telegramStatusDisconnected {
+    border-radius: 999px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.8rem;
 }
 
-.caret {
-    position: absolute;
-    right: 0.5rem;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--color-text-muted, var(--color-text));
-    font-size: 1.25rem;
-    line-height: 1;
-    pointer-events: none;
-    user-select: none;
+.telegramStatusConnected {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.telegramStatusDisconnected {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.telegramActionRow {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.telegramActionRow > button {
+    flex: 1 1 150px;
+}
+
+.inlineTelegramSelect {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.telegramHelperRow {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.telegramHelperRow > button {
+    flex: 1 1 160px;
+}
+
+.telegramErrorNote {
+    font-size: 0.78rem;
+    color: #b91c1c;
+}
+
+.telegramLinkBox {
+    margin-top: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 0.75rem;
+    background: #f8fafc;
+}
+
+.telegramLinkTitle {
+    margin: 0 0 0.5rem;
+    font-size: 0.95rem;
+    color: #1f2937;
+    font-weight: 600;
+}
+
+.telegramLinkActions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+}
+
+.telegramLinkAnchor {
+    display: block;
+    font-size: 0.95rem;
+    line-height: 1.45;
+    word-break: break-all;
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+
+.telegramEnvironmentNote,
+.telegramEnvironmentWarning {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    border-radius: 0.6rem;
+    padding: 0.65rem 0.7rem;
+    border: 1px solid transparent;
+}
+
+.telegramEnvironmentNote {
+    color: #6b7280;
+}
+
+.telegramEnvironmentWarning {
+    color: #b45309;
+    background: #fffbeb;
+    border-color: #fcd34d;
 }
 
 .messageArea {

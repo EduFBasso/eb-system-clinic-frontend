@@ -1,70 +1,131 @@
 import React from 'react';
-import type { AnamnesisField } from '../../types/AnamnesisTypes';
+import type { AnamneseBaseData } from '../../types/ClientData';
 import styles from './ClientAnamnesisForm.module.css';
 import { useTheme } from '../../contexts/ThemeContext';
-import {
-    ChoiceDetailInput,
-    ChoicePillRow,
-    FieldShell,
-    MultiChoiceWithOtherPills,
-    formatMultiChoiceValue,
-    parseMultiChoiceValue,
-} from '../FormElements/AnamnesisPreview/AnamnesisPreviewFields';
 
 interface Props {
-    fields: AnamnesisField[];
-    values: Record<number, string>;
-    onChange: (fieldId: number, value: string) => void;
+    anamneseBase: AnamneseBaseData;
+    onBaseChange: <K extends keyof AnamneseBaseData>(
+        key: K,
+        value: AnamneseBaseData[K],
+    ) => void;
     isEdit?: boolean;
 }
 
 export default function ClientAnamnesisForm({
-    fields,
-    values,
-    onChange,
+    anamneseBase,
+    onBaseChange,
     isEdit = false,
 }: Props) {
     const { theme } = useTheme();
 
-    if (fields.length === 0) return null;
+    const yesNoOptions = ['Não', 'Sim'];
+    const painOptions = ['Baixa', 'Moderada', 'Alta'];
+    const sportOptions = ['Não', 'Leve', 'Moderada', 'Intensa'];
 
-    // Group fields by sector, preserving sector_order
-    const sectorMap = new Map<
-        string,
-        { order: number; fields: AnamnesisField[] }
-    >();
-    for (const f of fields) {
-        if (!sectorMap.has(f.sector)) {
-            sectorMap.set(f.sector, { order: f.sector_order, fields: [] });
+    const historyOptions = [
+        'Hipertensão',
+        'Diabetes',
+        'Problemas Cardíacos',
+        'Convulsão',
+        'Problemas Respiratórios',
+        'Câncer',
+        'Alergia Grave',
+    ];
+
+    const splitYesNoDetail = (raw: string) => {
+        const value = raw || '';
+        if (value.startsWith('Sim: ')) {
+            return { selected: 'Sim', detail: value.slice('Sim: '.length) };
         }
-        sectorMap.get(f.sector)!.fields.push(f);
-    }
-    const sectors = Array.from(sectorMap.entries()).sort(
-        (a, b) => a[1].order - b[1].order,
-    );
-
-    const isVisible = (field: AnamnesisField): boolean => {
-        if (!field.depends_on) return true;
-
-        const parentValue = values[field.depends_on] ?? '';
-        return field.show_when_value
-            ? parentValue === field.show_when_value
-            : parentValue !== '';
+        if (value === 'Sim') {
+            return { selected: 'Sim', detail: '' };
+        }
+        return { selected: 'Não', detail: '' };
     };
 
-    const getRadioValue = (field: AnamnesisField): string => {
-        const currentValue = values[field.id] ?? '';
-        if (field.field_type !== 'radio') return currentValue;
-        if (currentValue.startsWith('Outro: ')) return 'Outro';
-        return currentValue;
+    const serializeYesNoDetail = (selected: 'Sim' | 'Não', detail: string) => {
+        if (selected === 'Não') return 'Não';
+        return detail.trim() ? `Sim: ${detail}` : 'Sim: ';
     };
 
-    const getMultiChoiceValue = (field: AnamnesisField) =>
-        parseMultiChoiceValue(values[field.id] ?? '', field.options ?? []);
+    const parseHistory = (raw: unknown) => {
+        const selected = new Set<string>();
+        let other = '';
+        const tokens = Array.isArray(raw)
+            ? raw
+            : typeof raw === 'string'
+              ? raw.split(',')
+              : [];
 
-    const getOtherText = (fieldId: number): string => {
-        const currentValue = values[fieldId] ?? '';
-        return currentValue.startsWith('Outro: ') ? currentValue.slice(7) : '';
+        tokens.forEach(token => {
+            const rawValue = String(token ?? '');
+            const value = rawValue.trim();
+            if (!value) return;
+
+            // Accept both "Outros: texto" and the transient "Outros:" value
+            // so the checkbox remains checked immediately after click.
+            if (/^Outros:\s*/.test(value)) {
+                selected.add('Outros');
+                other = value.replace(/^Outros:\s*/, '');
+                return;
+            }
+
+            if (historyOptions.includes(value)) {
+                selected.add(value);
+            }
+        });
+        return { selected, other };
+    };
+
+    const serializeHistory = (selected: Set<string>, other: string) => {
+        const values = historyOptions
+            .filter(option => selected.has(option))
+            .concat(selected.has('Outros') ? [`Outros: ${other}`] : []);
+        return values.join(', ');
+    };
+
+    const medicationState = splitYesNoDetail(anamneseBase.takes_medication);
+    const surgeryState = splitYesNoDetail(anamneseBase.had_surgery);
+    const historyState = parseHistory(anamneseBase.clinical_history);
+
+    const setYesNoField = (
+        field: 'takes_medication' | 'had_surgery',
+        selected: 'Sim' | 'Não',
+        detail: string,
+    ) => {
+        onBaseChange(field, serializeYesNoDetail(selected, detail) as never);
+    };
+
+    const toggleHistoryOption = (option: string, checked: boolean) => {
+        const nextSelected = new Set(historyState.selected);
+        if (checked) {
+            nextSelected.add(option);
+        } else {
+            nextSelected.delete(option);
+        }
+        onBaseChange(
+            'clinical_history',
+            serializeHistory(nextSelected, historyState.other) as never,
+        );
+    };
+
+    const updateHistoryOther = (other: string) => {
+        const nextSelected = new Set(historyState.selected);
+        nextSelected.add('Outros');
+        onBaseChange(
+            'clinical_history',
+            serializeHistory(nextSelected, other) as never,
+        );
+    };
+
+    const clearHistoryOther = () => {
+        const nextSelected = new Set(historyState.selected);
+        nextSelected.delete('Outros');
+        onBaseChange(
+            'clinical_history',
+            serializeHistory(nextSelected, '') as never,
+        );
     };
 
     return (
@@ -74,200 +135,279 @@ export default function ClientAnamnesisForm({
                     <span className={styles.eyebrow}>
                         {isEdit ? 'Editar / Apagar' : 'Cadastro'}
                     </span>
-                    <h2 className={styles.title}>Anamnese</h2>
+                    <h2 className={styles.title}>Anamnese Geral</h2>
                 </header>
+                <section className={styles.sector}>
+                    <h3 className={styles.sectorTitle}>Saúde essencial</h3>
+                    <div className={styles.fieldList}>
+                        <div className={styles.fieldRow}>
+                            <label className={styles.fieldLabel}>
+                                Toma medicação?
+                            </label>
+                            <div className={styles.optionList}>
+                                {yesNoOptions.map(option => (
+                                    <label
+                                        key={option}
+                                        className={styles.optionItem}
+                                    >
+                                        <input
+                                            className={styles.selectorControl}
+                                            type='radio'
+                                            name='takes_medication'
+                                            checked={
+                                                medicationState.selected ===
+                                                option
+                                            }
+                                            onChange={() =>
+                                                setYesNoField(
+                                                    'takes_medication',
+                                                    option as 'Sim' | 'Não',
+                                                    medicationState.detail,
+                                                )
+                                            }
+                                        />
+                                        <span>{option}</span>
+                                    </label>
+                                ))}
+                            </div>
 
-                {sectors.map(([sectorName, { fields: sectorFields }]) => {
-                    const childrenByParent = new Map<
-                        number,
-                        AnamnesisField[]
-                    >();
-                    for (const f of sectorFields) {
-                        if (f.depends_on) {
-                            const siblings =
-                                childrenByParent.get(f.depends_on) ?? [];
-                            siblings.push(f);
-                            childrenByParent.set(f.depends_on, siblings);
-                        }
-                    }
-
-                    const sortedRootFields = sectorFields
-                        .filter(field => !field.depends_on)
-                        .sort((a, b) => a.order - b.order);
-
-                    function renderField(
-                        field: AnamnesisField,
-                    ): React.ReactNode {
-                        if (!isVisible(field)) return null;
-
-                        const childFields = (
-                            childrenByParent.get(field.id) ?? []
-                        ).sort((a, b) => a.order - b.order);
-
-                        const currentValue = values[field.id] ?? '';
-
-                        const selectedRadioValue = getRadioValue(field);
-                        const selectedMultiValue = getMultiChoiceValue(field);
-
-                        const hasOtherOption =
-                            field.field_type === 'radio' &&
-                            (field.options ?? []).includes('Outro');
-                        const otherIsSelected =
-                            hasOtherOption && currentValue.startsWith('Outro');
-                        const otherText = getOtherText(field.id);
-
-                        const selectOption = (opt: string) => {
-                            if (opt === 'Outro') {
-                                onChange(field.id, 'Outro');
-                            } else {
-                                onChange(field.id, opt);
-                            }
-                        };
-
-                        return (
-                            <FieldShell
-                                key={field.id}
-                                label={field.label}
-                                helper={
-                                    field.field_type === 'radio'
-                                        ? field.selection_mode === 'multiple'
-                                            ? 'Marque uma ou mais opções.'
-                                            : 'Escolha uma opção.'
-                                        : field.field_type === 'textarea'
-                                          ? 'Resposta descritiva.'
-                                          : 'Resposta curta.'
-                                }
-                            >
-                                {field.field_type === 'radio' &&
-                                    field.options &&
-                                    field.selection_mode === 'multiple' && (
-                                        <>
-                                            <MultiChoiceWithOtherPills
-                                                options={field.options}
-                                                value={selectedMultiValue}
-                                                onChange={next =>
-                                                    onChange(
-                                                        field.id,
-                                                        formatMultiChoiceValue(
-                                                            next,
-                                                        ),
-                                                    )
-                                                }
-                                            />
-
-                                            {(field.options ?? []).includes(
-                                                'Outros',
-                                            ) && (
-                                                <ChoiceDetailInput
-                                                    visible={selectedMultiValue.selected.includes(
-                                                        'Outros',
-                                                    )}
-                                                    label='Outros'
-                                                    value={
-                                                        selectedMultiValue.otherText
-                                                    }
-                                                    placeholder={
-                                                        field.placeholder ||
-                                                        'Descreva...'
-                                                    }
-                                                    onChange={text =>
-                                                        onChange(
-                                                            field.id,
-                                                            formatMultiChoiceValue(
-                                                                {
-                                                                    selected:
-                                                                        selectedMultiValue.selected,
-                                                                    otherText:
-                                                                        text,
-                                                                },
-                                                            ),
-                                                        )
-                                                    }
-                                                />
-                                            )}
-                                        </>
-                                    )}
-
-                                {field.field_type === 'radio' &&
-                                    field.options &&
-                                    field.selection_mode === 'single' && (
-                                        <>
-                                            <ChoicePillRow
-                                                value={selectedRadioValue}
-                                                options={field.options}
-                                                name={`anamnesis-${field.id}`}
-                                                onSelect={selectOption}
-                                            />
-
-                                            {hasOtherOption && (
-                                                <ChoiceDetailInput
-                                                    visible={otherIsSelected}
-                                                    label='Outro'
-                                                    value={otherText}
-                                                    placeholder={
-                                                        field.placeholder ||
-                                                        'Informe...'
-                                                    }
-                                                    onChange={text => {
-                                                        const newEntry = text
-                                                            ? `Outro: ${text}`
-                                                            : 'Outro';
-                                                        onChange(
-                                                            field.id,
-                                                            newEntry,
-                                                        );
-                                                    }}
-                                                />
-                                            )}
-                                        </>
-                                    )}
-
-                                {field.field_type === 'text' && (
+                            {medicationState.selected === 'Sim' && (
+                                <div className={styles.detailFieldRow}>
                                     <input
                                         type='text'
-                                        className={styles.textInput}
-                                        value={values[field.id] ?? ''}
-                                        placeholder={
-                                            field.placeholder || undefined
-                                        }
+                                        className={styles.inlineTextInput}
+                                        placeholder='Descreva a medicação...'
+                                        value={medicationState.detail}
                                         onChange={e =>
-                                            onChange(field.id, e.target.value)
+                                            setYesNoField(
+                                                'takes_medication',
+                                                'Sim',
+                                                e.target.value,
+                                            )
                                         }
                                     />
-                                )}
+                                </div>
+                            )}
+                        </div>
 
-                                {field.field_type === 'textarea' && (
+                        <div className={styles.fieldRow}>
+                            <label className={styles.fieldLabel}>
+                                Já fez cirurgia?
+                            </label>
+                            <div className={styles.optionList}>
+                                {yesNoOptions.map(option => (
+                                    <label
+                                        key={option}
+                                        className={styles.optionItem}
+                                    >
+                                        <input
+                                            className={styles.selectorControl}
+                                            type='radio'
+                                            name='had_surgery'
+                                            checked={
+                                                surgeryState.selected === option
+                                            }
+                                            onChange={() =>
+                                                setYesNoField(
+                                                    'had_surgery',
+                                                    option as 'Sim' | 'Não',
+                                                    surgeryState.detail,
+                                                )
+                                            }
+                                        />
+                                        <span>{option}</span>
+                                    </label>
+                                ))}
+                            </div>
+
+                            {surgeryState.selected === 'Sim' && (
+                                <div className={styles.detailFieldRow}>
                                     <textarea
                                         className={styles.textarea}
                                         rows={3}
-                                        value={values[field.id] ?? ''}
-                                        placeholder={
-                                            field.placeholder || undefined
-                                        }
+                                        placeholder='Descreva cirurgias anteriores, datas e observações...'
+                                        value={surgeryState.detail}
                                         onChange={e =>
-                                            onChange(field.id, e.target.value)
+                                            setYesNoField(
+                                                'had_surgery',
+                                                'Sim',
+                                                e.target.value,
+                                            )
                                         }
                                     />
-                                )}
+                                </div>
+                            )}
+                        </div>
 
-                                {childFields.map(childField =>
-                                    renderField(childField),
-                                )}
-                            </FieldShell>
-                        );
-                    }
-
-                    return (
-                        <section key={sectorName} className={styles.sector}>
-                            <h3 className={styles.sectorTitle}>{sectorName}</h3>
-                            <div className={styles.fieldList}>
-                                {sortedRootFields.map(field =>
-                                    renderField(field),
-                                )}
+                        <div className={styles.fieldRow}>
+                            <label className={styles.fieldLabel}>
+                                Gestação
+                            </label>
+                            <div className={styles.optionList}>
+                                <label className={styles.optionItem}>
+                                    <input
+                                        className={styles.selectorControl}
+                                        type='radio'
+                                        name='is_pregnant'
+                                        checked={
+                                            anamneseBase.is_pregnant === true
+                                        }
+                                        onChange={() =>
+                                            onBaseChange('is_pregnant', true)
+                                        }
+                                    />
+                                    <span>Sim</span>
+                                </label>
+                                <label className={styles.optionItem}>
+                                    <input
+                                        className={styles.selectorControl}
+                                        type='radio'
+                                        name='is_pregnant'
+                                        checked={
+                                            anamneseBase.is_pregnant === false
+                                        }
+                                        onChange={() =>
+                                            onBaseChange('is_pregnant', false)
+                                        }
+                                    />
+                                    <span>Não</span>
+                                </label>
                             </div>
-                        </section>
-                    );
-                })}
+                        </div>
+
+                        <div className={styles.fieldRow}>
+                            <label className={styles.fieldLabel}>
+                                Sensibilidade à dor
+                            </label>
+                            <div className={styles.optionList}>
+                                {painOptions.map(option => (
+                                    <label
+                                        key={option}
+                                        className={styles.optionItem}
+                                    >
+                                        <input
+                                            className={styles.selectorControl}
+                                            type='radio'
+                                            name='pain_sensitivity'
+                                            checked={
+                                                anamneseBase.pain_sensitivity ===
+                                                option
+                                            }
+                                            onChange={() =>
+                                                onBaseChange(
+                                                    'pain_sensitivity',
+                                                    option,
+                                                )
+                                            }
+                                        />
+                                        <span>{option}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className={styles.fieldRow}>
+                            <label className={styles.fieldLabel}>
+                                Atividade esportiva
+                            </label>
+                            <div className={styles.optionList}>
+                                {sportOptions.map(option => (
+                                    <label
+                                        key={option}
+                                        className={styles.optionItem}
+                                    >
+                                        <input
+                                            className={styles.selectorControl}
+                                            type='radio'
+                                            name='sport_activity'
+                                            checked={
+                                                anamneseBase.sport_activity ===
+                                                option
+                                            }
+                                            onChange={() =>
+                                                onBaseChange(
+                                                    'sport_activity',
+                                                    option,
+                                                )
+                                            }
+                                        />
+                                        <span>{option}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className={styles.fieldRow}>
+                            <label className={styles.fieldLabel}>
+                                Histórico clínico
+                            </label>
+                            <div className={styles.optionList}>
+                                {historyOptions.map(option => (
+                                    <label
+                                        key={option}
+                                        className={styles.optionItem}
+                                    >
+                                        <input
+                                            className={styles.selectorControl}
+                                            type='checkbox'
+                                            name='clinical_history'
+                                            checked={historyState.selected.has(
+                                                option,
+                                            )}
+                                            onChange={e =>
+                                                toggleHistoryOption(
+                                                    option,
+                                                    e.target.checked,
+                                                )
+                                            }
+                                        />
+                                        <span>{option}</span>
+                                    </label>
+                                ))}
+
+                                <label className={styles.optionItem}>
+                                    <input
+                                        className={styles.selectorControl}
+                                        type='checkbox'
+                                        name='clinical_history_other'
+                                        checked={historyState.selected.has(
+                                            'Outros',
+                                        )}
+                                        onChange={e =>
+                                            toggleHistoryOption(
+                                                'Outros',
+                                                e.target.checked,
+                                            )
+                                        }
+                                    />
+                                    <span>Outros</span>
+                                </label>
+                            </div>
+
+                            {historyState.selected.has('Outros') && (
+                                <div className={styles.otherInputRow}>
+                                    <input
+                                        type='text'
+                                        className={styles.inlineTextInput}
+                                        placeholder='Descreva outros históricos...'
+                                        value={historyState.other}
+                                        onChange={e =>
+                                            updateHistoryOther(e.target.value)
+                                        }
+                                    />
+                                    <button
+                                        type='button'
+                                        className={styles.clearOtherBtn}
+                                        aria-label='Limpar histórico outros'
+                                        onClick={clearHistoryOther}
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </section>
             </div>
         </div>
     );
