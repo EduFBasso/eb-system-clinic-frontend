@@ -21,6 +21,12 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { getAccessToken } from '../../utils/auth/session';
 import { SmartSection } from '../SmartSection/SmartSection';
 
+interface ClientFormProps {
+    cliente?: Partial<ClientData>;
+    isPublicMode?: boolean;
+    token?: string;
+}
+
 function buildDefaultClientData(cliente?: Partial<ClientData>): ClientData {
     return {
         first_name: cliente?.first_name ?? '',
@@ -112,7 +118,11 @@ function buildDefaultAnamnesePodologia(
     };
 }
 
-export function ClientForm({ cliente }: { cliente?: Partial<ClientData> }) {
+export function ClientForm({
+    cliente,
+    isPublicMode = false,
+    token: publicToken,
+}: ClientFormProps) {
     const { theme } = useTheme();
     const navigate = useNavigate();
 
@@ -286,6 +296,47 @@ export function ClientForm({ cliente }: { cliente?: Partial<ClientData> }) {
         };
     }
 
+    function buildPublicPayload() {
+        const nested = buildNestedPayload();
+        const payload: Record<string, unknown> = {
+            token: publicToken,
+            anamnese_base: nested.anamnese_base,
+        };
+
+        const putIfMeaningful = (key: string, value: unknown) => {
+            if (value === null || value === undefined) return;
+            if (typeof value === 'string') {
+                const trimmed = value.trim();
+                if (!trimmed) return;
+                payload[key] = trimmed;
+                return;
+            }
+            payload[key] = value;
+        };
+
+        putIfMeaningful('first_name', nested.first_name);
+        putIfMeaningful('last_name', nested.last_name);
+        putIfMeaningful('email', nested.email);
+        // In public mode, send phone only if user provided a non-empty value.
+        // This avoids wiping an existing required phone in backend with an empty string.
+        putIfMeaningful('phone', nested.phone);
+        putIfMeaningful('profession', nested.profession);
+        putIfMeaningful('document_type', nested.document_type);
+        putIfMeaningful('document_number', nested.document_number);
+        putIfMeaningful('sex', nested.sex);
+        putIfMeaningful('marital_status', nested.marital_status);
+        putIfMeaningful('address', nested.address);
+        putIfMeaningful('neighborhood', nested.neighborhood);
+        putIfMeaningful('city', nested.city);
+        putIfMeaningful('state', nested.state);
+        putIfMeaningful('postal_code', nested.postal_code);
+        putIfMeaningful('address_number', nested.address_number);
+        putIfMeaningful('address_complement', nested.address_complement);
+        putIfMeaningful('date_of_birth', nested.date_of_birth);
+
+        return payload;
+    }
+
     const closeSuccessAndExit = () => {
         try {
             if (window.opener) {
@@ -334,6 +385,74 @@ export function ClientForm({ cliente }: { cliente?: Partial<ClientData> }) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (isPublicMode) {
+            if (!publicToken) {
+                setFeedback({
+                    type: 'error',
+                    message: 'Token público inválido. Solicite um novo link.',
+                });
+                return;
+            }
+
+            const payload = buildPublicPayload();
+            if (!payload.first_name || !payload.last_name) {
+                setFeedback({
+                    type: 'error',
+                    message: 'Nome e Sobrenome são obrigatórios.',
+                });
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                    `${API_BASE}/register/clients/submit-public-anamnesis/`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(payload),
+                    },
+                );
+
+                if (!response.ok) {
+                    let errorData: unknown = null;
+                    try {
+                        errorData = await response.json();
+                    } catch {
+                        try {
+                            errorData = await response.text();
+                        } catch {
+                            errorData = null;
+                        }
+                    }
+                    const errorMsg = parseApiError(errorData, response.status);
+                    setFeedback({ type: 'error', message: errorMsg });
+                    return;
+                }
+
+                initialRef.current = JSON.stringify({
+                    formData,
+                    anamneseBase,
+                    anamnesePodologia,
+                });
+                setDirty(false);
+                setInfoModal({
+                    title: 'Obrigado!',
+                    message:
+                        'Sua ficha de saúde e endereço foram atualizados com sucesso.',
+                });
+            } catch (err) {
+                setFeedback({
+                    type: 'error',
+                    message:
+                        'Erro ao salvar: ' +
+                        (err instanceof Error ? err.message : 'desconhecido'),
+                });
+            }
+            return;
+        }
 
         const token = getAccessToken();
         if (!token) {
@@ -476,6 +595,7 @@ export function ClientForm({ cliente }: { cliente?: Partial<ClientData> }) {
                         handleChange={handleChange}
                         feedback={feedback}
                         isEdit={isEdit}
+                        lockRequiredFields={isPublicMode}
                     />
                 </SmartSection>
 
@@ -505,20 +625,22 @@ export function ClientForm({ cliente }: { cliente?: Partial<ClientData> }) {
                     />
                 </SmartSection>
 
-                <SmartSection
-                    title='Anamnese Podologia'
-                    stickyWhenOpen
-                    isOpen={openSection === 'podologia'}
-                    onToggle={() => toggleSection('podologia')}
-                >
-                    <ClientPodologiaSection
-                        anamnesePodologia={anamnesePodologia}
-                        onPodologiaChange={handlePodologiaChange}
-                    />
-                </SmartSection>
+                {!isPublicMode && (
+                    <SmartSection
+                        title='Anamnese Podologia'
+                        stickyWhenOpen
+                        isOpen={openSection === 'podologia'}
+                        onToggle={() => toggleSection('podologia')}
+                    >
+                        <ClientPodologiaSection
+                            anamnesePodologia={anamnesePodologia}
+                            onPodologiaChange={handlePodologiaChange}
+                        />
+                    </SmartSection>
+                )}
 
                 <div className={styles.footer}>
-                    {!isEdit && (
+                    {!isEdit && !isPublicMode && (
                         <button
                             type='submit'
                             className={styles.btnSecondary}
@@ -527,7 +649,7 @@ export function ClientForm({ cliente }: { cliente?: Partial<ClientData> }) {
                             Salvar e novo
                         </button>
                     )}
-                    {isEdit && (
+                    {isEdit && !isPublicMode && (
                         <button
                             type='button'
                             className={styles.btnDanger}
@@ -536,15 +658,17 @@ export function ClientForm({ cliente }: { cliente?: Partial<ClientData> }) {
                             Apagar
                         </button>
                     )}
-                    <button
-                        type='button'
-                        className={styles.btnSecondary}
-                        onClick={handleCancel}
-                    >
-                        Cancelar
-                    </button>
+                    {!isPublicMode && (
+                        <button
+                            type='button'
+                            className={styles.btnSecondary}
+                            onClick={handleCancel}
+                        >
+                            Cancelar
+                        </button>
+                    )}
                     <button type='submit' className={styles.btnPrimary}>
-                        Salvar
+                        {isPublicMode ? 'Enviar ficha' : 'Salvar'}
                     </button>
                 </div>
             </form>
@@ -558,7 +682,7 @@ export function ClientForm({ cliente }: { cliente?: Partial<ClientData> }) {
                     }}
                 />
             )}
-            {deleteModalOpen && (
+            {!isPublicMode && deleteModalOpen && (
                 <DeleteConfirmModal
                     title={deleteModalTitle}
                     onConfirm={confirmDelete}

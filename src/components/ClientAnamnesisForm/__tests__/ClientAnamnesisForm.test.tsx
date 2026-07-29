@@ -121,4 +121,21 @@ describe('ClientAnamnesisForm', () => {
             '"clinical_history":"Diabetes"',
         );
     });
+
+    it('preserva espaço durante digitação no campo Outros', () => {
+        render(<Harness />);
+
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Outros' }));
+
+        const otherInput = screen.getByPlaceholderText(
+            'Descreva outros históricos...',
+        ) as HTMLInputElement;
+
+        fireEvent.change(otherInput, { target: { value: 'Braço ' } });
+
+        expect(otherInput.value).toBe('Braço ');
+        expect(screen.getByTestId('values')).toHaveTextContent(
+            '"clinical_history":"Outros: Braço "',
+        );
+    });
 });

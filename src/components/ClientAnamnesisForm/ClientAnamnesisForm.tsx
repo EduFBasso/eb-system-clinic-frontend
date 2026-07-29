@@ -65,9 +65,10 @@ export default function ClientAnamnesisForm({
 
             // Accept both "Outros: texto" and the transient "Outros:" value
             // so the checkbox remains checked immediately after click.
-            if (/^Outros:\s*/.test(value)) {
+            // Use rawValue (without trim) to preserve typed spaces in "Outros" text.
+            if (/^\s*Outros:\s*/.test(rawValue)) {
                 selected.add('Outros');
-                other = value.replace(/^Outros:\s*/, '');
+                other = rawValue.replace(/^\s*Outros:\s*/, '');
                 return;
             }
 

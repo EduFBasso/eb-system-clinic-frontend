@@ -13,6 +13,7 @@ type Props = {
     required?: boolean;
     hint?: string;
     error?: string;
+    disabled?: boolean;
 };
 
 export default function SelectField({
@@ -25,6 +26,7 @@ export default function SelectField({
     required,
     hint,
     error,
+    disabled,
 }: Props) {
     return (
         <label className={styles.field}>
@@ -46,6 +48,7 @@ export default function SelectField({
                 name={name}
                 value={value}
                 onChange={onChange}
+                disabled={disabled}
             >
                 <option value=''>{placeholder ?? 'Selecione…'}</option>
                 {options.map(opt => (

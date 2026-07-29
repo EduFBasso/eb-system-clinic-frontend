@@ -21,6 +21,7 @@ interface Props {
     handleChange: ChangeHandler;
     feedback?: { type: 'error'; message: string } | null;
     isEdit?: boolean;
+    lockRequiredFields?: boolean;
 }
 
 export default function ClientPersonalDataForm({
@@ -28,6 +29,7 @@ export default function ClientPersonalDataForm({
     handleChange,
     feedback,
     isEdit = false,
+    lockRequiredFields = false,
 }: Props) {
     const { theme } = useTheme();
 
@@ -56,6 +58,7 @@ export default function ClientPersonalDataForm({
                         required
                         placeholder='Nome'
                         autoComplete='given-name'
+                        disabled={lockRequiredFields}
                     />
                     <InputField
                         label='Sobrenome'
@@ -65,6 +68,7 @@ export default function ClientPersonalDataForm({
                         required
                         placeholder='Sobrenome'
                         autoComplete='family-name'
+                        disabled={lockRequiredFields}
                     />
                     <SelectField
                         label='Sexo'
@@ -93,6 +97,7 @@ export default function ClientPersonalDataForm({
                         type='tel'
                         placeholder='(11) 99999-9999'
                         autoComplete='tel'
+                        disabled={lockRequiredFields}
                     />
                     <InputField
                         label='E-mail'

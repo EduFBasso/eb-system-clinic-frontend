@@ -12,6 +12,8 @@ type Props = {
     hint?: string;
     error?: string;
     autoComplete?: string;
+    disabled?: boolean;
+    readOnly?: boolean;
 };
 
 export default function InputField({
@@ -25,6 +27,8 @@ export default function InputField({
     hint,
     error,
     autoComplete,
+    disabled,
+    readOnly,
 }: Props) {
     return (
         <label className={styles.field}>
@@ -49,6 +53,8 @@ export default function InputField({
                 onChange={onChange}
                 placeholder={placeholder}
                 autoComplete={autoComplete}
+                disabled={disabled}
+                readOnly={readOnly}
             />
             {error ? (
                 <span className={styles.error}>{error}</span>

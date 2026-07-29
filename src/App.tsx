@@ -25,6 +25,7 @@ import ProductListPage from './pages/Catalog/ProductListPage';
 import ServiceListPage from './pages/Catalog/ServiceListPage';
 import ConsultaPage from './pages/ConsultaPage';
 import OdontoArcadeSimplifiedPage from './pages/OdontoArcadeSimplifiedPage';
+import AnamnesisPublicPage from './pages/AnamnesisPublicPage';
 import {
     hydrateAgendaSettings,
     resetAgendaSettings,
@@ -122,6 +123,10 @@ function App() {
                     />
                     <Route path='/admin' element={<AdminPage />} />
                     <Route path='/consulta' element={<ConsultaPage />} />
+                    <Route
+                        path='/anamnesis/public'
+                        element={<AnamnesisPublicPage />}
+                    />
                     <Route
                         path='/odonto/arcada/:clientId'
                         element={<OdontoArcadeSimplifiedPage />}

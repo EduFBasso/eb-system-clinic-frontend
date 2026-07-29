@@ -32,7 +32,9 @@
 }
 
 .input::placeholder {
-    color: var(--color-text-muted);
+    color: color-mix(in srgb, var(--color-text-muted) 78%, white 22%);
+    font-style: italic;
+    opacity: 0.95;
 }
 
 .input:hover,

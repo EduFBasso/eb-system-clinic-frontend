@@ -70,6 +70,18 @@ export default defineConfig({
                 target: 'http://localhost:8000',
                 changeOrigin: true,
                 secure: false,
+                bypass(req) {
+                    const url = req.url ?? '';
+                    // Keep API endpoints on backend.
+                    if (
+                        url.startsWith('/anamnesis/fields') ||
+                        url.startsWith('/anamnesis/responses')
+                    ) {
+                        return null; // proxy
+                    }
+                    // Public/client routes under /anamnesis/* should be handled by React Router.
+                    return '/index.html';
+                },
             },
             '/inventory': {
                 target: 'http://localhost:8000',

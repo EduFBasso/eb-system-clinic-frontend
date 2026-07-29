@@ -35,10 +35,10 @@ import { useFinalizeAppointment } from '../../hooks/useFinalizeAppointment';
 import { useClientOngoingState } from '../../hooks/useClientOngoingState';
 import { formatTime } from '../../utils/timeFormat';
 import { openClientForm } from '../../utils/openClientForm';
-import { BudgetModal } from '../BudgetModal/BudgetModal';
 import { useNowTick } from '../../hooks/useNowTick';
 import { emit } from '../../events/bus';
 import { getAccessToken } from '../../utils/auth/session';
+import { AppModal } from '../Modal/Modal';
 
 interface ClientCardProps {
     client: ClientBasic;
@@ -158,7 +158,11 @@ function ClientCardBase({
         effectivePending: isPending,
         openPendingActions,
         tryOpenPendingElseQuick,
-    } = useClientPendingState({ client, now, probeEnabled: ENABLE_ONGOING_PROBE });
+    } = useClientPendingState({
+        client,
+        now,
+        probeEnabled: ENABLE_ONGOING_PROBE,
+    });
 
     // Mostrar seção de agenda somente se há algo concreto (agendamento atual ou em andamento) ou futuros carregados.
     // Estado pendente isolado não exibe cabeçalho/tipo para manter UI minimalista.
@@ -172,7 +176,8 @@ function ClientCardBase({
     const effectiveOngoing = isOngoing && !isTomorrowFilter;
 
     const hasAgendaLine =
-        (isScheduled || effectiveOngoing || futureAppointments.length > 0) && !isPending;
+        (isScheduled || effectiveOngoing || futureAppointments.length > 0) &&
+        !isPending;
 
     // Ações unificadas (+) para agenda e fallback
     const createActionAgenda = useClientCreateAction({
@@ -236,7 +241,9 @@ function ClientCardBase({
         [client],
     );
     const cardRef = React.useRef<HTMLDivElement | null>(null);
-    const [budgetOpen, setBudgetOpen] = React.useState(false);
+    const [editActionsOpen, setEditActionsOpen] = React.useState(false);
+    const [sendingAnamnesisLink, setSendingAnamnesisLink] =
+        React.useState(false);
 
     const openGlobalMonthlyAgenda = React.useCallback(
         (dateISO?: string | null) => {
@@ -302,15 +309,131 @@ function ClientCardBase({
     // (isTomorrowFilter e effectiveOngoing já declarados acima, antes de hasAgendaLine)
     const activeStartISO = isTomorrowFilter
         ? (notifyAppt?.start_at ?? null)
-        : (displayStartISO || client.next_appointment_start_at || null);
+        : displayStartISO || client.next_appointment_start_at || null;
     const activeEndISO = isTomorrowFilter
         ? (notifyAppt?.end_at ?? null)
-        : (displayEndISO || client.next_appointment_end_at || null);
+        : displayEndISO || client.next_appointment_end_at || null;
     // Ocultar o bloco "Próximos compromissos" quando um filtro de dia específico está ativo
     const hideFutureList = filterMode === 'today' || filterMode === 'tomorrow';
     const cardClassNames = [styles.card, selected ? styles.cardSelected : '']
         .filter(Boolean)
         .join(' ');
+
+    const openEditClientFlow = React.useCallback(() => {
+        const token = getAccessToken();
+        if (!token) {
+            onView(client);
+            return;
+        }
+        openClientForm({ id: client.id, navigate });
+    }, [client, navigate, onView]);
+
+    const sendAnamnesisByWhatsApp = React.useCallback(async () => {
+        const token = getAccessToken();
+        if (!token) {
+            window.dispatchEvent(
+                new CustomEvent('systemMessage', {
+                    detail: {
+                        text: 'Sessão expirada. Faça login novamente para enviar o link.',
+                        type: 'error',
+                    },
+                }),
+            );
+            return;
+        }
+
+        const rawPhone = (client.phone || '').replace(/\D/g, '');
+        if (!rawPhone) {
+            window.dispatchEvent(
+                new CustomEvent('systemMessage', {
+                    detail: {
+                        text: 'Telefone do cliente não cadastrado.',
+                        type: 'error',
+                    },
+                }),
+            );
+            return;
+        }
+
+        const phoneE164 = rawPhone.startsWith('55')
+            ? rawPhone
+            : `55${rawPhone}`;
+
+        setSendingAnamnesisLink(true);
+        try {
+            const response = await fetch(
+                `${API_BASE}/register/clients/${client.id}/generate-anamnesis-token/`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+
+            if (!response.ok) {
+                throw new Error('Não foi possível gerar o link de anamnese.');
+            }
+
+            const data = (await response.json()) as { token?: string };
+            if (!data?.token) {
+                throw new Error(
+                    'Token de anamnese não retornado pelo servidor.',
+                );
+            }
+
+            const basePublicUrl =
+                (
+                    import.meta.env.VITE_PUBLIC_ANAMNESIS_BASE_URL as
+                        | string
+                        | undefined
+                )?.trim() || window.location.origin;
+            const normalizedBase = basePublicUrl.replace(/\/+$/, '');
+            const link = `${normalizedBase}/anamnesis/public?token=${encodeURIComponent(data.token)}`;
+            const message = `Olá ${client.first_name}, por favor preencha sua ficha ou atualize seus dados: ${link}`;
+
+            const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneE164}&text=${encodeURIComponent(message)}`;
+            const opened = window.open(
+                whatsappUrl,
+                '_blank',
+                'noopener,noreferrer',
+            );
+            setEditActionsOpen(false);
+
+            window.dispatchEvent(
+                new CustomEvent('systemMessage', {
+                    detail: {
+                        text: opened
+                            ? 'Link de anamnese aberto no WhatsApp.'
+                            : 'Pop-up bloqueado pelo navegador. Permita pop-ups para abrir o WhatsApp em nova aba.',
+                        type: opened ? 'success' : 'error',
+                    },
+                }),
+            );
+        } catch (error) {
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : 'Falha ao solicitar link de anamnese.';
+            window.dispatchEvent(
+                new CustomEvent('systemMessage', {
+                    detail: { text: message, type: 'error' },
+                }),
+            );
+        } finally {
+            setSendingAnamnesisLink(false);
+        }
+    }, [client.first_name, client.id, client.phone]);
+
+    const handleRequestAnamnesisClick = React.useCallback(
+        (event: React.MouseEvent<HTMLButtonElement>) => {
+            event.preventDefault();
+            event.stopPropagation();
+            void sendAnamnesisByWhatsApp();
+        },
+        [sendAnamnesisByWhatsApp],
+    );
 
     return (
         <div
@@ -366,12 +489,7 @@ function ClientCardBase({
                         title='Editar cliente'
                         onClick={e => {
                             e.stopPropagation();
-                            const token = getAccessToken();
-                            if (!token) {
-                                onView(client);
-                                return;
-                            }
-                            openClientForm({ id: client.id, navigate });
+                            setEditActionsOpen(true);
                         }}
                     >
                         <FaEdit color={iconColor} />
@@ -416,26 +534,6 @@ function ClientCardBase({
                 <span className={styles.value} style={{ color: valueColor }}>
                     {formatPhone(client.phone)}
                 </span>
-                <button
-                    className={styles.iconButton}
-                    title='Orçamento via WhatsApp'
-                    onClick={e => {
-                        e.stopPropagation();
-                        setBudgetOpen(true);
-                    }}
-                >
-                    <span
-                        style={{
-                            fontWeight: 900,
-                            color: 'var(--color-primary)',
-                            fontFamily:
-                                'system-ui, Segoe UI, Roboto, sans-serif',
-                        }}
-                        aria-hidden
-                    >
-                        🧾
-                    </span>
-                </button>
                 <a
                     className={styles.iconButton}
                     title='WhatsApp'
@@ -542,12 +640,15 @@ function ClientCardBase({
                                             /* noop */
                                         }
                                         // Usa mesma lógica do minicard daily: tenta abrir pendente ou fallback rápido
-                                        await tryOpenPendingElseQuick(() => {
-                                            // Se não houver nada pendente inesperadamente, apenas não faz nada (ou poderíamos abrir criação)
-                                        }, {
-                                            kind: 'home',
-                                            clientId: client.id,
-                                        });
+                                        await tryOpenPendingElseQuick(
+                                            () => {
+                                                // Se não houver nada pendente inesperadamente, apenas não faz nada (ou poderíamos abrir criação)
+                                            },
+                                            {
+                                                kind: 'home',
+                                                clientId: client.id,
+                                            },
+                                        );
                                     }}
                                 />
                             ) : (
@@ -627,8 +728,7 @@ function ClientCardBase({
                                 title='Editar agendamento'
                                 onClick={e => {
                                     e.stopPropagation();
-                                    const token =
-                                        getAccessToken();
+                                    const token = getAccessToken();
                                     fetch(
                                         `${API_BASE}/agenda/appointments/${client.next_appointment_id}/`,
                                         {
@@ -728,12 +828,21 @@ function ClientCardBase({
                                 <button
                                     type='button'
                                     className={`${styles.actionButton} ${styles.actionScheduled}`}
-                                    title={client.phone ? 'Enviar aviso de confirmação via WhatsApp' : 'Telefone não cadastrado'}
-                                    style={{ fontWeight: 700, opacity: client.phone ? 1 : 0.45 }}
+                                    title={
+                                        client.phone
+                                            ? 'Enviar aviso de confirmação via WhatsApp'
+                                            : 'Telefone não cadastrado'
+                                    }
+                                    style={{
+                                        fontWeight: 700,
+                                        opacity: client.phone ? 1 : 0.45,
+                                    }}
                                     onClick={e => {
                                         e.stopPropagation();
                                         if (!client.phone) {
-                                            alert('Telefone não cadastrado para este cliente.');
+                                            alert(
+                                                'Telefone não cadastrado para este cliente.',
+                                            );
                                             return;
                                         }
                                         // Prioridade: activeStartISO (já resolve tomorrow ou today corretamente)
@@ -768,22 +877,50 @@ function ClientCardBase({
                                             ? ` com ${profFirstName}`
                                             : '';
                                         // Rótulo do dia: compara data real do agendamento com hoje/amanhã
-                                        const apptDate = sIso ? new Date(sIso) : null;
-                                        const datePart = apptDate && !isNaN(apptDate.getTime())
-                                            ? `, ${String(apptDate.getDate()).padStart(2, '0')}/${String(apptDate.getMonth() + 1).padStart(2, '0')}`
-                                            : '';
+                                        const apptDate = sIso
+                                            ? new Date(sIso)
+                                            : null;
+                                        const datePart =
+                                            apptDate &&
+                                            !isNaN(apptDate.getTime())
+                                                ? `, ${String(apptDate.getDate()).padStart(2, '0')}/${String(apptDate.getMonth() + 1).padStart(2, '0')}`
+                                                : '';
                                         let dayLabel: string;
-                                        if (apptDate && !isNaN(apptDate.getTime())) {
+                                        if (
+                                            apptDate &&
+                                            !isNaN(apptDate.getTime())
+                                        ) {
                                             const _now = new Date();
-                                            const todayDay = new Date(_now.getFullYear(), _now.getMonth(), _now.getDate());
-                                            const tomorrowDay = new Date(_now.getFullYear(), _now.getMonth(), _now.getDate() + 1);
-                                            const apptDay = new Date(apptDate.getFullYear(), apptDate.getMonth(), apptDate.getDate());
-                                            if (apptDay.getTime() === tomorrowDay.getTime()) {
+                                            const todayDay = new Date(
+                                                _now.getFullYear(),
+                                                _now.getMonth(),
+                                                _now.getDate(),
+                                            );
+                                            const tomorrowDay = new Date(
+                                                _now.getFullYear(),
+                                                _now.getMonth(),
+                                                _now.getDate() + 1,
+                                            );
+                                            const apptDay = new Date(
+                                                apptDate.getFullYear(),
+                                                apptDate.getMonth(),
+                                                apptDate.getDate(),
+                                            );
+                                            if (
+                                                apptDay.getTime() ===
+                                                tomorrowDay.getTime()
+                                            ) {
                                                 dayLabel = `amanhã${datePart}`;
-                                            } else if (apptDay.getTime() === todayDay.getTime()) {
+                                            } else if (
+                                                apptDay.getTime() ===
+                                                todayDay.getTime()
+                                            ) {
                                                 dayLabel = `hoje${datePart}`;
                                             } else {
-                                                dayLabel = datePart.replace(/^, /, '');
+                                                dayLabel = datePart.replace(
+                                                    /^, /,
+                                                    '',
+                                                );
                                             }
                                         } else {
                                             dayLabel = 'hoje';
@@ -870,18 +1007,46 @@ function ClientCardBase({
                             borderRadius: 1,
                         }}
                     />
-                    {(client.next_appointment_start_at || pendingAppt?.start_at) && (
+                    {(client.next_appointment_start_at ||
+                        pendingAppt?.start_at) && (
                         <div className={styles.infoRow}>
-                            <span className={styles.label} style={{ color: labelColor, fontWeight: 'bold' }}>Data:</span>
-                            <span className={styles.value} style={{ color: valueColor }}>
+                            <span
+                                className={styles.label}
+                                style={{
+                                    color: labelColor,
+                                    fontWeight: 'bold',
+                                }}
+                            >
+                                Data:
+                            </span>
+                            <span
+                                className={styles.value}
+                                style={{ color: valueColor }}
+                            >
                                 {(() => {
-                                    const sIso = (client.next_appointment_start_at || pendingAppt?.start_at)!;
-                                    const eIso = client.next_appointment_end_at || pendingAppt?.end_at || null;
+                                    const sIso =
+                                        (client.next_appointment_start_at ||
+                                            pendingAppt?.start_at)!;
+                                    const eIso =
+                                        client.next_appointment_end_at ||
+                                        pendingAppt?.end_at ||
+                                        null;
                                     const s = new Date(sIso);
-                                    const wd = s.toLocaleDateString('pt-BR', { weekday: 'short' })
-                                        .replace('.', '').replace(/\b(\w)/, c => c.toUpperCase());
-                                    const dd = String(s.getDate()).padStart(2, '0');
-                                    const mm = String(s.getMonth() + 1).padStart(2, '0');
+                                    const wd = s
+                                        .toLocaleDateString('pt-BR', {
+                                            weekday: 'short',
+                                        })
+                                        .replace('.', '')
+                                        .replace(/\b(\w)/, c =>
+                                            c.toUpperCase(),
+                                        );
+                                    const dd = String(s.getDate()).padStart(
+                                        2,
+                                        '0',
+                                    );
+                                    const mm = String(
+                                        s.getMonth() + 1,
+                                    ).padStart(2, '0');
                                     const fs = formatTime(sIso);
                                     const fe = eIso ? formatTime(eIso) : '';
                                     return `${wd} ${dd}/${mm}, ${fs}${fe ? ` - ${fe}` : ''}`;
@@ -915,12 +1080,15 @@ function ClientCardBase({
                                 } catch {
                                     /* noop */
                                 }
-                                await tryOpenPendingElseQuick(() => {
-                                    /* noop fallback */
-                                }, {
-                                    kind: 'home',
-                                    clientId: client.id,
-                                });
+                                await tryOpenPendingElseQuick(
+                                    () => {
+                                        /* noop fallback */
+                                    },
+                                    {
+                                        kind: 'home',
+                                        clientId: client.id,
+                                    },
+                                );
                             }}
                         />
                     </div>
@@ -972,16 +1140,52 @@ function ClientCardBase({
                     </div>
                 </div>
             )}
-            {/* Modal de Cobrança independente da agenda */}
-            {/* charge modal removed */}
-            {budgetOpen && (
-                <BudgetModal
-                    open={budgetOpen}
-                    onClose={() => setBudgetOpen(false)}
-                    clientName={`${client.first_name} ${client.last_name}`}
-                    clientPhone={client.phone}
-                />
-            )}
+
+            <AppModal
+                open={editActionsOpen}
+                onClose={() => {
+                    if (!sendingAnamnesisLink) setEditActionsOpen(false);
+                }}
+                closeOnEnter={false}
+                disableEscapeKeyDown={sendingAnamnesisLink}
+                disableBackdropClose={sendingAnamnesisLink}
+                unmountOnClose
+            >
+                <div className={styles.quickActionsModal}>
+                    <h3 className={styles.quickActionsTitle}>Editar cliente</h3>
+                    <p className={styles.quickActionsText}>
+                        Escolha como deseja continuar o atendimento.
+                    </p>
+                    <button
+                        type='button'
+                        className={`${styles.quickActionButton} ${styles.quickActionPrimary}`}
+                        onClick={() => {
+                            setEditActionsOpen(false);
+                            openEditClientFlow();
+                        }}
+                    >
+                        Editar Prontuário do Cliente
+                    </button>
+                    <button
+                        type='button'
+                        className={`${styles.quickActionButton} ${styles.quickActionWhatsApp}`}
+                        onClick={handleRequestAnamnesisClick}
+                        disabled={sendingAnamnesisLink}
+                    >
+                        {sendingAnamnesisLink
+                            ? 'Gerando link...'
+                            : 'Solicitar Preenchimento via WhatsApp'}
+                    </button>
+                    <button
+                        type='button'
+                        className={styles.quickActionCancel}
+                        onClick={() => setEditActionsOpen(false)}
+                        disabled={sendingAnamnesisLink}
+                    >
+                        Cancelar
+                    </button>
+                </div>
+            </AppModal>
         </div>
     );
 }
