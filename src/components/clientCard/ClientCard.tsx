@@ -34,11 +34,17 @@ import { useFinalizeAppointment } from '../../hooks/useFinalizeAppointment';
 // Replaced latch/snapshot/sweep logic by consolidated hook
 import { useClientOngoingState } from '../../hooks/useClientOngoingState';
 import { formatTime } from '../../utils/timeFormat';
+import { formatAppointmentDateRange } from '../../utils/agendaPresentation';
 import { openClientForm } from '../../utils/openClientForm';
 import { useNowTick } from '../../hooks/useNowTick';
 import { emit } from '../../events/bus';
 import { getAccessToken } from '../../utils/auth/session';
-import { AppModal } from '../Modal/Modal';
+import EditClientActionsModal from './EditClientActionsModal';
+import {
+    buildWhatsAppUrl,
+    normalizePhoneDigits,
+    openWhatsAppInNewTab,
+} from '../../utils/whatsapp';
 
 interface ClientCardProps {
     client: ClientBasic;
@@ -328,6 +334,11 @@ function ClientCardBase({
         openClientForm({ id: client.id, navigate });
     }, [client, navigate, onView]);
 
+    const directWhatsappHref = React.useMemo(() => {
+        const digits = normalizePhoneDigits(client.phone);
+        return buildWhatsAppUrl({ phoneE164: digits });
+    }, [client.phone]);
+
     const sendAnamnesisByWhatsApp = React.useCallback(async () => {
         const token = getAccessToken();
         if (!token) {
@@ -342,8 +353,8 @@ function ClientCardBase({
             return;
         }
 
-        const rawPhone = (client.phone || '').replace(/\D/g, '');
-        if (!rawPhone) {
+        const normalizedPhone = normalizePhoneDigits(client.phone);
+        if (!normalizedPhone) {
             window.dispatchEvent(
                 new CustomEvent('systemMessage', {
                     detail: {
@@ -355,9 +366,9 @@ function ClientCardBase({
             return;
         }
 
-        const phoneE164 = rawPhone.startsWith('55')
-            ? rawPhone
-            : `55${rawPhone}`;
+        const phoneE164 = normalizedPhone.startsWith('55')
+            ? normalizedPhone
+            : `55${normalizedPhone}`;
 
         setSendingAnamnesisLink(true);
         try {
@@ -393,21 +404,20 @@ function ClientCardBase({
             const link = `${normalizedBase}/anamnesis/public?token=${encodeURIComponent(data.token)}`;
             const message = `Olá ${client.first_name}, por favor preencha sua ficha ou atualize seus dados: ${link}`;
 
-            const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneE164}&text=${encodeURIComponent(message)}`;
-            const opened = window.open(
-                whatsappUrl,
-                '_blank',
-                'noopener,noreferrer',
-            );
+            const openResult = openWhatsAppInNewTab({
+                phoneE164,
+                text: message,
+            });
             setEditActionsOpen(false);
 
             window.dispatchEvent(
                 new CustomEvent('systemMessage', {
                     detail: {
-                        text: opened
-                            ? 'Link de anamnese aberto no WhatsApp.'
-                            : 'Pop-up bloqueado pelo navegador. Permita pop-ups para abrir o WhatsApp em nova aba.',
-                        type: opened ? 'success' : 'error',
+                        text:
+                            openResult === 'opened'
+                                ? 'Link de anamnese aberto no WhatsApp.'
+                                : 'Pop-up bloqueado pelo navegador. Permita pop-ups para abrir o WhatsApp em nova aba.',
+                        type: openResult === 'opened' ? 'success' : 'error',
                     },
                 }),
             );
@@ -426,14 +436,9 @@ function ClientCardBase({
         }
     }, [client.first_name, client.id, client.phone]);
 
-    const handleRequestAnamnesisClick = React.useCallback(
-        (event: React.MouseEvent<HTMLButtonElement>) => {
-            event.preventDefault();
-            event.stopPropagation();
-            void sendAnamnesisByWhatsApp();
-        },
-        [sendAnamnesisByWhatsApp],
-    );
+    const requestAnamnesisFromModal = React.useCallback(() => {
+        void sendAnamnesisByWhatsApp();
+    }, [sendAnamnesisByWhatsApp]);
 
     return (
         <div
@@ -537,9 +542,7 @@ function ClientCardBase({
                 <a
                     className={styles.iconButton}
                     title='WhatsApp'
-                    href={`https://wa.me/${
-                        client.phone ? client.phone.replace(/\D/g, '') : ''
-                    }`}
+                    href={directWhatsappHref}
                     target='_blank'
                     rel='noopener noreferrer'
                     onClick={e => e.stopPropagation()}
@@ -698,29 +701,11 @@ function ClientCardBase({
                             className={styles.value}
                             style={{ color: labelColor, fontWeight: 'bold' }}
                         >
-                            {(() => {
-                                const sIso = activeStartISO;
-                                const eIso = activeEndISO;
-                                if (!sIso || !eIso) return '—';
-                                const s = new Date(sIso);
-                                const e = new Date(eIso);
-                                if (isNaN(s.getTime()) || isNaN(e.getTime()))
-                                    return '—';
-                                const wd = s
-                                    .toLocaleDateString('pt-BR', {
-                                        weekday: 'short',
-                                    })
-                                    .replace('.', '')
-                                    .replace(/\b(\w)/, c => c.toUpperCase());
-                                const dd = String(s.getDate()).padStart(2, '0');
-                                const mm = String(s.getMonth() + 1).padStart(
-                                    2,
-                                    '0',
-                                );
-                                const fs = formatTime(sIso);
-                                const fe = formatTime(eIso);
-                                return `${wd} ${dd}/${mm}, ${fs} - ${fe}`;
-                            })()}
+                            {formatAppointmentDateRange({
+                                startIso: activeStartISO,
+                                endIso: activeEndISO,
+                                requireEnd: true,
+                            })}
                         </span>
                         {client.next_appointment_id && !effectiveOngoing && (
                             <button
@@ -926,19 +911,18 @@ function ClientCardBase({
                                             dayLabel = 'hoje';
                                         }
                                         const waText = `Olá ${client.first_name}, ${visitType} agendada para ${dayLabel} às ${time}${profPart}, confirma sua presença?`;
-                                        const rawPhone = (
-                                            client.phone || ''
-                                        ).replace(/\D/g, '');
+                                        const normalizedPhone =
+                                            normalizePhoneDigits(client.phone);
                                         const waPhone =
-                                            rawPhone &&
-                                            !rawPhone.startsWith('55')
-                                                ? `55${rawPhone}`
-                                                : rawPhone;
+                                            normalizedPhone &&
+                                            !normalizedPhone.startsWith('55')
+                                                ? `55${normalizedPhone}`
+                                                : normalizedPhone;
                                         if (!waPhone) return;
-                                        window.open(
-                                            `https://wa.me/${waPhone}?text=${encodeURIComponent(waText)}`,
-                                            '_blank',
-                                        );
+                                        openWhatsAppInNewTab({
+                                            phoneE164: waPhone,
+                                            text: waText,
+                                        });
                                     }}
                                 >
                                     Avisar
@@ -1023,34 +1007,16 @@ function ClientCardBase({
                                 className={styles.value}
                                 style={{ color: valueColor }}
                             >
-                                {(() => {
-                                    const sIso =
-                                        (client.next_appointment_start_at ||
-                                            pendingAppt?.start_at)!;
-                                    const eIso =
+                                {formatAppointmentDateRange({
+                                    startIso:
+                                        client.next_appointment_start_at ||
+                                        pendingAppt?.start_at ||
+                                        null,
+                                    endIso:
                                         client.next_appointment_end_at ||
                                         pendingAppt?.end_at ||
-                                        null;
-                                    const s = new Date(sIso);
-                                    const wd = s
-                                        .toLocaleDateString('pt-BR', {
-                                            weekday: 'short',
-                                        })
-                                        .replace('.', '')
-                                        .replace(/\b(\w)/, c =>
-                                            c.toUpperCase(),
-                                        );
-                                    const dd = String(s.getDate()).padStart(
-                                        2,
-                                        '0',
-                                    );
-                                    const mm = String(
-                                        s.getMonth() + 1,
-                                    ).padStart(2, '0');
-                                    const fs = formatTime(sIso);
-                                    const fe = eIso ? formatTime(eIso) : '';
-                                    return `${wd} ${dd}/${mm}, ${fs}${fe ? ` - ${fe}` : ''}`;
-                                })()}
+                                        null,
+                                })}
                             </span>
                         </div>
                     )}
@@ -1141,51 +1107,17 @@ function ClientCardBase({
                 </div>
             )}
 
-            <AppModal
-                open={editActionsOpen}
-                onClose={() => {
-                    if (!sendingAnamnesisLink) setEditActionsOpen(false);
+            <EditClientActionsModal
+                isOpen={editActionsOpen}
+                onClose={() => setEditActionsOpen(false)}
+                clientName={`${client.first_name} ${client.last_name}`}
+                onEditRecord={() => {
+                    setEditActionsOpen(false);
+                    openEditClientFlow();
                 }}
-                closeOnEnter={false}
-                disableEscapeKeyDown={sendingAnamnesisLink}
-                disableBackdropClose={sendingAnamnesisLink}
-                unmountOnClose
-            >
-                <div className={styles.quickActionsModal}>
-                    <h3 className={styles.quickActionsTitle}>Editar cliente</h3>
-                    <p className={styles.quickActionsText}>
-                        Escolha como deseja continuar o atendimento.
-                    </p>
-                    <button
-                        type='button'
-                        className={`${styles.quickActionButton} ${styles.quickActionPrimary}`}
-                        onClick={() => {
-                            setEditActionsOpen(false);
-                            openEditClientFlow();
-                        }}
-                    >
-                        Editar Prontuário do Cliente
-                    </button>
-                    <button
-                        type='button'
-                        className={`${styles.quickActionButton} ${styles.quickActionWhatsApp}`}
-                        onClick={handleRequestAnamnesisClick}
-                        disabled={sendingAnamnesisLink}
-                    >
-                        {sendingAnamnesisLink
-                            ? 'Gerando link...'
-                            : 'Solicitar Preenchimento via WhatsApp'}
-                    </button>
-                    <button
-                        type='button'
-                        className={styles.quickActionCancel}
-                        onClick={() => setEditActionsOpen(false)}
-                        disabled={sendingAnamnesisLink}
-                    >
-                        Cancelar
-                    </button>
-                </div>
-            </AppModal>
+                onRequestAnamnesis={requestAnamnesisFromModal}
+                loading={sendingAnamnesisLink}
+            />
         </div>
     );
 }
