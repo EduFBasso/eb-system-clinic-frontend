@@ -1,6 +1,6 @@
 import { formatTime } from './timeFormat';
 
-interface AppointmentDateRangeArgs {
+export interface AppointmentDateRangeArgs {
     startIso?: string | null;
     endIso?: string | null;
     requireEnd?: boolean;

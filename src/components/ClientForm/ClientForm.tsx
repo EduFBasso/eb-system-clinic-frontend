@@ -64,7 +64,7 @@ function buildDefaultAnamneseBase(
     const clinicalHistory = Array.isArray(clinicalHistoryRaw)
         ? clinicalHistoryRaw.filter(Boolean).join(', ')
         : typeof clinicalHistoryRaw === 'string'
-          ? clinicalHistoryRaw.trim()
+          ? clinicalHistoryRaw
           : '';
 
     return {
@@ -245,7 +245,7 @@ export function ClientForm({
             return value.filter(Boolean).join(', ');
         }
         if (typeof value === 'string') {
-            return value.trim();
+            return value;
         }
         return '';
     }

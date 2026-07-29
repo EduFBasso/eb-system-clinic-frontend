@@ -2,13 +2,7 @@
 import React from 'react';
 import { focusClientCard } from '../../utils/focusClientCard';
 import styles from './ClientCard.module.css';
-import {
-    FaEye,
-    FaWhatsapp,
-    FaCalendarAlt,
-    FaPlus,
-    FaTooth,
-} from 'react-icons/fa';
+import { FaEye, FaWhatsapp, FaTooth } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useClientCreateAction } from '../../hooks/useClientCreateAction';
 import { API_BASE } from '../../config/api';
@@ -21,25 +15,19 @@ import { parseDOB, calcAge } from '../../utils/dateOfBirth';
 import { useClientCardStyle } from '../clientCard/useClientCardStyle';
 // PendingActionsModal é gerenciado globalmente (Home) via evento 'pendingActions:open'
 import { useClientPendingState } from '../../hooks/useClientPendingState';
-import FinalizeButton from '../clientCard/FinalizeButton';
-// SolveButton lives in clientCard folder along with FinalizeButton
-import SolveButton from '../clientCard/SolveButton';
 import { useClientCardFocusScroll } from '../clientCard/useClientCardFocusScroll';
-import {
-    FutureAppointmentsList,
-    useClientFutureAppointments,
-} from '../../domain/futureAppointments';
+import { useClientFutureAppointments } from '../../domain/futureAppointments';
 // (hysteresis & appointment state consolidated inside hooks)
 import { useFinalizeAppointment } from '../../hooks/useFinalizeAppointment';
 // Replaced latch/snapshot/sweep logic by consolidated hook
 import { useClientOngoingState } from '../../hooks/useClientOngoingState';
-import { formatTime } from '../../utils/timeFormat';
 import { formatAppointmentDateRange } from '../../utils/agendaPresentation';
 import { openClientForm } from '../../utils/openClientForm';
 import { useNowTick } from '../../hooks/useNowTick';
 import { emit } from '../../events/bus';
 import { getAccessToken } from '../../utils/auth/session';
 import EditClientActionsModal from './EditClientActionsModal';
+import ClientCardAgendaSection from './ClientCardAgendaSection';
 import {
     buildWhatsAppUrl,
     normalizePhoneDigits,
@@ -598,514 +586,51 @@ function ClientCardBase({
                 </div>
             )}
 
-            {/* Separator between personal data and agenda info (increased spacing) */}
-            {hasAgendaLine && (
-                <div
-                    aria-hidden
-                    style={{
-                        height: 1,
-                        background: separatorColor,
-                        opacity: separatorOpacity,
-                        margin: '12px 0 12px',
-                        borderRadius: 1,
-                    }}
-                />
-            )}
-
-            {/* Agenda section below E-mail. Exibe durante agendamento OU enquanto em andamento (hasAgendaLine). */}
-            {hasAgendaLine && (
-                <>
-                    {(isScheduled ||
-                        effectiveOngoing ||
-                        futureAppointments.length > 0) && (
-                        <div className={styles.infoRow}>
-                            <span
-                                className={styles.label}
-                                style={{
-                                    color: labelColor,
-                                    fontWeight: 'bold',
-                                }}
-                            >
-                                Agenda (tipo):
-                            </span>
-                            <span
-                                className={styles.value}
-                                style={{ color: valueColor }}
-                            >
-                                {client.next_appointment_title || 'Consulta'}
-                            </span>
-                            {isPending ? (
-                                <SolveButton
-                                    onSolve={async () => {
-                                        try {
-                                            onSelect?.();
-                                        } catch {
-                                            /* noop */
-                                        }
-                                        // Usa mesma lógica do minicard daily: tenta abrir pendente ou fallback rápido
-                                        await tryOpenPendingElseQuick(
-                                            () => {
-                                                // Se não houver nada pendente inesperadamente, apenas não faz nada (ou poderíamos abrir criação)
-                                            },
-                                            {
-                                                kind: 'home',
-                                                clientId: client.id,
-                                            },
-                                        );
-                                    }}
-                                />
-                            ) : (
-                                <>
-                                    <button
-                                        className={styles.iconButton}
-                                        title={createActionAgenda.title}
-                                        disabled={createActionAgenda.disabled}
-                                        style={
-                                            createActionAgenda.disabled
-                                                ? {
-                                                      opacity: 0.45,
-                                                      cursor: 'not-allowed',
-                                                  }
-                                                : undefined
-                                        }
-                                        onClick={createActionAgenda.onClick}
-                                    >
-                                        <FaPlus color={iconColor} />
-                                    </button>
-                                    <button
-                                        className={styles.iconButton}
-                                        title='Agenda mensal'
-                                        onClick={e => {
-                                            e.stopPropagation();
-                                            openGlobalMonthlyAgenda(
-                                                displayStartISO ||
-                                                    client.next_appointment_start_at ||
-                                                    null,
-                                            );
-                                        }}
-                                    >
-                                        <FaCalendarAlt color={iconColor} />
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    )}
-                    <div className={styles.infoRow}>
-                        <span
-                            className={styles.label}
-                            style={{ color: labelColor, fontWeight: 'bold' }}
-                        >
-                            Data:
-                        </span>
-                        <span
-                            className={styles.value}
-                            style={{ color: labelColor, fontWeight: 'bold' }}
-                        >
-                            {formatAppointmentDateRange({
-                                startIso: activeStartISO,
-                                endIso: activeEndISO,
-                                requireEnd: true,
-                            })}
-                        </span>
-                        {client.next_appointment_id && !effectiveOngoing && (
-                            <button
-                                className={styles.iconButton}
-                                title='Editar agendamento'
-                                onClick={e => {
-                                    e.stopPropagation();
-                                    const token = getAccessToken();
-                                    fetch(
-                                        `${API_BASE}/agenda/appointments/${client.next_appointment_id}/`,
-                                        {
-                                            headers: {
-                                                Authorization: token
-                                                    ? `Bearer ${token}`
-                                                    : '',
-                                            },
-                                        },
-                                    )
-                                        .then(r => (r.ok ? r.json() : null))
-                                        .then(data => {
-                                            openGlobalQuickSchedule(data);
-                                        })
-                                        .catch(() => {
-                                            openGlobalQuickSchedule();
-                                        });
-                                }}
-                            >
-                                <FaEdit color={iconColor} />
-                            </button>
-                        )}
-                    </div>
-                    {(isScheduled || effectiveOngoing) &&
-                        client.next_appointment_notes?.trim() && (
-                            <div
-                                className={styles.infoRow}
-                                style={{ paddingTop: 2 }}
-                            >
-                                <span
-                                    className={styles.value}
-                                    style={{
-                                        color: valueColor,
-                                        fontSize: 13,
-                                        lineHeight: 1.35,
-                                        whiteSpace: 'pre-wrap',
-                                        overflowWrap: 'anywhere',
-                                    }}
-                                >
-                                    <span className={styles.notesText}>
-                                        {client.next_appointment_notes.trim()}
-                                    </span>
-                                </span>
-                            </div>
-                        )}
-                    {effectiveOngoing && (
-                        <div
-                            className={styles.infoRow}
-                            style={{ paddingTop: 2 }}
-                        >
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    width: '100%',
-                                    gap: 12,
-                                }}
-                            >
-                                <span
-                                    style={{
-                                        background: 'var(--color-ongoing)',
-                                        color: '#fff',
-                                        borderRadius: 6,
-                                        padding: '2px 8px',
-                                        fontWeight: 700,
-                                        fontSize: 12,
-                                        lineHeight: 1.2,
-                                    }}
-                                >
-                                    Em andamento
-                                </span>
-                                <FinalizeButton
-                                    finishing={finishing}
-                                    disabled={!effectiveApptId}
-                                    isEarly={isOngoing}
-                                    clientId={client.id}
-                                    appointmentId={effectiveApptId}
-                                    onFinalize={finalizeEarlyAware}
-                                />
-                            </div>
-                        </div>
-                    )}
-                    {isScheduled && !effectiveOngoing && (
-                        <div
-                            className={styles.infoRow}
-                            style={{ paddingTop: 2 }}
-                        >
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'flex-end',
-                                    width: '100%',
-                                }}
-                            >
-                                <button
-                                    type='button'
-                                    className={`${styles.actionButton} ${styles.actionScheduled}`}
-                                    title={
-                                        client.phone
-                                            ? 'Enviar aviso de confirmação via WhatsApp'
-                                            : 'Telefone não cadastrado'
-                                    }
-                                    style={{
-                                        fontWeight: 700,
-                                        opacity: client.phone ? 1 : 0.45,
-                                    }}
-                                    onClick={e => {
-                                        e.stopPropagation();
-                                        if (!client.phone) {
-                                            alert(
-                                                'Telefone não cadastrado para este cliente.',
-                                            );
-                                            return;
-                                        }
-                                        // Prioridade: activeStartISO (já resolve tomorrow ou today corretamente)
-                                        const sIso = activeStartISO;
-                                        const time = sIso
-                                            ? formatTime(sIso)
-                                            : '—';
-                                        const visitType =
-                                            notifyAppt?.title ||
-                                            client.next_appointment_title ||
-                                            'Consulta';
-                                        const profRaw =
-                                            localStorage.getItem(
-                                                'loggedProfessional',
-                                            );
-                                        const profFirstName: string = profRaw
-                                            ? (() => {
-                                                  try {
-                                                      const p =
-                                                          JSON.parse(profRaw);
-                                                      return (
-                                                          p?.display_name ||
-                                                          p?.first_name ||
-                                                          ''
-                                                      );
-                                                  } catch {
-                                                      return '';
-                                                  }
-                                              })()
-                                            : '';
-                                        const profPart = profFirstName
-                                            ? ` com ${profFirstName}`
-                                            : '';
-                                        // Rótulo do dia: compara data real do agendamento com hoje/amanhã
-                                        const apptDate = sIso
-                                            ? new Date(sIso)
-                                            : null;
-                                        const datePart =
-                                            apptDate &&
-                                            !isNaN(apptDate.getTime())
-                                                ? `, ${String(apptDate.getDate()).padStart(2, '0')}/${String(apptDate.getMonth() + 1).padStart(2, '0')}`
-                                                : '';
-                                        let dayLabel: string;
-                                        if (
-                                            apptDate &&
-                                            !isNaN(apptDate.getTime())
-                                        ) {
-                                            const _now = new Date();
-                                            const todayDay = new Date(
-                                                _now.getFullYear(),
-                                                _now.getMonth(),
-                                                _now.getDate(),
-                                            );
-                                            const tomorrowDay = new Date(
-                                                _now.getFullYear(),
-                                                _now.getMonth(),
-                                                _now.getDate() + 1,
-                                            );
-                                            const apptDay = new Date(
-                                                apptDate.getFullYear(),
-                                                apptDate.getMonth(),
-                                                apptDate.getDate(),
-                                            );
-                                            if (
-                                                apptDay.getTime() ===
-                                                tomorrowDay.getTime()
-                                            ) {
-                                                dayLabel = `amanhã${datePart}`;
-                                            } else if (
-                                                apptDay.getTime() ===
-                                                todayDay.getTime()
-                                            ) {
-                                                dayLabel = `hoje${datePart}`;
-                                            } else {
-                                                dayLabel = datePart.replace(
-                                                    /^, /,
-                                                    '',
-                                                );
-                                            }
-                                        } else {
-                                            dayLabel = 'hoje';
-                                        }
-                                        const waText = `Olá ${client.first_name}, ${visitType} agendada para ${dayLabel} às ${time}${profPart}, confirma sua presença?`;
-                                        const normalizedPhone =
-                                            normalizePhoneDigits(client.phone);
-                                        const waPhone =
-                                            normalizedPhone &&
-                                            !normalizedPhone.startsWith('55')
-                                                ? `55${normalizedPhone}`
-                                                : normalizedPhone;
-                                        if (!waPhone) return;
-                                        openWhatsAppInNewTab({
-                                            phoneE164: waPhone,
-                                            text: waText,
-                                        });
-                                    }}
-                                >
-                                    Avisar
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </>
-            )}
-
-            {/* Fallback bloco removido: Data agora unificada acima usando displayStartISO/displayEndISO */}
-
-            {/* Linha Data fallback revisada: só aparece quando NÃO há agenda line, NÃO está pendente e NÃO está em andamento. */}
-            {!hasAgendaLine && !isPending && !isOngoing && (
-                <div className={styles.infoRow}>
-                    <span
-                        className={styles.label}
-                        style={{ color: labelColor, fontWeight: 'bold' }}
-                    >
-                        Data:
-                    </span>
-                    <span
-                        className={styles.value}
-                        style={{ color: valueColor }}
-                    >
-                        {isScheduled ? 'Agendado' : 'Sem agendamento'}
-                    </span>
-                    <button
-                        className={styles.iconButton}
-                        title={createActionFallback.title}
-                        disabled={createActionFallback.disabled}
-                        style={
-                            createActionFallback.disabled
-                                ? { opacity: 0.45, cursor: 'not-allowed' }
-                                : undefined
-                        }
-                        onClick={createActionFallback.onClick}
-                    >
-                        <FaPlus color={iconColor} />
-                    </button>
-                    <button
-                        className={styles.iconButton}
-                        title='Agenda mensal'
-                        onClick={e => {
-                            e.stopPropagation();
-                            openGlobalMonthlyAgenda(
-                                client.next_appointment_start_at || null,
-                            );
-                        }}
-                    >
-                        <FaCalendarAlt color={iconColor} />
-                    </button>
-                </div>
-            )}
-
-            {/* Bloco pendente: separador + linha Data + linha Status/Solucionar */}
-            {isPending && !isOngoing && (
-                <>
-                    <div
-                        aria-hidden
-                        style={{
-                            height: 1,
-                            background: separatorColor,
-                            opacity: separatorOpacity,
-                            margin: '12px 0 12px',
-                            borderRadius: 1,
-                        }}
-                    />
-                    {(client.next_appointment_start_at ||
-                        pendingAppt?.start_at) && (
-                        <div className={styles.infoRow}>
-                            <span
-                                className={styles.label}
-                                style={{
-                                    color: labelColor,
-                                    fontWeight: 'bold',
-                                }}
-                            >
-                                Data:
-                            </span>
-                            <span
-                                className={styles.value}
-                                style={{ color: valueColor }}
-                            >
-                                {formatAppointmentDateRange({
-                                    startIso:
-                                        client.next_appointment_start_at ||
-                                        pendingAppt?.start_at ||
-                                        null,
-                                    endIso:
-                                        client.next_appointment_end_at ||
-                                        pendingAppt?.end_at ||
-                                        null,
-                                })}
-                            </span>
-                        </div>
-                    )}
-                    <div
-                        className={styles.infoRow}
-                        style={{ alignItems: 'center' }}
-                    >
-                        <span
-                            className={styles.label}
-                            style={{ color: labelColor, fontWeight: 'bold' }}
-                        >
-                            Status:
-                        </span>
-                        <span
-                            className={styles.value}
-                            style={{
-                                color: 'var(--color-text-secondary, #6b7280)',
-                                fontStyle: 'italic',
-                            }}
-                        >
-                            Compromisso pendente
-                        </span>
-                        <SolveButton
-                            onSolve={async () => {
-                                try {
-                                    onSelect?.();
-                                } catch {
-                                    /* noop */
-                                }
-                                await tryOpenPendingElseQuick(
-                                    () => {
-                                        /* noop fallback */
-                                    },
-                                    {
-                                        kind: 'home',
-                                        clientId: client.id,
-                                    },
-                                );
-                            }}
-                        />
-                    </div>
-                </>
-            )}
-
-            {/* Notas do próximo agendamento removidas conforme solicitação */}
-
-            {/* Linha inferior de atalhos substituída pela seção "Opções da agenda" acima */}
-
-            {/* PendingActionsModal é global (Home) */}
-            {/* QuickScheduleModal é agora o único fluxo de agendamento (ScheduleModal legacy removido) */}
-            {futureAppointments.length > 0 && !hideFutureList && (
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 4,
-                        marginTop: 4,
-                    }}
-                >
-                    <div
-                        style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 4,
-                        }}
-                    >
-                        <FutureAppointmentsList
-                            items={futureAppointments}
-                            valueColor={valueColor}
-                            iconColor={iconColor}
-                            labelColor={labelColor}
-                            clientId={client.id}
-                            onEdit={(appt: Appointment) => {
-                                openGlobalQuickSchedule(appt);
-                            }}
-                        />
-                        {loadingFuture && (
-                            <div
-                                style={{
-                                    fontSize: 11,
-                                    color: 'var(--color-text-muted)',
-                                }}
-                            >
-                                Carregando…
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
+            <ClientCardAgendaSection
+                client={client}
+                notifyAppt={notifyAppt}
+                pendingAppt={pendingAppt}
+                hasAgendaLine={hasAgendaLine}
+                isScheduled={isScheduled}
+                isPending={isPending}
+                isOngoing={isOngoing}
+                effectiveOngoing={effectiveOngoing}
+                activeStartISO={activeStartISO}
+                activeEndISO={activeEndISO}
+                displayStartISO={displayStartISO}
+                futureAppointments={futureAppointments}
+                loadingFuture={loadingFuture}
+                hideFutureList={hideFutureList}
+                createActionAgenda={createActionAgenda}
+                createActionFallback={createActionFallback}
+                labelColor={labelColor}
+                valueColor={valueColor}
+                iconColor={iconColor}
+                separatorColor={separatorColor}
+                separatorOpacity={separatorOpacity}
+                finishing={finishing}
+                effectiveApptId={effectiveApptId}
+                onFinalize={finalizeEarlyAware}
+                onOpenMonthlyAgenda={openGlobalMonthlyAgenda}
+                onOpenQuickSchedule={openGlobalQuickSchedule}
+                onSolvePending={async () => {
+                    try {
+                        onSelect?.();
+                    } catch {
+                        /* noop */
+                    }
+                    await tryOpenPendingElseQuick(
+                        () => {
+                            /* noop fallback */
+                        },
+                        {
+                            kind: 'home',
+                            clientId: client.id,
+                        },
+                    );
+                }}
+                formatDateRange={formatAppointmentDateRange}
+            />
 
             <EditClientActionsModal
                 isOpen={editActionsOpen}

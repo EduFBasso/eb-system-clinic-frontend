@@ -68,7 +68,7 @@ export default function ClientAnamnesisForm({
             // Use rawValue (without trim) to preserve typed spaces in "Outros" text.
             if (/^\s*Outros:\s*/.test(rawValue)) {
                 selected.add('Outros');
-                other = rawValue.replace(/^\s*Outros:\s*/, '');
+                other = rawValue.replace(/^\s*Outros:\s?/, '');
                 return;
             }
 
