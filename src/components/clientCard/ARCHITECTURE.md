@@ -18,6 +18,45 @@
 O objetivo da refatoração é reduzir o acoplamento, simplificar a leitura
 (arquivo hoje ~1000 linhas) e encapsular heurísticas em hooks específicos.
 
+## Mapa Atual de Componentes e Arquivos
+
+### Núcleo do Card
+
+- `ClientCard.tsx`
+        - Orquestra estado local e integra hooks de domínio (pending, ongoing,
+            create action, future appointments).
+        - Renderiza dados pessoais do cliente e delega blocos complexos para
+            subcomponentes.
+
+### Subcomponentes Extraídos (Refatoração)
+
+- `ClientCardAgendaSection.tsx`
+        - Isola todo o bloco de agenda: informações de consulta, andamento,
+            fallback de datas, pendências e lista de futuros agendamentos.
+        - Centraliza ações relacionadas à agenda (abrir agenda mensal, editar
+            agendamento, disparar confirmação via WhatsApp).
+        - Recebe formatter por props para reduzir acoplamento com detalhes de
+            apresentação.
+
+- `EditClientActionsModal.tsx`
+        - Modal mobile-friendly de decisão ao clicar em editar.
+        - Centraliza as ações: edição local do prontuário e disparo do fluxo de
+            solicitação de anamnese via WhatsApp (token + link).
+        - Isola controle visual e de bloqueio durante loading.
+
+### Utilitários Externos Relevantes
+
+- `src/utils/whatsapp.ts`
+        - Normaliza telefone (`normalizePhoneDigits`), monta URL do WhatsApp
+            (`buildWhatsAppUrl`) e abstrai abertura segura em nova aba
+            (`openWhatsAppInNewTab`).
+        - Remove lógica de string/URL de dentro do `ClientCard`.
+
+- `src/utils/agendaPresentation.ts`
+        - Centraliza formatação de datas/intervalos de agenda
+            (`formatAppointmentDateRange`).
+        - Remove duplicação de lógica de data e reduz risco de divergência visual.
+
 ## Responsabilidades Atuais
 
 - Dados básicos: renderização direta de props `client`.
@@ -25,9 +64,8 @@ O objetivo da refatoração é reduzir o acoplamento, simplificar a leitura
 - Ongoing: heurística robusta via `useClientOngoingState` (snapshot + sweep +
     probe + latch + hysterese).
 - Futuros: fetch incremental encapsulado em `useClientFutureAppointments`.
-- Edição / QuickSchedule: modal controlado localmente (`showQuick`,
-    `editingAppt`).
-- Agenda Mensal / Semanal: modais `MonthlyAgendaModal` e `WeeklyAgendaModal`.
+- Agenda: renderização principal isolada em `ClientCardAgendaSection`.
+- Edição / ações rápidas: modal isolado em `EditClientActionsModal`.
 - Ações +: botão de criação adaptativo (pendente, limite atingido, ongoing).
 - Odonto (arcada): ícone de dente (`FaTooth`) condicional por especialidade e
     navegação para `/odonto/arcada/:id`.
@@ -36,6 +74,9 @@ O objetivo da refatoração é reduzir o acoplamento, simplificar a leitura
 - Estilo: centralizado em `useClientCardStyle` (cores, bordas, supressões).
 - Scroll / Foco: efeito que responde a evento `scrollToClientCard` para
     auto-scroll suave.
+- WhatsApp: montagem de URL/abertura extraída para `src/utils/whatsapp.ts`.
+- Datas de agenda: formatação extraída para
+    `src/utils/agendaPresentation.ts`.
 
 ## Hooks Utilizados
 
@@ -84,10 +125,11 @@ O objetivo da refatoração é reduzir o acoplamento, simplificar a leitura
 - Observação: como a checagem é memoizada na montagem do card, alterações de
     especialidade no mesmo ciclo de sessão podem exigir refresh para refletir.
 
-### (A extrair) `useClientCreateAction`
+### 7. `useClientCreateAction`
 
 - Objetivo: unificar lógica do botão + considerando estados: pendente,
-    ongoing, limite atingido, edição.
+    ongoing, limite atingido e criação rápida.
+- Situação: em uso no `ClientCard` e no bloco de agenda extraído.
 
 ## Eventos Globais Relevantes
 
@@ -126,16 +168,19 @@ O objetivo da refatoração é reduzir o acoplamento, simplificar a leitura
 1. (DONE) Extrair pending logic → `useClientPendingState`.
 2. (DONE) Extrair ongoing logic → `useClientOngoingState`.
 3. (DONE) Extrair futuro: `useClientFutureAppointments`.
-4. Unificar botão +: criar `useClientCreateAction` (ou
-   `useClientScheduleAction`).
-5. Ajustar bordas de seleção (1px normal / 2px selecionado) direto no
+4. (DONE) Unificar botão + com `useClientCreateAction`.
+5. (DONE) Extrair modal de decisão de edição → `EditClientActionsModal`.
+6. (DONE) Extrair seção de agenda/consultas → `ClientCardAgendaSection`.
+7. (DONE) Externalizar utilitários de WhatsApp e apresentação de data
+    (`src/utils/whatsapp.ts`, `src/utils/agendaPresentation.ts`).
+8. Ajustar bordas de seleção (1px normal / 2px selecionado) direto no
    `useClientCardStyle`.
-6. Reduzir `ClientCard` para < ~500 linhas via movimentação de blocos auxiliares
+9. Reduzir `ClientCard` para < ~500 linhas via movimentação de blocos auxiliares
    (e.g., DataLine, AgendaHeader, FutureListSection) ou simplesmente manter JSX
    porém sem efeitos longos.
-7. Atualizar test suite para cobrir: pending fallback, latch ongoing, supress
+10. Atualizar test suite para cobrir: pending fallback, latch ongoing, supress
    pós-finalização, limite de futuros, botão + em cada cenário.
-8. Documentar invariantes e heurísticas das janelas de ongoing (já em parte
+11. Documentar invariantes e heurísticas das janelas de ongoing (já em parte
    descrito aqui).
 
 ## Próximos Passos Técnicos Imediatos
@@ -176,4 +221,4 @@ O objetivo da refatoração é reduzir o acoplamento, simplificar a leitura
 
 ---
 
-Última atualização: 2026-04-28
+Última atualização: 2026-07-29
