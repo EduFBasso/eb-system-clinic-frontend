@@ -4,8 +4,14 @@
 :root {
     --header-h: 80px;
     --faixa-h: 8px;
-    --navbar-h: 63px; /* fallback inicial antes da medição da navbar */
+    --navbar-h: 63px; /* desktop */
     --navbar-height: var(--navbar-h);
+}
+
+@media screen and (max-width: 600px) {
+    :root {
+        --navbar-h: 128px; /* mobile em duas colunas/linhas */
+    }
 }
 
 /* ── Print / Salvar como PDF ─────────────────────────────── */

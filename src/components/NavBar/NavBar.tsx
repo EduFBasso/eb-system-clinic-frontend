@@ -135,7 +135,6 @@ export const NavBar: React.FC<NavBarProps> = ({
             document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const navBarRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
         const token = getAccessToken();
         if (isTokenExpired(token)) {
@@ -252,44 +251,6 @@ export const NavBar: React.FC<NavBarProps> = ({
         },
         [openSessionExpiredState],
     );
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-
-        const root = document.documentElement;
-        const nav = navBarRef.current;
-        if (!nav) return;
-
-        let rafId = 0;
-        const syncNavbarHeight = () => {
-            if (rafId) window.cancelAnimationFrame(rafId);
-            rafId = window.requestAnimationFrame(() => {
-                const height = Math.ceil(nav.getBoundingClientRect().height);
-                if (height > 0) {
-                    root.style.setProperty('--navbar-height', `${height}px`);
-                }
-            });
-        };
-
-        syncNavbarHeight();
-
-        const hasResizeObserver = typeof window.ResizeObserver !== 'undefined';
-        const observer = hasResizeObserver
-            ? new window.ResizeObserver(syncNavbarHeight)
-            : null;
-        observer?.observe(nav);
-
-        window.addEventListener('resize', syncNavbarHeight);
-        window.addEventListener('orientationchange', syncNavbarHeight);
-
-        return () => {
-            if (rafId) window.cancelAnimationFrame(rafId);
-            observer?.disconnect();
-            window.removeEventListener('resize', syncNavbarHeight);
-            window.removeEventListener('orientationchange', syncNavbarHeight);
-            root.style.removeProperty('--navbar-height');
-        };
-    }, []);
 
     // Handler para abrir modal de novo cliente (integração futura)
     // ...existing code...
@@ -482,7 +443,7 @@ export const NavBar: React.FC<NavBarProps> = ({
     };
 
     return (
-        <div className={styles.navBar} ref={navBarRef}>
+        <div className={styles.navBar}>
             <div className={styles.menuContainer}>
                 <div className={styles.dropdownWrapper} ref={dropdownRef}>
                     <button
