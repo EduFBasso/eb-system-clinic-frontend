@@ -54,18 +54,21 @@
 }
 
 .contentWrapper {
-    display: grid;
-    grid-template-rows: 0fr;
+    max-height: 0;
     overflow: hidden;
     opacity: 0;
     transition:
-        grid-template-rows 0.3s ease-in-out,
-        opacity 0.3s ease-in-out;
+        max-height 0.3s ease-in-out,
+        opacity 0.2s ease-in-out;
+    will-change: max-height, opacity;
 }
 
 .contentWrapperOpen {
-    grid-template-rows: 1fr;
+    max-height: 700px;
     opacity: 1;
+    transition:
+        max-height 0.6s ease-in-out,
+        opacity 0.3s ease-in-out;
 }
 
 .contentInner {

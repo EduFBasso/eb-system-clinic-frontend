@@ -204,7 +204,7 @@ export function ClientForm({
     const { deleteModalOpen, handleDelete, confirmDelete, cancelDelete } =
         useClientDelete({ cliente, setFeedback });
 
-    const [openSection, setOpenSection] = useState<string | null>('personal');
+    const [openSection, setOpenSection] = useState<string | null>(null);
     const toggleSection = (sectionId: string) => {
         setOpenSection(prev => (prev === sectionId ? null : sectionId));
     };

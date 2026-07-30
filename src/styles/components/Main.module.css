@@ -274,6 +274,61 @@
     );
 }
 
+.cardsGridResetting {
+    opacity: 0;
+    transition: opacity 280ms ease;
+}
+
+.listSentinel {
+    height: 1px;
+}
+
+.errorMessage {
+    color: var(--color-error, #dc2626);
+}
+
+.agendaSelectionBanner {
+    margin: 8px 0 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid color-mix(in oklab, var(--color-warning-dark) 22%, transparent);
+    background: var(--color-warning-bg);
+    color: var(--color-warning-dark);
+    font-weight: 600;
+}
+
+.confirmModalContent {
+    display: grid;
+    gap: 12px;
+}
+
+.confirmModalTitle {
+    margin: 0;
+}
+
+.confirmModalActions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 4px;
+}
+
+.confirmModalCancelButton {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--color-border, #e5e7eb);
+    background: var(--color-surface, #fff);
+    color: var(--color-text-main, #111827);
+}
+
+.confirmModalConfirmButton {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--color-success-dark, #059669);
+    background: var(--color-success, #10b981);
+    color: #fff;
+}
+
 .cardsGrid > div {
     width: 100%;
     /* Quando um cartão receber foco/scrollIntoView, pare abaixo do header+filtro */

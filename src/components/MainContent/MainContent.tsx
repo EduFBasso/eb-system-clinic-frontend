@@ -2,19 +2,18 @@
 import React, { useState } from 'react';
 import styles from '../../styles/components/Main.module.css';
 import { useClients } from '../../hooks/useClients';
-import { ClientCard } from '../clientCard/ClientCard';
 import type { ClientBasic } from '../../types/ClientBasic';
 import { AppModal } from '../Modal/Modal';
 import type { ClientData } from '../../types/ClientData';
-import { SessionExpiredModal } from '../SessionExpiredModal/SessionExpiredModal';
 import { dispatchLogout, hasActiveSession } from '../../utils/auth/session';
 import { apiFetch } from '../../utils/apiFetch';
 import { useAppointmentSets } from '../../hooks/useAppointmentSets';
 
 import { useScrollPersistence } from '../../hooks/useScrollPersistence';
 import { useIosKeyboard } from '../../hooks/useIosKeyboard';
-import { FilterBar } from '../FilterBar/FilterBar';
 import type { FilterMode } from '../FilterBar/FilterBar';
+import { MainContentHeader } from './MainContentHeader';
+import { MainContentList } from './MainContentList';
 
 // Normaliza texto para comparação: remove acentos, espaços extras e ignora caixa
 function normalizeText(s: string) {
@@ -33,7 +32,6 @@ interface MainContentProps {
 }
 
 const FILTER_SESSION_KEY = 'home.filter';
-const LOAD_BATCH = 50;
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -68,8 +66,6 @@ export const MainContent: React.FC<MainContentProps> = ({
         tomorrowIds: tomorrowClientIds,
         tomorrowAppts: tomorrowClientAppts,
     } = useAppointmentSets(clients.length);
-    const [visibleCount, setVisibleCount] = useState(LOAD_BATCH);
-    const sentinelRef = React.useRef<HTMLDivElement | null>(null);
     // Agenda selection mode state
     const [selectMode, setSelectMode] = useState(false);
     const [returnUrl, setReturnUrl] = useState<string | null>(null);
@@ -78,12 +74,21 @@ export const MainContent: React.FC<MainContentProps> = ({
         null,
     );
     const detailCacheRef = React.useRef<Map<number, ClientData>>(new Map());
-    const cardsGridRef = React.useRef<HTMLDivElement | null>(null);
     const lastNotifiedFilterRef = React.useRef<string>('');
     const mobileFiltersOpenedAtRef = React.useRef(0);
     const mobileFiltersButtonRef = React.useRef<HTMLButtonElement | null>(null);
     const [mobileFiltersMenuStyle, setMobileFiltersMenuStyle] =
         React.useState<React.CSSProperties>({});
+    const debugFilterRef = React.useRef(filter);
+    const debugSelectedClientIdRef = React.useRef(selectedClientId);
+
+    React.useEffect(() => {
+        debugFilterRef.current = filter;
+    }, [filter]);
+
+    React.useEffect(() => {
+        debugSelectedClientIdRef.current = selectedClientId;
+    }, [selectedClientId]);
 
     React.useEffect(() => {
         if (!isMobileUA) return;
@@ -130,8 +135,8 @@ export const MainContent: React.FC<MainContentProps> = ({
             console.debug(`[ios-filter] ${tag}`, {
                 t: Date.now(),
                 activeId,
-                filter,
-                selectedClientId,
+                filter: debugFilterRef.current,
+                selectedClientId: debugSelectedClientIdRef.current,
                 ...vvInfo,
                 ...(payload || {}),
             });
@@ -188,7 +193,7 @@ export const MainContent: React.FC<MainContentProps> = ({
             input?.removeEventListener('beforeinput', onInputBefore);
             input?.removeEventListener('input', onInput);
         };
-    }, [debugIosFilter, filter, isMobileUA, selectedClientId]);
+    }, [debugIosFilter, isMobileUA]);
 
     const updateMobileFiltersMenuPosition = React.useCallback(() => {
         const button = mobileFiltersButtonRef.current;
@@ -253,7 +258,6 @@ export const MainContent: React.FC<MainContentProps> = ({
         (mode: FilterMode) => {
             React.startTransition(() => {
                 setFilterMode(prev => (prev === mode ? 'all' : mode));
-                setVisibleCount(LOAD_BATCH);
             });
             setFilter('');
             closeMobileFilters();
@@ -649,7 +653,6 @@ export const MainContent: React.FC<MainContentProps> = ({
             setIsResettingFilter(true);
             const timer = setTimeout(() => {
                 setFilterMode('all');
-                setVisibleCount(LOAD_BATCH);
                 setIsResettingFilter(false);
             }, 280);
             return () => clearTimeout(timer);
@@ -671,42 +674,13 @@ export const MainContent: React.FC<MainContentProps> = ({
         filteredClients,
     ]);
 
-    const deferredDisplayedClients = React.useDeferredValue(displayedClients);
-    const totalDisplayed = deferredDisplayedClients.length;
-    const hasMore = visibleCount < totalDisplayed;
-    const visibleClients = React.useMemo(
-        () => deferredDisplayedClients.slice(0, visibleCount),
-        [deferredDisplayedClients, visibleCount],
-    );
-
     // Ao mudar filterMode: reseta contagem e volta ao topo
     React.useEffect(() => {
-        React.startTransition(() => setVisibleCount(LOAD_BATCH));
         if (isMobileUA && document.activeElement?.id === 'client-filter') {
             return;
         }
         window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     }, [filterMode, isMobileUA]);
-
-    // IntersectionObserver: carrega mais ao rolar até o sentinela
-    React.useEffect(() => {
-        const sentinel = sentinelRef.current;
-        if (!sentinel) return;
-        const observer = new IntersectionObserver(
-            entries => {
-                if (entries[0].isIntersecting && hasMore) {
-                    React.startTransition(() => {
-                        setVisibleCount(n =>
-                            Math.min(n + LOAD_BATCH, totalDisplayed),
-                        );
-                    });
-                }
-            },
-            { rootMargin: '200px' },
-        );
-        observer.observe(sentinel);
-        return () => observer.disconnect();
-    }, [hasMore, totalDisplayed]);
 
     // Reseta referência de notificação quando o filtro muda (não exibe modal — apenas tracking interno).
     React.useEffect(() => {
@@ -829,6 +803,38 @@ export const MainContent: React.FC<MainContentProps> = ({
         [updateMobileFiltersMenuPosition],
     );
 
+    const handleSessionExpiredClose = React.useCallback(() => {
+        setError(null);
+        dispatchLogout('session_expired');
+    }, [setError]);
+
+    const handleSelectClient = React.useCallback(
+        (client: ClientBasic) => {
+            if (!requireActiveSession()) {
+                return;
+            }
+            setSelectedClientId(client.id);
+            try {
+                const url = new URL(window.location.href);
+                const mode = url.searchParams.get('selectClientFor');
+                if (mode === 'agenda') {
+                    setConfirmClient(client);
+                    setConfirmOpen(true);
+                }
+            } catch {
+                /* noop */
+            }
+        },
+        [requireActiveSession, setSelectedClientId],
+    );
+
+    const handleCardRef = React.useCallback(
+        (clientId: number, element: HTMLDivElement | null) => {
+            cardRefs.current[clientId] = element;
+        },
+        [],
+    );
+
     function handleView(cliente: ClientBasic) {
         if (!requireActiveSession()) {
             return;
@@ -859,7 +865,7 @@ export const MainContent: React.FC<MainContentProps> = ({
 
     return (
         <main className={styles.main}>
-            <FilterBar
+            <MainContentHeader
                 filter={filter}
                 filterMode={filterMode}
                 pendingCount={pendingCount}
@@ -877,104 +883,27 @@ export const MainContent: React.FC<MainContentProps> = ({
                 onCloseMobileFiltersFromBackdrop={
                     closeMobileFiltersFromBackdrop
                 }
+                loading={loading}
+                clientsLength={clients.length}
+                error={error}
+                onSessionExpiredClose={handleSessionExpiredClose}
+                selectMode={selectMode}
             />
-            {loading && clients.length === 0 && (
-                <div>Carregando clientes...</div>
-            )}
-            {error && error.includes('Sessão expirada') && (
-                <SessionExpiredModal
-                    open={true}
-                    onClose={() => {
-                        setError(null);
-                        dispatchLogout('session_expired');
-                    }}
-                    message='Sua sessão expirou ou você não está autenticado. Por favor, faça login para acessar os clientes.'
-                    color='var(--color-error-light)'
-                />
-            )}
-            {error && !error.includes('Sessão expirada') && (
-                <div style={{ color: 'red' }}>{error}</div>
-            )}
-            {/* Friendly selection banner for Agenda flow */}
-            {selectMode && (
-                <div
-                    style={{
-                        margin: '8px 0 12px',
-                        padding: '10px 12px',
-                        borderRadius: 8,
-                        border: '1px solid #f59e0b33',
-                        background: 'var(--color-warning-bg)', // amber-50
-                        color: 'var(--color-warning-dark)', // amber-700
-                        fontWeight: 600,
-                    }}
-                >
-                    Selecione um cliente para agendar
-                </div>
-            )}
-            <div
-                ref={cardsGridRef}
-                className={styles.cardsGrid}
-                style={{
-                    opacity: isResettingFilter ? 0 : 1,
-                    transition: 'opacity 280ms ease',
-                }}
-            >
-                {!loading && filter && visibleClients.length === 0 && (
-                    <p className={styles.noResultsMessage}>
-                        Nenhum cliente encontrado para &ldquo;{filter}&rdquo;.
-                    </p>
-                )}
-                {visibleClients.map(client => (
-                    <div
-                        key={client.id}
-                        data-client-card-item='1'
-                        ref={el => {
-                            cardRefs.current[client.id] = el;
-                        }}
-                    >
-                        <ClientCard
-                            client={client}
-                            selected={selectedClientId === client.id}
-                            filterMode={
-                                filterMode === 'ongoing'
-                                    ? undefined
-                                    : filterMode
-                            }
-                            notifyAppt={
-                                filterMode === 'tomorrow'
-                                    ? tomorrowClientAppts.get(client.id)
-                                    : undefined
-                            }
-                            pendingAppt={
-                                pendingClientIds.has(client.id)
-                                    ? pendingClientAppts.get(client.id)
-                                    : undefined
-                            }
-                            onSelect={() => {
-                                if (!requireActiveSession()) {
-                                    return;
-                                }
-                                setSelectedClientId(client.id);
-                                // Se estamos em modo seleção para agenda, abre modal de confirmação customizado
-                                try {
-                                    const url = new URL(window.location.href);
-                                    const mode =
-                                        url.searchParams.get('selectClientFor');
-                                    if (mode === 'agenda') {
-                                        setConfirmClient(client);
-                                        setConfirmOpen(true);
-                                    }
-                                } catch {
-                                    /* noop */
-                                }
-                            }}
-                            onView={handleView}
-                        />
-                    </div>
-                ))}
-            </div>
-            {/* sentinela: IntersectionObserver dispara quando chega ao fim da lista */}
-            <div ref={sentinelRef} aria-hidden='true' style={{ height: 1 }} />
+
+            <MainContentList
+                displayedClients={displayedClients}
+                loading={loading}
+                filter={filter}
+                selectedClientId={selectedClientId}
+                filterMode={filterMode}
+                isResettingFilter={isResettingFilter}
+                tomorrowClientAppts={tomorrowClientAppts}
+                pendingClientIds={pendingClientIds}
+                pendingClientAppts={pendingClientAppts}
+                onSelectClient={handleSelectClient}
+                onViewClient={handleView}
+                onCardRef={handleCardRef}
+            />
 
             <AppModal
                 open={confirmOpen}
@@ -983,8 +912,10 @@ export const MainContent: React.FC<MainContentProps> = ({
                 closeOnEscape
                 disableBackdropClose
             >
-                <div style={{ display: 'grid', gap: 12 }}>
-                    <h3 style={{ margin: 0 }}>Confirmar agendamento</h3>
+                <div className={styles.confirmModalContent}>
+                    <h3 className={styles.confirmModalTitle}>
+                        Confirmar agendamento
+                    </h3>
                     <div>
                         Usar o cliente{' '}
                         <strong>
@@ -994,15 +925,9 @@ export const MainContent: React.FC<MainContentProps> = ({
                         </strong>{' '}
                         para um novo compromisso?
                     </div>
-                    <div
-                        style={{
-                            display: 'flex',
-                            gap: 8,
-                            justifyContent: 'flex-end',
-                            marginTop: 4,
-                        }}
-                    >
+                    <div className={styles.confirmModalActions}>
                         <button
+                            className={styles.confirmModalCancelButton}
                             onClick={() => {
                                 // Cancelar Agendamento: sair do fluxo e retornar à Agenda (sem new=1)
                                 const ret =
@@ -1021,16 +946,11 @@ export const MainContent: React.FC<MainContentProps> = ({
                                     window.location.href = '/agenda'; // triggers Home route which opens modals
                                 }
                             }}
-                            style={{
-                                padding: '8px 12px',
-                                borderRadius: 8,
-                                border: '1px solid #e5e7eb',
-                                background: '#fff',
-                            }}
                         >
                             Cancelar Agendamento
                         </button>
                         <button
+                            className={styles.confirmModalConfirmButton}
                             onClick={() => {
                                 if (!confirmClient) return;
                                 // Confirm: continuar fluxo, voltar à Agenda com client
@@ -1046,13 +966,6 @@ export const MainContent: React.FC<MainContentProps> = ({
                                     '/agenda'; // kept for compatibility
                                 const sep = ret.includes('?') ? '&' : '?';
                                 window.location.href = `${ret}${sep}client=${confirmClient.id}`;
-                            }}
-                            style={{
-                                padding: '8px 12px',
-                                borderRadius: 8,
-                                border: '1px solid #059669',
-                                background: '#10b981',
-                                color: '#fff',
                             }}
                         >
                             Confirmar
