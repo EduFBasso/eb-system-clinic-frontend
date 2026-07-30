@@ -75,9 +75,9 @@
 
 @media (max-width: 768px) {
     .stickyOpen {
-        position: sticky;
-        top: 0.5rem;
-        z-index: 30;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
+        position: static;
+        top: auto;
+        z-index: auto;
+        box-shadow: none;
     }
 }

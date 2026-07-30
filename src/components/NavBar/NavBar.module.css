@@ -102,6 +102,9 @@
     padding: var(--navbar-pad-y) var(--navbar-pad-x); /* alinhado com padding do .main */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     z-index: 95; /* abaixo do header (100)/faixa (99) e acima do conteúdo */
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: transform;
 }
 
 .menuContainer {

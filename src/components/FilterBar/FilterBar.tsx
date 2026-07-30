@@ -41,6 +41,125 @@ export const FilterBar = React.memo(function FilterBar({
     onCloseMobileFilters,
     onCloseMobileFiltersFromBackdrop,
 }: FilterBarProps) {
+    const [localFilter, setLocalFilter] = React.useState(filter);
+    const debounceRef = React.useRef<number | null>(null);
+    const isInputFocusedRef = React.useRef(false);
+    const forceRefocusRef = React.useRef(false);
+    const isMobileUA = React.useMemo(() => {
+        if (typeof navigator === 'undefined') return false;
+        return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    }, []);
+
+    React.useEffect(() => {
+        if (!isInputFocusedRef.current) {
+            setLocalFilter(filter);
+        }
+    }, [filter]);
+
+    React.useEffect(() => {
+        return () => {
+            if (debounceRef.current) {
+                window.clearTimeout(debounceRef.current);
+                debounceRef.current = null;
+            }
+        };
+    }, []);
+
+    const commitFilter = React.useCallback(
+        (value: string) => {
+            onFilterChange(value);
+        },
+        [onFilterChange],
+    );
+
+    const handleFilterInputChange = React.useCallback(
+        (event: React.ChangeEvent<HTMLInputElement>) => {
+            const next = event.target.value;
+            setLocalFilter(next);
+
+            if (!isMobileUA) {
+                commitFilter(next);
+                return;
+            }
+
+            if (debounceRef.current) {
+                window.clearTimeout(debounceRef.current);
+            }
+            debounceRef.current = window.setTimeout(() => {
+                commitFilter(next);
+                debounceRef.current = null;
+            }, 180);
+        },
+        [commitFilter, isMobileUA],
+    );
+
+    const handleFilterInputFocus = React.useCallback(() => {
+        isInputFocusedRef.current = true;
+        (
+            window as Window & {
+                __filterInputFocused?: boolean;
+            }
+        ).__filterInputFocused = true;
+    }, []);
+
+    const handleFilterInputBlur = React.useCallback(
+        (event: React.FocusEvent<HTMLInputElement>) => {
+            if (isMobileUA) {
+                const allowBlurAt = (
+                    window as Window & {
+                        __allowFilterBlurAt?: number;
+                    }
+                ).__allowFilterBlurAt;
+                const blurFromCardTouch =
+                    typeof allowBlurAt === 'number' &&
+                    Date.now() - allowBlurAt < 900;
+
+                if (!blurFromCardTouch && !forceRefocusRef.current) {
+                    const active = document.activeElement as HTMLElement | null;
+                    if (active?.id === 'client-filter') return;
+
+                    forceRefocusRef.current = true;
+                    event.currentTarget.focus({ preventScroll: true });
+                    forceRefocusRef.current = false;
+
+                    // Fallback in case iOS ignores synchronous focus during blur.
+                    requestAnimationFrame(() => {
+                        const focused =
+                            document.activeElement as HTMLElement | null;
+                        if (focused?.id === 'client-filter') return;
+                        const inputEl = document.getElementById(
+                            'client-filter',
+                        ) as HTMLInputElement | null;
+                        inputEl?.focus?.({ preventScroll: true });
+                    });
+                    return;
+                }
+            }
+
+            isInputFocusedRef.current = false;
+            (
+                window as Window & {
+                    __filterInputFocused?: boolean;
+                }
+            ).__filterInputFocused = false;
+            if (debounceRef.current) {
+                window.clearTimeout(debounceRef.current);
+                debounceRef.current = null;
+            }
+            commitFilter(localFilter);
+        },
+        [commitFilter, isMobileUA, localFilter],
+    );
+
+    const handleFilterClearClick = React.useCallback(() => {
+        setLocalFilter('');
+        if (debounceRef.current) {
+            window.clearTimeout(debounceRef.current);
+            debounceRef.current = null;
+        }
+        onFilterClear();
+    }, [onFilterClear]);
+
     return (
         <div
             className={`${styles.filterContainer}${mobileFiltersOpen ? ` ${styles.filterContainerMenuOpen}` : ''}`}
@@ -52,27 +171,38 @@ export const FilterBar = React.memo(function FilterBar({
                         type='text'
                         className={styles.filterInput}
                         placeholder='Digite o nome do cliente...'
-                        value={filter}
-                        onChange={e => onFilterChange(e.target.value)}
+                        value={localFilter}
+                        autoCapitalize='none'
+                        autoCorrect='off'
+                        spellCheck={false}
+                        inputMode='search'
+                        enterKeyHint='search'
+                        onChange={handleFilterInputChange}
+                        onFocus={handleFilterInputFocus}
+                        onBlur={handleFilterInputBlur}
                     />
-                    {filter && (
-                        <button
-                            type='button'
-                            className={styles.filterClearBtn}
-                            onClick={onFilterClear}
-                            aria-label='Limpar filtro'
-                            tabIndex={-1}
-                        >
-                            ×
-                        </button>
-                    )}
+                    <button
+                        type='button'
+                        className={styles.filterClearBtn}
+                        onClick={handleFilterClearClick}
+                        aria-label='Limpar filtro'
+                        tabIndex={-1}
+                        style={{
+                            opacity: localFilter ? 1 : 0,
+                            pointerEvents: localFilter ? 'auto' : 'none',
+                        }}
+                    >
+                        ×
+                    </button>
                 </div>
                 <div className={styles.filterActionsDesktop}>
                     <button
                         className={`${styles.filterToggleBtn}${filterMode === 'ongoing' ? ' ' + styles.filterToggleBtnActive : ''}`}
                         onClick={() => onApplyFilterMode('ongoing')}
                         title='Filtrar clientes em atendimento agora'
-                        style={ongoingCount === 0 ? { opacity: 0.5 } : undefined}
+                        style={
+                            ongoingCount === 0 ? { opacity: 0.5 } : undefined
+                        }
                     >
                         Em atendimento{' '}
                         {ongoingCount > 0 && (
@@ -128,7 +258,10 @@ export const FilterBar = React.memo(function FilterBar({
                         aria-haspopup='menu'
                         title='Abrir filtros'
                     >
-                        Filtros{pendingCount > 0 && filterMode !== 'pending' ? ` (${pendingCount})` : ''}
+                        Filtros
+                        {pendingCount > 0 && filterMode !== 'pending'
+                            ? ` (${pendingCount})`
+                            : ''}
                     </button>
 
                     {mobileFiltersOpen && (
@@ -189,4 +322,3 @@ export const FilterBar = React.memo(function FilterBar({
         </div>
     );
 });
-

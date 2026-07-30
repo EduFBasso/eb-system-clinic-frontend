@@ -12,17 +12,42 @@ export function useIosKeyboard(filterContainerClass: string): void {
     useEffect(() => {
         document.body.classList.remove('keyboardOpen');
         try {
-            (document.documentElement as HTMLElement).style.removeProperty('--kb-h');
-            (document.documentElement as HTMLElement).style.removeProperty('--filter-h');
-        } catch { /* noop */ }
+            (document.documentElement as HTMLElement).style.removeProperty(
+                '--kb-h',
+            );
+            (document.documentElement as HTMLElement).style.removeProperty(
+                '--filter-h',
+            );
+        } catch {
+            /* noop */
+        }
     }, []);
 
     useEffect(() => {
-        const isMobileUA = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const isMobileUA = /iPhone|iPad|iPod|Android/i.test(
+            navigator.userAgent,
+        );
         if (!isMobileUA) return;
 
+        const isIOSWebKit = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        // iOS browsers (Safari/Chrome/Edge all on WebKit) may blur focused inputs
+        // when body/main toggles to fixed while visualViewport resizes per keystroke.
+        // Keep this hook as no-op on iOS to prioritize typing stability.
+        if (isIOSWebKit) {
+            document.body.classList.remove('keyboardOpen');
+            (document.documentElement as HTMLElement).style.removeProperty(
+                '--kb-h',
+            );
+            (document.documentElement as HTMLElement).style.removeProperty(
+                '--filter-h',
+            );
+            return;
+        }
+
         const input = document.getElementById('client-filter');
-        const filterEl = document.querySelector(`.${filterContainerClass}`) as HTMLElement | null;
+        const filterEl = document.querySelector(
+            `.${filterContainerClass}`,
+        ) as HTMLElement | null;
 
         const add = () => document.body.classList.add('keyboardOpen');
         const remove = () => document.body.classList.remove('keyboardOpen');
@@ -37,13 +62,18 @@ export function useIosKeyboard(filterContainerClass: string): void {
             const activeEl = document.activeElement as HTMLElement | null;
             const isInputFocused =
                 !!activeEl &&
-                (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+                (activeEl.tagName === 'INPUT' ||
+                    activeEl.tagName === 'TEXTAREA');
+            const isFilterInputFocused = activeEl === input;
 
             // Recalibra baseline quando nenhum input está focado (evita falso positivo por UI do Safari)
             if (!isInputFocused) baseline = vv.height;
 
             const delta = Math.max(0, baseline - vv.height);
-            const keyboardLikelyOpen = isInputFocused && delta > 150;
+            // Em iOS/Chrome, o visualViewport pode oscilar durante a digitação.
+            // Se o campo de filtro está focado, mantemos keyboardOpen até blur.
+            const keyboardLikelyOpen =
+                isFilterInputFocused || (isInputFocused && delta > 150);
             document.body.classList.toggle('keyboardOpen', keyboardLikelyOpen);
 
             (document.documentElement as HTMLElement).style.setProperty(
@@ -56,12 +86,6 @@ export function useIosKeyboard(filterContainerClass: string): void {
                 '--filter-h',
                 `${Math.round(fh)}px`,
             );
-
-            if (keyboardLikelyOpen && document.activeElement === input) {
-                setTimeout(() => {
-                    input?.scrollIntoView({ block: 'start', behavior: 'instant' as ScrollBehavior });
-                }, 0);
-            }
         };
 
         vv?.addEventListener('resize', onResize);
@@ -71,8 +95,12 @@ export function useIosKeyboard(filterContainerClass: string): void {
             input?.removeEventListener('blur', remove);
             vv?.removeEventListener('resize', onResize);
             document.body.classList.remove('keyboardOpen');
-            (document.documentElement as HTMLElement).style.removeProperty('--kb-h');
-            (document.documentElement as HTMLElement).style.removeProperty('--filter-h');
+            (document.documentElement as HTMLElement).style.removeProperty(
+                '--kb-h',
+            );
+            (document.documentElement as HTMLElement).style.removeProperty(
+                '--filter-h',
+            );
         };
     }, [filterContainerClass]);
 }

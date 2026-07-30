@@ -95,6 +95,12 @@
     line-height: 1.35;
 }
 
+@media screen and (max-width: 430px) {
+    .filterInput {
+        font-size: 16px;
+    }
+}
+
 .filterInput::placeholder {
     font-size: 1rem;
     color: color-mix(in oklab, var(--color-text) 50%, white);
@@ -282,6 +288,12 @@
         padding: 1rem;
         flex-direction: column;
     }
+
+    .filterContainer::before {
+        left: 0;
+        right: 0;
+    }
+
     .filterRow {
         max-width: 100%;
         padding: 0;
@@ -348,13 +360,16 @@
    mantemos o filtro visível no topo da viewport e evitamos que os cartões fiquem ocultos. */
 .keyboardOpen .filterContainer {
     position: fixed;
-    top: env(safe-area-inset-top, 0px);
+    top: calc(
+        env(safe-area-inset-top, 0px) + var(--header-h) + var(--faixa-h) +
+            var(--navbar-height)
+    );
     left: 0;
     right: 0;
     margin: 0;
     padding: 1rem 1rem; /* dobra a altura efetiva do filtro */
     --filter-h: 120px; /* altura efetiva usada para calcular a área do conteúdo */
-    z-index: 110; /* acima da navbar e conteúdo */
+    z-index: 90; /* abaixo de header/faixa/navbar e acima dos cards */
     isolation: isolate; /* evita interferência de camadas inferiores no caret */
     background: var(--color-bg);
     border-bottom: 1px solid var(--color-border);
@@ -388,7 +403,10 @@
    logo abaixo do filtro, para evitar que o Safari faça pan da página inteira. */
 .keyboardOpen .main {
     position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + var(--filter-h, 120px));
+    top: calc(
+        env(safe-area-inset-top, 0px) + var(--header-h) + var(--faixa-h) +
+            var(--navbar-height) + var(--filter-h, 120px)
+    );
     left: 0;
     right: 0;
     bottom: var(--kb-h, 0px);

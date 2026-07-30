@@ -8,6 +8,9 @@
     padding: 1rem;
     text-align: center;
     height: var(--header-h);
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: transform;
 }
 
 .headerTitle {

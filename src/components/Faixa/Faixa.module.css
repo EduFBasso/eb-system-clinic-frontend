@@ -6,4 +6,7 @@
     height: var(--faixa-h);
     background: linear-gradient(90deg, #000, #333, #000);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: transform;
 }

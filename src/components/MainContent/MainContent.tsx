@@ -43,14 +43,31 @@ export const MainContent: React.FC<MainContentProps> = ({
     onClientViewData,
     // ...outros props...
 }) => {
+    const debugIosFilter =
+        import.meta.env.VITE_DEBUG_IOS_FILTER === '1' ||
+        localStorage.getItem('VITE_DEBUG_IOS_FILTER') === '1';
+
+    const isMobileUA = React.useMemo(() => {
+        if (typeof navigator === 'undefined') return false;
+        return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    }, []);
+
     const { clients, loading, error, setError } = useClients();
     const [filter, setFilter] = useState<string>(() => {
-        try { return sessionStorage.getItem(FILTER_SESSION_KEY) ?? ''; } catch { return ''; }
+        try {
+            return sessionStorage.getItem(FILTER_SESSION_KEY) ?? '';
+        } catch {
+            return '';
+        }
     });
     const [filterMode, setFilterMode] = useState<FilterMode>('all');
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-    const { pendingIds: pendingClientIds, pendingAppts: pendingClientAppts, tomorrowIds: tomorrowClientIds, tomorrowAppts: tomorrowClientAppts } =
-        useAppointmentSets(clients.length);
+    const {
+        pendingIds: pendingClientIds,
+        pendingAppts: pendingClientAppts,
+        tomorrowIds: tomorrowClientIds,
+        tomorrowAppts: tomorrowClientAppts,
+    } = useAppointmentSets(clients.length);
     const [visibleCount, setVisibleCount] = useState(LOAD_BATCH);
     const sentinelRef = React.useRef<HTMLDivElement | null>(null);
     // Agenda selection mode state
@@ -64,19 +81,124 @@ export const MainContent: React.FC<MainContentProps> = ({
     const cardsGridRef = React.useRef<HTMLDivElement | null>(null);
     const lastNotifiedFilterRef = React.useRef<string>('');
     const mobileFiltersOpenedAtRef = React.useRef(0);
-    const mobileFiltersButtonRef = React.useRef<HTMLButtonElement | null>(
-        null,
-    );
-    const [mobileFiltersMenuStyle, setMobileFiltersMenuStyle] = React.useState<
-        React.CSSProperties
-    >({});
+    const mobileFiltersButtonRef = React.useRef<HTMLButtonElement | null>(null);
+    const [mobileFiltersMenuStyle, setMobileFiltersMenuStyle] =
+        React.useState<React.CSSProperties>({});
+
+    React.useEffect(() => {
+        if (!isMobileUA) return;
+
+        const onTouchStart = (event: Event) => {
+            const target = event.target as HTMLElement | null;
+            if (!target?.closest?.('[data-client-card-item="1"]')) return;
+
+            (
+                window as Window & {
+                    __allowFilterBlurAt?: number;
+                }
+            ).__allowFilterBlurAt = Date.now();
+        };
+
+        document.addEventListener('touchstart', onTouchStart, {
+            passive: true,
+            capture: true,
+        });
+
+        return () => {
+            document.removeEventListener('touchstart', onTouchStart, true);
+        };
+    }, [isMobileUA]);
+
+    React.useEffect(() => {
+        if (!debugIosFilter || !isMobileUA) return;
+
+        const input = document.getElementById(
+            'client-filter',
+        ) as HTMLInputElement | null;
+
+        const log = (tag: string, payload?: Record<string, unknown>) => {
+            const activeEl = document.activeElement as HTMLElement | null;
+            const activeId = activeEl?.id || activeEl?.tagName || 'none';
+            const vv = window.visualViewport;
+            const vvInfo = vv
+                ? {
+                      vvH: Math.round(vv.height),
+                      vvY: Math.round(vv.offsetTop),
+                  }
+                : {};
+
+            console.debug(`[ios-filter] ${tag}`, {
+                t: Date.now(),
+                activeId,
+                filter,
+                selectedClientId,
+                ...vvInfo,
+                ...(payload || {}),
+            });
+        };
+
+        const onUpdateClients = () => log('updateClients');
+        const onForceRefresh = () => log('clients:forceRefresh');
+        const onAppointmentsChanged = () => log('appointments:changed');
+        const onScrollToClient = (e: Event) => {
+            const detail = (e as CustomEvent).detail || {};
+            log('scrollToClientCard', { clientId: detail.clientId });
+        };
+        const onVvResize = () => log('visualViewport.resize');
+        const onSelection = () => log('selectionchange');
+
+        window.addEventListener('updateClients', onUpdateClients);
+        window.addEventListener('clients:forceRefresh', onForceRefresh);
+        window.addEventListener('appointments:changed', onAppointmentsChanged);
+        window.addEventListener('scrollToClientCard', onScrollToClient);
+        window.visualViewport?.addEventListener('resize', onVvResize);
+        document.addEventListener('selectionchange', onSelection);
+
+        const onInputFocus = () => log('input.focus');
+        const onInputBlur = () => log('input.blur');
+        const onInputBefore = (e: Event) =>
+            log('input.beforeinput', {
+                inputType: (e as InputEvent).inputType,
+                data: (e as InputEvent).data,
+            });
+        const onInput = (e: Event) =>
+            log('input.input', {
+                valueLen: (e.target as HTMLInputElement | null)?.value.length,
+            });
+
+        input?.addEventListener('focus', onInputFocus);
+        input?.addEventListener('blur', onInputBlur);
+        input?.addEventListener('beforeinput', onInputBefore);
+        input?.addEventListener('input', onInput);
+
+        log('diagnostic.enabled');
+
+        return () => {
+            window.removeEventListener('updateClients', onUpdateClients);
+            window.removeEventListener('clients:forceRefresh', onForceRefresh);
+            window.removeEventListener(
+                'appointments:changed',
+                onAppointmentsChanged,
+            );
+            window.removeEventListener('scrollToClientCard', onScrollToClient);
+            window.visualViewport?.removeEventListener('resize', onVvResize);
+            document.removeEventListener('selectionchange', onSelection);
+            input?.removeEventListener('focus', onInputFocus);
+            input?.removeEventListener('blur', onInputBlur);
+            input?.removeEventListener('beforeinput', onInputBefore);
+            input?.removeEventListener('input', onInput);
+        };
+    }, [debugIosFilter, filter, isMobileUA, selectedClientId]);
 
     const updateMobileFiltersMenuPosition = React.useCallback(() => {
         const button = mobileFiltersButtonRef.current;
         if (!button) return;
 
         const rect = button.getBoundingClientRect();
-        const menuWidth = Math.min(220, Math.max(180, Math.round(rect.width * 2.1)));
+        const menuWidth = Math.min(
+            220,
+            Math.max(180, Math.round(rect.width * 2.1)),
+        );
         const viewportWidth = window.innerWidth;
         const left = Math.max(
             16,
@@ -210,13 +332,22 @@ export const MainContent: React.FC<MainContentProps> = ({
     // Helper: desfoca, remove lock e pede atualização da lista
     const refreshAndUnlock = React.useCallback(() => {
         try {
+            const activeEl = document.activeElement as HTMLElement | null;
+            const isTextInputFocused =
+                !!activeEl &&
+                (activeEl.tagName === 'INPUT' ||
+                    activeEl.tagName === 'TEXTAREA' ||
+                    activeEl.tagName === 'SELECT');
+            if (isMobileUA && isTextInputFocused) {
+                return;
+            }
             (document.activeElement as HTMLElement | null)?.blur?.();
             document.body.classList.remove('keyboardOpen');
             window.dispatchEvent(new Event('updateClients'));
         } catch {
             /* noop */
         }
-    }, []);
+    }, [isMobileUA]);
 
     // Seleciona automaticamente o novo cliente cadastrado assim que aparecer na lista
     React.useEffect(() => {
@@ -245,13 +376,18 @@ export const MainContent: React.FC<MainContentProps> = ({
 
     // Força uma atualização quando a tela monta (evita estados inconsistentes pós navegação)
     React.useEffect(() => {
+        if (isMobileUA) return;
         const t = window.setTimeout(() => refreshAndUnlock(), 0);
         return () => window.clearTimeout(t);
-    }, [refreshAndUnlock]);
+    }, [refreshAndUnlock, isMobileUA]);
 
     // Persiste texto do filtro para sobreviver à navegação (editar e voltar).
     React.useEffect(() => {
-        try { sessionStorage.setItem(FILTER_SESSION_KEY, filter); } catch { /* noop */ }
+        try {
+            sessionStorage.setItem(FILTER_SESSION_KEY, filter);
+        } catch {
+            /* noop */
+        }
     }, [filter]);
 
     // Salva posição de scroll e restaura após carregamento inicial.
@@ -284,6 +420,8 @@ export const MainContent: React.FC<MainContentProps> = ({
     // Integra com NavBar: foco no cartão selecionado ou solicitar seleção
     React.useEffect(() => {
         function onFocusSelectedClientCard() {
+            const activeEl = document.activeElement as HTMLElement | null;
+            if (activeEl?.id === 'client-filter') return;
             if (!selectedClientId) return;
             const el = cardRefs.current[selectedClientId];
             if (el) {
@@ -291,12 +429,15 @@ export const MainContent: React.FC<MainContentProps> = ({
                     block: 'center',
                     behavior: 'instant' as ScrollBehavior,
                 });
+                if (isMobileUA) return;
                 (
                     el.querySelector('button, [tabindex]') as HTMLElement | null
                 )?.focus?.();
             }
         }
         function onScrollToClientCard(e: Event) {
+            const activeEl = document.activeElement as HTMLElement | null;
+            if (activeEl?.id === 'client-filter') return;
             const detail = (e as CustomEvent).detail || {};
             const id: number | undefined = detail.clientId;
             if (!id) return;
@@ -337,23 +478,74 @@ export const MainContent: React.FC<MainContentProps> = ({
                 onNeedClientSelectionForAgenda,
             );
         };
-    }, [selectedClientId]);
+    }, [selectedClientId, isMobileUA]);
 
     // Filtra clientes por nome (acentos/maiúsculas ignorados) e ordena com colisão pt-BR.
     // Memoizado: só recalcula quando `clients` ou `filter` mudam — evita .sort() de 1235 itens a cada render.
     const filteredClients = React.useMemo(() => {
         const norm = normalizeText(filter);
-        return clients
-            .filter(client =>
-                normalizeText(`${client.first_name} ${client.last_name}`).includes(norm),
+
+        const entries = clients.map(client => {
+            const fullName = `${client.first_name} ${client.last_name}`;
+            const normalizedFirstName = normalizeText(client.first_name);
+            const normalizedLastName = normalizeText(client.last_name);
+            const normalizedFullName = normalizeText(fullName);
+
+            let affinityWeight: 1 | 2 | 3 | null = null;
+            if (norm) {
+                const firstNameStarts = normalizedFirstName.startsWith(norm);
+                const lastNameStarts = normalizedLastName
+                    .split(/\s+/)
+                    .some(token => token.startsWith(norm));
+                const includesSomewhere = normalizedFullName.includes(norm);
+
+                if (firstNameStarts) {
+                    affinityWeight = 1;
+                } else if (lastNameStarts) {
+                    affinityWeight = 2;
+                } else if (includesSomewhere) {
+                    affinityWeight = 3;
+                }
+            }
+
+            return {
+                client,
+                fullName,
+                affinityWeight,
+            };
+        });
+
+        if (!norm) {
+            return entries
+                .sort((a, b) =>
+                    a.fullName.localeCompare(b.fullName, 'pt-BR', {
+                        sensitivity: 'base',
+                    }),
+                )
+                .map(entry => entry.client);
+        }
+
+        const hasPrefixMatches = entries.some(
+            entry => entry.affinityWeight === 1 || entry.affinityWeight === 2,
+        );
+
+        return entries
+            .filter(entry =>
+                hasPrefixMatches
+                    ? entry.affinityWeight === 1 || entry.affinityWeight === 2
+                    : entry.affinityWeight === 3,
             )
-            .sort((a, b) =>
-                `${a.first_name} ${a.last_name}`.localeCompare(
-                    `${b.first_name} ${b.last_name}`,
-                    'pt-BR',
-                    { sensitivity: 'base' },
-                ),
-            );
+            .sort((a, b) => {
+                const aw = a.affinityWeight ?? 99;
+                const bw = b.affinityWeight ?? 99;
+                if (aw !== bw) {
+                    return aw - bw;
+                }
+                return a.fullName.localeCompare(b.fullName, 'pt-BR', {
+                    sensitivity: 'base',
+                });
+            })
+            .map(entry => entry.client);
     }, [clients, filter]);
 
     const sortByPeriodThenTime = React.useCallback(
@@ -428,8 +620,8 @@ export const MainContent: React.FC<MainContentProps> = ({
                     ? new Date(b.last_appointment_start_at).getTime()
                     : 0;
                 return ta - tb;
-                });
-            }, [clients, pendingClientIds]);
+            });
+    }, [clients, pendingClientIds]);
 
     const pendingCount = pendingClients.length;
     const todayCount = todayClients.length;
@@ -490,8 +682,11 @@ export const MainContent: React.FC<MainContentProps> = ({
     // Ao mudar filterMode: reseta contagem e volta ao topo
     React.useEffect(() => {
         React.startTransition(() => setVisibleCount(LOAD_BATCH));
+        if (isMobileUA && document.activeElement?.id === 'client-filter') {
+            return;
+        }
         window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
-    }, [filterMode]);
+    }, [filterMode, isMobileUA]);
 
     // IntersectionObserver: carrega mais ao rolar até o sentinela
     React.useEffect(() => {
@@ -501,7 +696,9 @@ export const MainContent: React.FC<MainContentProps> = ({
             entries => {
                 if (entries[0].isIntersecting && hasMore) {
                     React.startTransition(() => {
-                        setVisibleCount(n => Math.min(n + LOAD_BATCH, totalDisplayed));
+                        setVisibleCount(n =>
+                            Math.min(n + LOAD_BATCH, totalDisplayed),
+                        );
                     });
                 }
             },
@@ -531,19 +728,14 @@ export const MainContent: React.FC<MainContentProps> = ({
         if (!filteredClients.length) return;
 
         const normFilter = normalizeText(filter);
-        let firstPrefix = filteredClients.find(c =>
-            normalizeText(`${c.first_name} ${c.last_name}`).startsWith(
-                normFilter,
-            ),
-        );
-        // Se não houver começo exato, procura por substring para não "falhar" com uma letra só
-        if (!firstPrefix) {
-            firstPrefix = filteredClients.find(c =>
-                normalizeText(`${c.first_name} ${c.last_name}`).includes(
-                    normFilter,
-                ),
-            );
+        if (!normFilter) {
+            lastPrefixTargetRef.current = null;
+            return;
         }
+
+        const inputEl = document.getElementById('client-filter');
+
+        const firstPrefix = filteredClients[0];
         if (!firstPrefix) return;
 
         // Se o mesmo cartão já foi alvo, não rola novamente nesta digitação.
@@ -558,8 +750,14 @@ export const MainContent: React.FC<MainContentProps> = ({
             if (selectedClientId !== firstPrefix.id) {
                 setSelectedClientId(firstPrefix.id);
             }
+
+            // No mobile, mantemos apenas a seleção visual durante digitação.
+            // Evitamos qualquer auto-scroll para não desestabilizar o teclado.
+            if (isMobileUA) {
+                return;
+            }
+
             // Garante que o cartão fique imediatamente abaixo do filtro visível
-            const inputEl = document.getElementById('client-filter');
             const filterEl = document.querySelector(
                 `.${styles.filterContainer}`,
             ) as HTMLElement | null;
@@ -594,24 +792,42 @@ export const MainContent: React.FC<MainContentProps> = ({
                 debounceRef.current = null;
             }
         };
-    }, [filter, filteredClients, selectedClientId, setSelectedClientId]);
+    }, [
+        filter,
+        filteredClients,
+        selectedClientId,
+        setSelectedClientId,
+        isMobileUA,
+    ]);
 
-    const handleFilterChange = React.useCallback((value: string) => {
-        setFilter(value);
-        if (filterMode !== 'all') React.startTransition(() => setFilterMode('all'));
-    }, [filterMode]);
+    const handleFilterChange = React.useCallback(
+        (value: string) => {
+            setFilter(value);
+
+            if (!value.trim() && selectedClientId !== null) {
+                setSelectedClientId(null);
+            }
+
+            if (filterMode !== 'all')
+                React.startTransition(() => setFilterMode('all'));
+        },
+        [filterMode, selectedClientId, setSelectedClientId],
+    );
 
     const handleFilterClear = React.useCallback(() => {
         setFilter('');
         document.getElementById('client-filter')?.focus();
     }, []);
 
-    const handleOpenMobileFilters = React.useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
-        updateMobileFiltersMenuPosition();
-        mobileFiltersOpenedAtRef.current = Date.now();
-        setMobileFiltersOpen(true);
-    }, [updateMobileFiltersMenuPosition]);
+    const handleOpenMobileFilters = React.useCallback(
+        (e: React.MouseEvent) => {
+            e.stopPropagation();
+            updateMobileFiltersMenuPosition();
+            mobileFiltersOpenedAtRef.current = Date.now();
+            setMobileFiltersOpen(true);
+        },
+        [updateMobileFiltersMenuPosition],
+    );
 
     function handleView(cliente: ClientBasic) {
         if (!requireActiveSession()) {
@@ -631,7 +847,7 @@ export const MainContent: React.FC<MainContentProps> = ({
         apiFetch(`/register/clients/${cliente.id}/`, {
             timeoutMs: 12000,
         })
-            .then((data) => {
+            .then(data => {
                 const clientData = data as unknown as ClientData;
                 detailCacheRef.current.set(cliente.id, clientData);
                 onClientViewData?.(clientData);
@@ -658,7 +874,9 @@ export const MainContent: React.FC<MainContentProps> = ({
                 onApplyFilterMode={applyFilterMode}
                 onOpenMobileFilters={handleOpenMobileFilters}
                 onCloseMobileFilters={closeMobileFilters}
-                onCloseMobileFiltersFromBackdrop={closeMobileFiltersFromBackdrop}
+                onCloseMobileFiltersFromBackdrop={
+                    closeMobileFiltersFromBackdrop
+                }
             />
             {loading && clients.length === 0 && (
                 <div>Carregando clientes...</div>
@@ -709,6 +927,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                 {visibleClients.map(client => (
                     <div
                         key={client.id}
+                        data-client-card-item='1'
                         ref={el => {
                             cardRefs.current[client.id] = el;
                         }}
@@ -716,9 +935,21 @@ export const MainContent: React.FC<MainContentProps> = ({
                         <ClientCard
                             client={client}
                             selected={selectedClientId === client.id}
-                            filterMode={filterMode === 'ongoing' ? undefined : filterMode}
-                            notifyAppt={filterMode === 'tomorrow' ? tomorrowClientAppts.get(client.id) : undefined}
-                            pendingAppt={pendingClientIds.has(client.id) ? pendingClientAppts.get(client.id) : undefined}
+                            filterMode={
+                                filterMode === 'ongoing'
+                                    ? undefined
+                                    : filterMode
+                            }
+                            notifyAppt={
+                                filterMode === 'tomorrow'
+                                    ? tomorrowClientAppts.get(client.id)
+                                    : undefined
+                            }
+                            pendingAppt={
+                                pendingClientIds.has(client.id)
+                                    ? pendingClientAppts.get(client.id)
+                                    : undefined
+                            }
                             onSelect={() => {
                                 if (!requireActiveSession()) {
                                     return;
@@ -834,4 +1065,3 @@ export const MainContent: React.FC<MainContentProps> = ({
         </main>
     );
 };
-

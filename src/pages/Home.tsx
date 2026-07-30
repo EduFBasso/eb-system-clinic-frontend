@@ -294,13 +294,20 @@ export default function Home() {
     }, [clientViewOpen]);
 
     // Função para abrir o cadastro em nova janela
-    const handleAddClient = () => {
+    const handleAddClient = React.useCallback(() => {
         window.open(
             '/clients/new',
             '_blank',
             'width=800,height=700,top=80,left=120,toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes',
         );
-    };
+    }, []);
+
+    const agendaOpeners = React.useMemo(
+        () => ({
+            openWeekly,
+        }),
+        [openWeekly],
+    );
 
     // Aberturas diretas dos modais da Agenda (novo fluxo vindo do NavBar)
     // openSchedule removido — consolidado no QuickSchedule
@@ -340,9 +347,7 @@ export default function Home() {
                 <NavBar
                     openNewClientModal={handleAddClient}
                     selectedClientId={selectedClientId}
-                    agendaOpeners={{
-                        openWeekly,
-                    }}
+                    agendaOpeners={agendaOpeners}
                 />
                 <MainContent
                     setSelectedClientId={setSelectedClientId}
