@@ -38,7 +38,10 @@ describe('ClientAnamnesisForm', () => {
     it('exibe e limpa o detalhe quando medicação fica em Sim/Não', () => {
         render(<Harness />);
 
-        fireEvent.click(screen.getByRole('radio', { name: 'Sim' }));
+        const medRadios = document.querySelectorAll<HTMLInputElement>(
+            'input[name="takes_medication"]',
+        );
+        fireEvent.click(medRadios[1]);
 
         const otherInput = screen.getByPlaceholderText(
             'Descreva a medicação...',
@@ -53,7 +56,7 @@ describe('ClientAnamnesisForm', () => {
             '"takes_medication":"Sim: Tomar omeprazol"',
         );
 
-        fireEvent.click(screen.getByRole('radio', { name: 'Não' }));
+        fireEvent.click(medRadios[0]);
         expect(
             screen.queryByPlaceholderText('Descreva a medicação...'),
         ).toBeNull();
@@ -65,7 +68,10 @@ describe('ClientAnamnesisForm', () => {
     it('mantém seleção de gestação como rádio Sim/Não', () => {
         render(<Harness />);
 
-        fireEvent.click(screen.getByRole('radio', { name: 'Sim' }));
+        const pregnancyRadios = document.querySelectorAll<HTMLInputElement>(
+            'input[name="is_pregnant"]',
+        );
+        fireEvent.click(pregnancyRadios[0]);
 
         expect(screen.getByTestId('values')).toHaveTextContent(
             '"is_pregnant":true',
@@ -75,7 +81,10 @@ describe('ClientAnamnesisForm', () => {
     it('abre o texto de cirurgia apenas quando Sim está marcado', () => {
         render(<Harness />);
 
-        fireEvent.click(screen.getAllByRole('radio', { name: 'Sim' })[1]);
+        const surgeryRadios = document.querySelectorAll<HTMLInputElement>(
+            'input[name="had_surgery"]',
+        );
+        fireEvent.click(surgeryRadios[1]);
 
         const surgery = screen.getByPlaceholderText(
             'Descreva cirurgias anteriores, datas e observações...',
@@ -83,10 +92,10 @@ describe('ClientAnamnesisForm', () => {
         fireEvent.change(surgery, { target: { value: 'Artroscopia em 2019' } });
 
         expect(screen.getByTestId('values')).toHaveTextContent(
-            '"had_surgery":"Artroscopia em 2019"',
+            '"had_surgery":"Sim: Artroscopia em 2019"',
         );
 
-        fireEvent.click(screen.getAllByRole('radio', { name: 'Não' })[1]);
+        fireEvent.click(surgeryRadios[0]);
         expect(
             screen.queryByPlaceholderText(
                 'Descreva cirurgias anteriores, datas e observações...',
