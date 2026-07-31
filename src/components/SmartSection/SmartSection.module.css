@@ -54,20 +54,23 @@
 }
 
 .contentWrapper {
-    max-height: 0;
+    display: grid;
+    grid-template-rows: 0fr;
     overflow: hidden;
+    pointer-events: none;
     opacity: 0;
     transition:
-        max-height 0.3s ease-in-out,
+        grid-template-rows 0.35s ease-in-out,
         opacity 0.2s ease-in-out;
-    will-change: max-height, opacity;
+    will-change: grid-template-rows, opacity;
 }
 
 .contentWrapperOpen {
-    max-height: 700px;
+    grid-template-rows: 1fr;
+    pointer-events: auto;
     opacity: 1;
     transition:
-        max-height 0.6s ease-in-out,
+        grid-template-rows 0.45s ease-in-out,
         opacity 0.3s ease-in-out;
 }
 

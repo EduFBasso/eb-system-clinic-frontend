@@ -1,475 +1,375 @@
-import type { AnamnesePodologiaData } from '../../types/ClientData';
+import { useEffect, useState } from 'react';
+import type { AnamnesisField } from '../../types/AnamnesisTypes';
 import styles from './ClientForm.module.css';
 
 interface Props {
-    anamnesePodologia: AnamnesePodologiaData;
-    onPodologiaChange: <K extends keyof AnamnesePodologiaData>(
-        key: K,
-        value: AnamnesePodologiaData[K],
-    ) => void;
+    fields: AnamnesisField[];
+    values: Record<number, string>;
+    loading: boolean;
+    onChange: (fieldId: number, value: string) => void;
 }
 
-const footwearOptions = [
-    'Sapato baixo',
-    'Tênis',
-    'Chinelo',
-    'Sandália',
-    'Salto alto',
-    'Outros',
-];
-const sockOptions = ['Algodão', 'Sintética', 'Compressão', 'Sem meia'];
-const sensitivityOptions = ['Normal', 'Alterado', 'Não avaliado', 'Outros'];
-const nailOptions = [
-    'onicofose',
-    'onicocriptose',
-    'onicomicose',
-    'paroníquia',
-    'onicocrifose',
-];
-
-function parseOtherSelection(raw: string, options: string[]) {
-    if (!raw) return { selected: '', other: '' };
-    if (raw.startsWith('Outros: ')) {
-        return { selected: 'Outros', other: raw.slice('Outros: '.length) };
-    }
-    if (options.includes(raw)) {
-        return { selected: raw, other: '' };
-    }
-    return { selected: 'Outros', other: raw };
+function normalizeSectorName(value: string) {
+    return value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
 }
 
-function parseCheckboxWithOther(raw: string, options: string[]) {
-    const selected = new Set<string>();
-    let other = '';
-    const optionMap = new Map(
-        options.map(option => [option.toLowerCase(), option]),
-    );
+function isGeneralSector(sector: string) {
+    return normalizeSectorName(sector) === 'historico';
+}
 
-    (raw || '')
+function parseCsvValue(raw: string) {
+    return raw
         .split(',')
         .map(token => token.trim())
-        .filter(Boolean)
-        .forEach(token => {
-            if (/^Outros:\s*/i.test(token)) {
-                selected.add('Outros');
-                other = token.replace(/^Outros:\s*/i, '');
-                return;
-            }
-            const canonical = optionMap.get(token.toLowerCase());
-            if (canonical) selected.add(canonical);
-        });
-
-    return { selected, other };
+        .filter(Boolean);
 }
 
-function serializeCheckboxWithOther(
-    selected: Set<string>,
-    other: string,
-    options: string[],
-) {
-    const values = options.filter(option => selected.has(option));
-    if (selected.has('Outros')) {
-        values.push(`Outros: ${other}`);
+function parseMultiChoiceValue(value: string, options: string[]) {
+    const entries = parseCsvValue(value);
+    const selected = options.filter(option =>
+        option !== 'Outros'
+            ? entries.includes(option)
+            : entries.includes('Outros') ||
+              entries.some(item => item.startsWith('Outros:')),
+    );
+    const otherEntry = entries.find(item => item.startsWith('Outros:'));
+
+    return {
+        selected,
+        otherText: otherEntry
+            ? otherEntry.slice('Outros:'.length).trimStart()
+            : '',
+    };
+}
+
+function normalizeFieldLabel(value: string) {
+    return normalizeSectorName(value).replace(/\s+/g, ' ').trim();
+}
+
+function normalizeFieldOptions(options: AnamnesisField['options'] | unknown) {
+    if (Array.isArray(options)) {
+        return options
+            .map(option => String(option ?? '').trim())
+            .filter(Boolean);
     }
+
+    if (typeof options !== 'string') {
+        return [];
+    }
+
+    const trimmed = options.trim();
+    if (!trimmed) return [];
+
+    try {
+        const parsed: unknown = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+            return parsed
+                .map(option => String(option ?? '').trim())
+                .filter(Boolean);
+        }
+    } catch {
+        /* fall back to CSV parsing */
+    }
+
+    return trimmed
+        .split(',')
+        .map(option => option.trim())
+        .filter(Boolean);
+}
+
+function serializeCsvValue(values: string[]) {
     return values.join(', ');
 }
 
+function isFieldVisible(
+    field: AnamnesisField,
+    valueByFieldId: Map<number, string>,
+    fieldById: Map<number, AnamnesisField>,
+): boolean {
+    if (!field.depends_on) return true;
+
+    const parent = fieldById.get(field.depends_on);
+    if (!parent) return false;
+    if (!isFieldVisible(parent, valueByFieldId, fieldById)) return false;
+
+    const parentValue = valueByFieldId.get(parent.id) ?? '';
+    if (!field.show_when_value) {
+        return parentValue.trim().length > 0;
+    }
+
+    if (
+        field.field_type === 'text' &&
+        parent.selection_mode === 'multiple' &&
+        field.show_when_value === 'Outros'
+    ) {
+        return false;
+    }
+
+    if (parent.selection_mode === 'multiple') {
+        return parseCsvValue(parentValue).includes(field.show_when_value);
+    }
+
+    return parentValue === field.show_when_value;
+}
+
+function renderInputControl(
+    field: AnamnesisField,
+    currentValue: string,
+    onChange: (fieldId: number, value: string) => void,
+    draftValue: string | undefined,
+    setDraftValue: (fieldId: number, value: string) => void,
+    otherDraftValue: string | undefined,
+    setOtherDraftValue: (fieldId: number, value: string) => void,
+) {
+    const options = normalizeFieldOptions(field.options);
+    const displayValue = draftValue ?? currentValue;
+
+    if (field.field_type === 'textarea') {
+        return (
+            <textarea
+                className={styles.podologiaTextarea}
+                rows={4}
+                value={displayValue}
+                placeholder={field.placeholder || ''}
+                onChange={e => {
+                    const nextValue = e.target.value;
+                    setDraftValue(field.id, nextValue);
+                    onChange(field.id, nextValue);
+                }}
+            />
+        );
+    }
+
+    if (field.field_type === 'text') {
+        return (
+            <input
+                type='text'
+                className={styles.inlineTextInput}
+                value={displayValue}
+                placeholder={field.placeholder || ''}
+                onChange={e => {
+                    const nextValue = e.target.value;
+                    setDraftValue(field.id, nextValue);
+                    onChange(field.id, nextValue);
+                }}
+            />
+        );
+    }
+
+    if (!options.length) {
+        return (
+            <input
+                type='text'
+                className={styles.inlineTextInput}
+                value={currentValue}
+                placeholder={field.placeholder || ''}
+                onChange={e => onChange(field.id, e.target.value)}
+            />
+        );
+    }
+
+    if (field.selection_mode === 'multiple') {
+        const parsed = parseMultiChoiceValue(currentValue, options);
+        const selected = new Set(parsed.selected);
+
+        return (
+            <div className={styles.optionList}>
+                {options.map(option => (
+                    <label key={option} className={styles.optionItem}>
+                        <input
+                            className={styles.selectorControl}
+                            type='checkbox'
+                            name={`field_${field.id}`}
+                            checked={selected.has(option)}
+                            onChange={e => {
+                                const next = new Set(selected);
+                                if (e.target.checked) {
+                                    next.add(option);
+                                } else {
+                                    next.delete(option);
+                                }
+
+                                const nextSelected = [...next].filter(
+                                    item => item !== 'Outros',
+                                );
+                                if (next.has('Outros')) {
+                                    nextSelected.push(
+                                        parsed.otherText
+                                            ? `Outros: ${parsed.otherText}`
+                                            : 'Outros',
+                                    );
+                                } else {
+                                    setOtherDraftValue(field.id, '');
+                                }
+
+                                onChange(
+                                    field.id,
+                                    serializeCsvValue(nextSelected),
+                                );
+                            }}
+                        />
+                        <span>{option}</span>
+                    </label>
+                ))}
+
+                {selected.has('Outros') && (
+                    <div className={styles.otherInputRow}>
+                        <input
+                            type='text'
+                            className={styles.inlineTextInput}
+                            value={otherDraftValue ?? parsed.otherText}
+                            placeholder='Outros: descreva aqui'
+                            onChange={e => {
+                                const detail = e.target.value;
+                                setOtherDraftValue(field.id, detail);
+                                const nextSelected = [...selected].filter(
+                                    item => item !== 'Outros',
+                                );
+                                nextSelected.push(
+                                    detail ? `Outros: ${detail}` : 'Outros',
+                                );
+                                onChange(
+                                    field.id,
+                                    serializeCsvValue(nextSelected),
+                                );
+                            }}
+                        />
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    return (
+        <div className={styles.optionList}>
+            {options.map(option => (
+                <label key={option} className={styles.optionItem}>
+                    <input
+                        className={styles.selectorControl}
+                        type='radio'
+                        name={`field_${field.id}`}
+                        checked={currentValue === option}
+                        onChange={() => onChange(field.id, option)}
+                    />
+                    <span>{option}</span>
+                </label>
+            ))}
+        </div>
+    );
+}
+
 export default function ClientPodologiaSection({
-    anamnesePodologia,
-    onPodologiaChange,
+    fields,
+    values,
+    loading,
+    onChange,
 }: Props) {
-    const footwearSelection = parseOtherSelection(
-        anamnesePodologia.footwear_used,
-        footwearOptions,
-    );
-    const sockSelection = parseOtherSelection(
-        anamnesePodologia.sock_used,
-        sockOptions,
-    );
-    const sensitivitySelection = parseOtherSelection(
-        anamnesePodologia.sensitivity_test,
-        sensitivityOptions,
-    );
-    const nailLeftState = parseCheckboxWithOther(
-        anamnesePodologia.nail_changes_left,
-        nailOptions,
-    );
-    const nailRightState = parseCheckboxWithOther(
-        anamnesePodologia.nail_changes_right,
-        nailOptions,
+    const [draftValues, setDraftValues] = useState<Record<number, string>>({});
+    const [otherDraftValues, setOtherDraftValues] = useState<
+        Record<number, string>
+    >({});
+
+    useEffect(() => {
+        setDraftValues({});
+        setOtherDraftValues({});
+    }, [fields]);
+
+    const podologiaFields = fields.filter(
+        field => !isGeneralSector(field.sector),
     );
 
-    const setSelectionWithOther = (
-        field: 'footwear_used' | 'sock_used' | 'sensitivity_test',
-        option: string,
-    ) => {
-        if (option === 'Outros') {
-            onPodologiaChange(
-                field,
-                'Outros: ' as AnamnesePodologiaData[typeof field],
-            );
-            return;
-        }
-        onPodologiaChange(field, option as AnamnesePodologiaData[typeof field]);
-    };
+    const valueByFieldId = new Map<number, string>(
+        Object.entries(values).map(([key, value]) => [Number(key), value]),
+    );
+    const fieldById = new Map<number, AnamnesisField>(
+        fields.map(field => [field.id, field]),
+    );
 
-    const toggleNailOption = (
-        field: 'nail_changes_left' | 'nail_changes_right',
-        state: { selected: Set<string>; other: string },
-        option: string,
-        checked: boolean,
-    ) => {
-        const nextSelected = new Set(state.selected);
-        if (checked) {
-            nextSelected.add(option);
-        } else {
-            nextSelected.delete(option);
-        }
-        onPodologiaChange(
-            field,
-            serializeCheckboxWithOther(
-                nextSelected,
-                state.other,
-                nailOptions,
-            ) as AnamnesePodologiaData[typeof field],
+    const grouped = podologiaFields.reduce<Record<string, AnamnesisField[]>>(
+        (acc, field) => {
+            if (!acc[field.sector]) acc[field.sector] = [];
+            acc[field.sector].push(field);
+            return acc;
+        },
+        {},
+    );
+
+    const orderedSectors = Object.keys(grouped).sort((a, b) => {
+        const first = grouped[a][0];
+        const second = grouped[b][0];
+        return first.sector_order - second.sector_order;
+    });
+
+    if (loading) {
+        return (
+            <p className={styles.podologiaEmpty}>
+                Carregando campos de podologia...
+            </p>
         );
-    };
+    }
 
-    const updateNailOther = (
-        field: 'nail_changes_left' | 'nail_changes_right',
-        state: { selected: Set<string>; other: string },
-        other: string,
-    ) => {
-        const nextSelected = new Set(state.selected);
-        nextSelected.add('Outros');
-        onPodologiaChange(
-            field,
-            serializeCheckboxWithOther(
-                nextSelected,
-                other,
-                nailOptions,
-            ) as AnamnesePodologiaData[typeof field],
+    if (!podologiaFields.length) {
+        return (
+            <p className={styles.podologiaEmpty}>
+                Nenhum campo dinâmico de podologia encontrado para este tenant.
+            </p>
         );
-    };
-
-    const clearNailOther = (
-        field: 'nail_changes_left' | 'nail_changes_right',
-        state: { selected: Set<string>; other: string },
-    ) => {
-        const nextSelected = new Set(state.selected);
-        nextSelected.delete('Outros');
-        onPodologiaChange(
-            field,
-            serializeCheckboxWithOther(
-                nextSelected,
-                '',
-                nailOptions,
-            ) as AnamnesePodologiaData[typeof field],
-        );
-    };
+    }
 
     return (
         <div className={styles.podologiaGrid}>
-            <div
-                className={`${styles.podologiaField} ${styles.pFieldFootwear}`}
-            >
-                <label className={styles.podologiaLabel}>Calçado usado</label>
-                <div className={styles.optionList}>
-                    {footwearOptions.map(option => (
-                        <label key={option} className={styles.optionItem}>
-                            <input
-                                className={styles.selectorControl}
-                                type='radio'
-                                name='footwear_used'
-                                checked={footwearSelection.selected === option}
-                                onChange={() =>
-                                    setSelectionWithOther(
-                                        'footwear_used',
-                                        option,
-                                    )
-                                }
-                            />
-                            <span>{option}</span>
-                        </label>
-                    ))}
-                </div>
-                {footwearSelection.selected === 'Outros' && (
-                    <div className={styles.otherInputRow}>
-                        <input
-                            type='text'
-                            className={styles.inlineTextInput}
-                            placeholder='Descreva o calçado...'
-                            value={footwearSelection.other}
-                            onChange={e =>
-                                onPodologiaChange(
-                                    'footwear_used',
-                                    `Outros: ${e.target.value}`,
-                                )
-                            }
-                        />
-                        <button
-                            type='button'
-                            className={styles.clearOtherBtn}
-                            aria-label='Limpar calçado outros'
-                            onClick={() =>
-                                onPodologiaChange('footwear_used', '')
-                            }
-                        >
-                            ×
-                        </button>
-                    </div>
-                )}
-            </div>
+            {orderedSectors.map(sector => {
+                const visibleFields = grouped[sector]
+                    .slice()
+                    .sort((a, b) => a.order - b.order)
+                    .filter(field =>
+                        isFieldVisible(field, valueByFieldId, fieldById),
+                    );
 
-            <div className={`${styles.podologiaField} ${styles.pFieldSock}`}>
-                <label className={styles.podologiaLabel}>Meia usada</label>
-                <div className={styles.optionList}>
-                    {sockOptions.map(option => (
-                        <label key={option} className={styles.optionItem}>
-                            <input
-                                className={styles.selectorControl}
-                                type='radio'
-                                name='sock_used'
-                                checked={sockSelection.selected === option}
-                                onChange={() =>
-                                    setSelectionWithOther('sock_used', option)
-                                }
-                            />
-                            <span>{option}</span>
-                        </label>
-                    ))}
-                </div>
-            </div>
-
-            <div
-                className={`${styles.podologiaField} ${styles.pFieldSensitivity}`}
-            >
-                <label className={styles.podologiaLabel}>
-                    Condições de sensibilidade
-                </label>
-                <div className={styles.optionList}>
-                    {sensitivityOptions.map(option => (
-                        <label key={option} className={styles.optionItem}>
-                            <input
-                                className={styles.selectorControl}
-                                type='radio'
-                                name='sensitivity_test'
-                                checked={
-                                    sensitivitySelection.selected === option
-                                }
-                                onChange={() =>
-                                    setSelectionWithOther(
-                                        'sensitivity_test',
-                                        option,
-                                    )
-                                }
-                            />
-                            <span>{option}</span>
-                        </label>
-                    ))}
-                </div>
-                {sensitivitySelection.selected === 'Outros' && (
-                    <div className={styles.otherInputRow}>
-                        <input
-                            type='text'
-                            className={styles.inlineTextInput}
-                            placeholder='Descreva a condição...'
-                            value={sensitivitySelection.other}
-                            onChange={e =>
-                                onPodologiaChange(
-                                    'sensitivity_test',
-                                    `Outros: ${e.target.value}`,
-                                )
-                            }
-                        />
-                        <button
-                            type='button'
-                            className={styles.clearOtherBtn}
-                            aria-label='Limpar condição outros'
-                            onClick={() =>
-                                onPodologiaChange('sensitivity_test', '')
-                            }
-                        >
-                            ×
-                        </button>
-                    </div>
-                )}
-            </div>
-
-            <div
-                className={`${styles.podologiaField} ${styles.pFieldNailLeft}`}
-            >
-                <label className={styles.podologiaLabel}>
-                    Alterações ungueais esquerda
-                </label>
-                <div className={styles.optionList}>
-                    {nailOptions.map(option => (
-                        <label
-                            key={`left-${option}`}
-                            className={styles.optionItem}
-                        >
-                            <input
-                                className={styles.selectorControl}
-                                type='checkbox'
-                                name='nail_changes_left'
-                                checked={nailLeftState.selected.has(option)}
-                                onChange={e =>
-                                    toggleNailOption(
-                                        'nail_changes_left',
-                                        nailLeftState,
-                                        option,
-                                        e.target.checked,
-                                    )
-                                }
-                            />
-                            <span>{option}</span>
-                        </label>
-                    ))}
-                    <label className={styles.optionItem}>
-                        <input
-                            className={styles.selectorControl}
-                            type='checkbox'
-                            name='nail_changes_left_other'
-                            checked={nailLeftState.selected.has('Outros')}
-                            onChange={e =>
-                                toggleNailOption(
-                                    'nail_changes_left',
-                                    nailLeftState,
-                                    'Outros',
-                                    e.target.checked,
-                                )
-                            }
-                        />
-                        <span>Outros</span>
-                    </label>
-                </div>
-                {nailLeftState.selected.has('Outros') && (
-                    <div className={styles.otherInputRow}>
-                        <input
-                            type='text'
-                            className={styles.inlineTextInput}
-                            placeholder='Descreva outras alterações...'
-                            value={nailLeftState.other}
-                            onChange={e =>
-                                updateNailOther(
-                                    'nail_changes_left',
-                                    nailLeftState,
-                                    e.target.value,
-                                )
-                            }
-                        />
-                        <button
-                            type='button'
-                            className={styles.clearOtherBtn}
-                            aria-label='Limpar alterações esquerda outros'
-                            onClick={() =>
-                                clearNailOther(
-                                    'nail_changes_left',
-                                    nailLeftState,
-                                )
-                            }
-                        >
-                            ×
-                        </button>
-                    </div>
-                )}
-            </div>
-
-            <div
-                className={`${styles.podologiaField} ${styles.pFieldNailRight}`}
-            >
-                <label className={styles.podologiaLabel}>
-                    Alterações ungueais direita
-                </label>
-                <div className={styles.optionList}>
-                    {nailOptions.map(option => (
-                        <label
-                            key={`right-${option}`}
-                            className={styles.optionItem}
-                        >
-                            <input
-                                className={styles.selectorControl}
-                                type='checkbox'
-                                name='nail_changes_right'
-                                checked={nailRightState.selected.has(option)}
-                                onChange={e =>
-                                    toggleNailOption(
-                                        'nail_changes_right',
-                                        nailRightState,
-                                        option,
-                                        e.target.checked,
-                                    )
-                                }
-                            />
-                            <span>{option}</span>
-                        </label>
-                    ))}
-                    <label className={styles.optionItem}>
-                        <input
-                            className={styles.selectorControl}
-                            type='checkbox'
-                            name='nail_changes_right_other'
-                            checked={nailRightState.selected.has('Outros')}
-                            onChange={e =>
-                                toggleNailOption(
-                                    'nail_changes_right',
-                                    nailRightState,
-                                    'Outros',
-                                    e.target.checked,
-                                )
-                            }
-                        />
-                        <span>Outros</span>
-                    </label>
-                </div>
-                {nailRightState.selected.has('Outros') && (
-                    <div className={styles.otherInputRow}>
-                        <input
-                            type='text'
-                            className={styles.inlineTextInput}
-                            placeholder='Descreva outras alterações...'
-                            value={nailRightState.other}
-                            onChange={e =>
-                                updateNailOther(
-                                    'nail_changes_right',
-                                    nailRightState,
-                                    e.target.value,
-                                )
-                            }
-                        />
-                        <button
-                            type='button'
-                            className={styles.clearOtherBtn}
-                            aria-label='Limpar alterações direita outros'
-                            onClick={() =>
-                                clearNailOther(
-                                    'nail_changes_right',
-                                    nailRightState,
-                                )
-                            }
-                        >
-                            ×
-                        </button>
-                    </div>
-                )}
-            </div>
-
-            <div
-                className={`${styles.podologiaField} ${styles.pFieldProcedures}`}
-            >
-                <label className={styles.podologiaLabel}>
-                    Outros procedimentos
-                </label>
-                <textarea
-                    className={styles.podologiaTextarea}
-                    rows={4}
-                    value={anamnesePodologia.other_procedures}
-                    placeholder='Registre procedimentos adicionais e evolução clínica...'
-                    onChange={e =>
-                        onPodologiaChange('other_procedures', e.target.value)
-                    }
-                />
-            </div>
+                return (
+                    <section
+                        key={sector}
+                        className={styles.podologiaSectorCard}
+                    >
+                        <h3 className={styles.podologiaSectorTitle}>
+                            {sector}
+                        </h3>
+                        {visibleFields.map(field => (
+                            <div
+                                key={field.id}
+                                className={styles.podologiaField}
+                            >
+                                {normalizeFieldLabel(field.label) !==
+                                    normalizeFieldLabel(sector) && (
+                                    <label className={styles.podologiaLabel}>
+                                        {field.label}
+                                    </label>
+                                )}
+                                {renderInputControl(
+                                    field,
+                                    values[field.id] ?? '',
+                                    onChange,
+                                    draftValues[field.id],
+                                    (fieldId, nextValue) =>
+                                        setDraftValues(prev => ({
+                                            ...prev,
+                                            [fieldId]: nextValue,
+                                        })),
+                                    otherDraftValues[field.id],
+                                    (fieldId, nextValue) =>
+                                        setOtherDraftValues(prev => ({
+                                            ...prev,
+                                            [fieldId]: nextValue,
+                                        })),
+                                )}
+                            </div>
+                        ))}
+                    </section>
+                );
+            })}
         </div>
     );
 }

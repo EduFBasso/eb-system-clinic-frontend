@@ -22,6 +22,64 @@ function buildFieldGraph(fields: AnamnesisFieldLite[]) {
     return { fieldById, childrenByParent };
 }
 
+function isInlineOtherDetailField(
+    field: AnamnesisFieldLite,
+    fieldById: Map<number, AnamnesisFieldLite>,
+) {
+    if (!field.depends_on || field.field_type !== 'text') return false;
+    const parent = fieldById.get(field.depends_on);
+    return (
+        !!parent &&
+        parent.selection_mode === 'multiple' &&
+        field.show_when_value === 'Outros'
+    );
+}
+
+function mergeOtherDetailValue(parentValue: string, detailValue: string) {
+    const parts = (parentValue || '')
+        .split(',')
+        .map(item => item.trim())
+        .filter(Boolean)
+        .filter(item => item !== 'Outros' && !item.startsWith('Outros:'));
+
+    const detail = (detailValue || '').trim();
+    if (detail) {
+        parts.push(`Outros: ${detail}`);
+    }
+
+    return parts.join(', ');
+}
+
+function normalizeOtherDetailValues(
+    values: Record<number, string>,
+    fields: AnamnesisFieldLite[],
+) {
+    if (!fields.length) return values;
+
+    const fieldById = new Map(fields.map(field => [field.id, field]));
+    const next = { ...values };
+
+    fields.forEach(field => {
+        if (!isInlineOtherDetailField(field, fieldById)) return;
+        const parent = fieldById.get(field.depends_on!);
+        if (!parent) return;
+
+        const detailValue = next[field.id];
+        if (!detailValue) {
+            delete next[field.id];
+            return;
+        }
+
+        next[parent.id] = mergeOtherDetailValue(
+            next[parent.id] ?? '',
+            detailValue,
+        );
+        delete next[field.id];
+    });
+
+    return next;
+}
+
 function isFieldVisible(
     fieldId: number,
     values: Record<number, string>,
@@ -74,6 +132,7 @@ function pruneHiddenValues(
 
 export interface ClientAnamnesisHook {
     anamnesisFields: ReturnType<typeof useAnamnesisFields>['fields'];
+    anamnesisLoading: boolean;
     anamnesisValues: Record<number, string>;
     setAnamnesisValues: React.Dispatch<
         React.SetStateAction<Record<number, string>>
@@ -83,14 +142,18 @@ export interface ClientAnamnesisHook {
 }
 
 export function useClientAnamnesis(clientId?: number): ClientAnamnesisHook {
-    const { fields: anamnesisFields } = useAnamnesisFields();
+    const { fields: anamnesisFields, loading: anamnesisLoading } =
+        useAnamnesisFields();
     const [anamnesisValues, setAnamnesisValues] = useState<
         Record<number, string>
     >({});
 
     // Load existing responses when editing a client
     useEffect(() => {
-        if (!clientId) return;
+        if (!clientId) {
+            setAnamnesisValues({});
+            return;
+        }
         const token = getAccessToken();
         if (!token) return;
         fetch(`${API_BASE}/anamnesis/responses/?client=${clientId}`, {
@@ -109,6 +172,13 @@ export function useClientAnamnesis(clientId?: number): ClientAnamnesisHook {
             });
     }, [clientId]);
 
+    useEffect(() => {
+        if (!anamnesisFields.length) return;
+        setAnamnesisValues(prev =>
+            normalizeOtherDetailValues(prev, anamnesisFields),
+        );
+    }, [anamnesisFields]);
+
     function handleAnamnesisChange(fieldId: number, value: string) {
         setAnamnesisValues(prev => {
             const next = { ...prev, [fieldId]: value };
@@ -121,14 +191,24 @@ export function useClientAnamnesis(clientId?: number): ClientAnamnesisHook {
         clientId: number,
         token: string,
     ): Promise<void> {
-        const normalizedValues = pruneHiddenValues(
-            anamnesisValues,
+        if (!anamnesisFields.length) return;
+
+        const normalizedValues = normalizeOtherDetailValues(
+            pruneHiddenValues(anamnesisValues, anamnesisFields),
             anamnesisFields,
         );
         setAnamnesisValues(normalizedValues);
 
+        const fieldById = new Map(
+            anamnesisFields.map(field => [field.id, field]),
+        );
+
         const entries = anamnesisFields
-            .filter(field => normalizedValues[field.id] !== undefined)
+            .filter(
+                field =>
+                    normalizedValues[field.id] !== undefined &&
+                    !isInlineOtherDetailField(field, fieldById),
+            )
             .map(field => ({
                 field: field.id,
                 value: normalizedValues[field.id] ?? '',
@@ -146,6 +226,7 @@ export function useClientAnamnesis(clientId?: number): ClientAnamnesisHook {
 
     return {
         anamnesisFields,
+        anamnesisLoading,
         anamnesisValues,
         setAnamnesisValues,
         handleAnamnesisChange,

@@ -58,12 +58,7 @@
 
 .podologiaGrid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-areas:
-        'footwear sock'
-        'sensitivity nailLeft'
-        'nailRight nailRight'
-        'procedures procedures';
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     column-gap: 22px;
     row-gap: 30px;
     align-items: start;
@@ -74,33 +69,31 @@
     gap: 10px;
 }
 
-.pFieldFootwear {
-    grid-area: footwear;
+.podologiaSectorCard {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: color-mix(in oklab, var(--color-surface) 94%, transparent);
 }
 
-.pFieldSock {
-    grid-area: sock;
+.podologiaSectorTitle {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-text-main);
 }
 
-.pFieldSensitivity {
-    grid-area: sensitivity;
-}
-
-.pFieldNailLeft {
-    grid-area: nailLeft;
-}
-
-.pFieldNailRight {
-    grid-area: nailRight;
-}
-
-.pFieldProcedures {
-    grid-area: procedures;
+.podologiaEmpty {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--color-text-muted, #666);
 }
 
 .podologiaLabel {
-    font-size: 0.88rem;
-    font-weight: 600;
+    font-size: 0.86rem;
+    font-weight: 500;
     color: var(--color-text-muted, #555);
     margin-bottom: 2px;
 }
@@ -194,13 +187,6 @@
 @media (max-width: 760px) {
     .podologiaGrid {
         grid-template-columns: 1fr;
-        grid-template-areas:
-            'footwear'
-            'sock'
-            'sensitivity'
-            'nailLeft'
-            'nailRight'
-            'procedures';
         row-gap: 20px;
     }
 }

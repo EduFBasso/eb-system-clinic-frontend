@@ -1,11 +1,7 @@
 import { API_BASE } from '../../config/api';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { formatDOBToBR, normalizeDOBForApi } from '../../utils/dateOfBirth';
-import type {
-    AnamneseBaseData,
-    AnamnesePodologiaData,
-    ClientData,
-} from '../../types/ClientData';
+import type { AnamneseBaseData, ClientData } from '../../types/ClientData';
 import ClientPersonalDataForm from '../ClientPersonalDataForm/ClientPersonalDataForm';
 import ClientAddressForm from '../ClientAddressForm/ClientAddressForm';
 import ClientAnamnesisForm from '../ClientAnamnesisForm/ClientAnamnesisForm';
@@ -20,6 +16,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getAccessToken } from '../../utils/auth/session';
 import { SmartSection } from '../SmartSection/SmartSection';
+import { useClientAnamnesis } from '../../hooks/useClientAnamnesis';
 
 interface ClientFormProps {
     cliente?: Partial<ClientData>;
@@ -79,45 +76,6 @@ function buildDefaultAnamneseBase(
     };
 }
 
-function buildDefaultAnamnesePodologia(
-    cliente?: Partial<ClientData>,
-): AnamnesePodologiaData {
-    const legacy = (cliente ?? {}) as Partial<ClientData> &
-        Partial<AnamnesePodologiaData>;
-    const nested = cliente?.anamnese_podologia ?? {};
-
-    return {
-        footwear_used: nested.footwear_used ?? legacy.footwear_used ?? '',
-        sock_used: nested.sock_used ?? legacy.sock_used ?? '',
-        plantar_view_left:
-            nested.plantar_view_left ?? legacy.plantar_view_left ?? '',
-        plantar_view_right:
-            nested.plantar_view_right ?? legacy.plantar_view_right ?? '',
-        dermatological_pathologies_left:
-            nested.dermatological_pathologies_left ??
-            legacy.dermatological_pathologies_left ??
-            '',
-        dermatological_pathologies_right:
-            nested.dermatological_pathologies_right ??
-            legacy.dermatological_pathologies_right ??
-            '',
-        nail_changes_left:
-            nested.nail_changes_left ?? legacy.nail_changes_left ?? '',
-        nail_changes_right:
-            nested.nail_changes_right ?? legacy.nail_changes_right ?? '',
-        deformities_left:
-            nested.deformities_left ?? legacy.deformities_left ?? '',
-        deformities_right:
-            nested.deformities_right ?? legacy.deformities_right ?? '',
-        sensitivity_test:
-            nested.sensitivity_test ??
-            legacy.sensitivity_test ??
-            'Não avaliado',
-        other_procedures:
-            nested.other_procedures ?? legacy.other_procedures ?? '',
-    };
-}
-
 export function ClientForm({
     cliente,
     isPublicMode = false,
@@ -137,17 +95,21 @@ export function ClientForm({
     const [anamneseBase, setAnamneseBase] = useState<AnamneseBaseData>(() =>
         buildDefaultAnamneseBase(cliente),
     );
-    const [anamnesePodologia, setAnamnesePodologia] =
-        useState<AnamnesePodologiaData>(() =>
-            buildDefaultAnamnesePodologia(cliente),
-        );
+    const {
+        anamnesisFields,
+        anamnesisLoading,
+        anamnesisValues,
+        setAnamnesisValues,
+        handleAnamnesisChange,
+        saveAnamnesis,
+    } = useClientAnamnesis(cliente?.id);
 
     const initialSnapshot = useMemo(
         () =>
             JSON.stringify({
                 formData,
                 anamneseBase,
-                anamnesePodologia,
+                anamnesisValues,
             }),
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [cliente?.id],
@@ -166,26 +128,23 @@ export function ClientForm({
         const next = JSON.stringify({
             formData,
             anamneseBase,
-            anamnesePodologia,
+            anamnesisValues,
         });
         setDirty(next !== initialRef.current);
-    }, [formData, anamneseBase, anamnesePodologia]);
+    }, [formData, anamneseBase, anamnesisValues]);
 
     useUnsavedChangesGuard(dirty, 'Há alterações não salvas. Deseja sair?');
 
     useEffect(() => {
         const nextClient = buildDefaultClientData(cliente);
         const nextBase = buildDefaultAnamneseBase(cliente);
-        const nextPodo = buildDefaultAnamnesePodologia(cliente);
-
         setFormData(nextClient);
         setAnamneseBase(nextBase);
-        setAnamnesePodologia(nextPodo);
 
         const snapshot = JSON.stringify({
             formData: nextClient,
             anamneseBase: nextBase,
-            anamnesePodologia: nextPodo,
+            anamnesisValues: {},
         });
         initialRef.current = snapshot;
         setDirty(false);
@@ -231,13 +190,6 @@ export function ClientForm({
         value: AnamneseBaseData[K],
     ) {
         setAnamneseBase(prev => ({ ...prev, [key]: value }));
-    }
-
-    function handlePodologiaChange<K extends keyof AnamnesePodologiaData>(
-        key: K,
-        value: AnamnesePodologiaData[K],
-    ) {
-        setAnamnesePodologia(prev => ({ ...prev, [key]: value }));
     }
 
     function normalizeClinicalHistoryForSubmit(value: unknown): string {
@@ -289,9 +241,6 @@ export function ClientForm({
                         anamneseBase.clinical_history,
                     ) || 'Sem histórico relevante',
                 sport_activity: anamneseBase.sport_activity,
-            },
-            anamnese_podologia: {
-                ...anamnesePodologia,
             },
         };
     }
@@ -435,7 +384,7 @@ export function ClientForm({
                 initialRef.current = JSON.stringify({
                     formData,
                     anamneseBase,
-                    anamnesePodologia,
+                    anamnesisValues,
                 });
                 setDirty(false);
                 setInfoModal({
@@ -514,20 +463,23 @@ export function ClientForm({
 
             const result = await response.json();
 
+            if (result?.id) {
+                await saveAnamnesis(Number(result.id), token);
+            }
+
             if (!isEdit && quickModeRef.current) {
                 quickModeRef.current = false;
 
                 const nextClient = buildDefaultClientData();
                 const nextBase = buildDefaultAnamneseBase();
-                const nextPodo = buildDefaultAnamnesePodologia();
 
                 setFormData(nextClient);
                 setAnamneseBase(nextBase);
-                setAnamnesePodologia(nextPodo);
+                setAnamnesisValues({});
                 const snapshot = JSON.stringify({
                     formData: nextClient,
                     anamneseBase: nextBase,
-                    anamnesePodologia: nextPodo,
+                    anamnesisValues: {},
                 });
                 initialRef.current = snapshot;
                 setDirty(false);
@@ -553,7 +505,7 @@ export function ClientForm({
             initialRef.current = JSON.stringify({
                 formData,
                 anamneseBase,
-                anamnesePodologia,
+                anamnesisValues,
             });
             setDirty(false);
 
@@ -633,8 +585,10 @@ export function ClientForm({
                         onToggle={() => toggleSection('podologia')}
                     >
                         <ClientPodologiaSection
-                            anamnesePodologia={anamnesePodologia}
-                            onPodologiaChange={handlePodologiaChange}
+                            fields={anamnesisFields}
+                            values={anamnesisValues}
+                            loading={anamnesisLoading}
+                            onChange={handleAnamnesisChange}
                         />
                     </SmartSection>
                 )}
