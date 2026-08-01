@@ -45,6 +45,12 @@ export function openWhatsAppInNewTab({
     target = '_blank',
 }: OpenWhatsAppArgs): OpenWhatsAppResult {
     const url = buildWhatsAppUrl({ text, phoneE164 });
+
+    if (target === '_self') {
+        window.location.assign(url);
+        return 'opened';
+    }
+
     const opened = window.open(url, target, 'noopener,noreferrer');
     return opened ? 'opened' : 'blocked';
 }

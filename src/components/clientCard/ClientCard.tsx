@@ -398,9 +398,24 @@ function ClientCardBase({
             const link = `${normalizedBase}/anamnesis/public?${params.toString()}`;
             const message = `Olá ${client.first_name}, por favor preencha sua ficha ou atualize seus dados: ${link}`;
 
+            const userAgent =
+                typeof navigator !== 'undefined' ? navigator.userAgent : '';
+            const isIOSDevice = /iPhone|iPad|iPod/i.test(userAgent);
+            const isStandaloneMode =
+                (typeof window !== 'undefined' &&
+                    window.matchMedia &&
+                    window.matchMedia('(display-mode: standalone)').matches) ||
+                (typeof navigator !== 'undefined' &&
+                    'standalone' in navigator &&
+                    (navigator as Navigator & { standalone?: boolean })
+                        .standalone === true);
+            const whatsappTarget: '_blank' | '_self' =
+                isIOSDevice || isStandaloneMode ? '_self' : '_blank';
+
             const openResult = openWhatsAppInNewTab({
                 phoneE164,
                 text: message,
+                target: whatsappTarget,
             });
             setEditActionsOpen(false);
 

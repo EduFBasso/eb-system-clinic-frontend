@@ -53,6 +53,7 @@ export default function EditClientActionsModal({
                     onClick={event => {
                         event.preventDefault();
                         event.stopPropagation();
+                        onClose();
                         onRequestAnamnesis();
                     }}
                     disabled={loading}
