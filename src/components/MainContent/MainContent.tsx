@@ -115,59 +115,6 @@ export const MainContent: React.FC<MainContentProps> = ({
     }, [isMobileUA]);
 
     React.useEffect(() => {
-        const dismissSearchAndFiltersOutside = (event: Event) => {
-            const target = event.target as HTMLElement | null;
-            if (!target) return;
-
-            if (target.closest('[data-filter-bar-root="1"]')) {
-                return;
-            }
-
-            const input = document.getElementById(
-                'client-filter',
-            ) as HTMLInputElement | null;
-
-            if (input && document.activeElement === input) {
-                (
-                    window as Window & {
-                        __allowFilterBlurAt?: number;
-                    }
-                ).__allowFilterBlurAt = Date.now();
-                input.blur();
-            }
-
-            if (mobileFiltersOpen) {
-                closeMobileFilters();
-            }
-        };
-
-        document.addEventListener(
-            'touchstart',
-            dismissSearchAndFiltersOutside,
-            {
-                passive: true,
-                capture: true,
-            },
-        );
-        document.addEventListener('mousedown', dismissSearchAndFiltersOutside, {
-            capture: true,
-        });
-
-        return () => {
-            document.removeEventListener(
-                'touchstart',
-                dismissSearchAndFiltersOutside,
-                true,
-            );
-            document.removeEventListener(
-                'mousedown',
-                dismissSearchAndFiltersOutside,
-                true,
-            );
-        };
-    }, [closeMobileFilters, mobileFiltersOpen]);
-
-    React.useEffect(() => {
         if (!debugIosFilter || !isMobileUA) return;
 
         const input = document.getElementById(
@@ -280,6 +227,59 @@ export const MainContent: React.FC<MainContentProps> = ({
         }
         setMobileFiltersOpen(false);
     }, []);
+
+    React.useEffect(() => {
+        const dismissSearchAndFiltersOutside = (event: Event) => {
+            const target = event.target as HTMLElement | null;
+            if (!target) return;
+
+            if (target.closest('[data-filter-bar-root="1"]')) {
+                return;
+            }
+
+            const input = document.getElementById(
+                'client-filter',
+            ) as HTMLInputElement | null;
+
+            if (input && document.activeElement === input) {
+                (
+                    window as Window & {
+                        __allowFilterBlurAt?: number;
+                    }
+                ).__allowFilterBlurAt = Date.now();
+                input.blur();
+            }
+
+            if (mobileFiltersOpen) {
+                closeMobileFilters();
+            }
+        };
+
+        document.addEventListener(
+            'touchstart',
+            dismissSearchAndFiltersOutside,
+            {
+                passive: true,
+                capture: true,
+            },
+        );
+        document.addEventListener('mousedown', dismissSearchAndFiltersOutside, {
+            capture: true,
+        });
+
+        return () => {
+            document.removeEventListener(
+                'touchstart',
+                dismissSearchAndFiltersOutside,
+                true,
+            );
+            document.removeEventListener(
+                'mousedown',
+                dismissSearchAndFiltersOutside,
+                true,
+            );
+        };
+    }, [closeMobileFilters, mobileFiltersOpen]);
 
     React.useEffect(() => {
         if (!mobileFiltersOpen) return;
