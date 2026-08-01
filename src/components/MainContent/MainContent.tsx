@@ -91,30 +91,6 @@ export const MainContent: React.FC<MainContentProps> = ({
     }, [selectedClientId]);
 
     React.useEffect(() => {
-        if (!isMobileUA) return;
-
-        const onTouchStart = (event: Event) => {
-            const target = event.target as HTMLElement | null;
-            if (!target?.closest?.('[data-client-card-item="1"]')) return;
-
-            (
-                window as Window & {
-                    __allowFilterBlurAt?: number;
-                }
-            ).__allowFilterBlurAt = Date.now();
-        };
-
-        document.addEventListener('touchstart', onTouchStart, {
-            passive: true,
-            capture: true,
-        });
-
-        return () => {
-            document.removeEventListener('touchstart', onTouchStart, true);
-        };
-    }, [isMobileUA]);
-
-    React.useEffect(() => {
         if (!debugIosFilter || !isMobileUA) return;
 
         const input = document.getElementById(
@@ -233,7 +209,19 @@ export const MainContent: React.FC<MainContentProps> = ({
             const target = event.target as HTMLElement | null;
             if (!target) return;
 
-            if (target.closest('[data-filter-bar-root="1"]')) {
+            const touchedFilterInput = !!target.closest('#client-filter');
+            const touchedFiltersButton = !!target.closest(
+                '[data-filters-toggle="1"]',
+            );
+            const touchedFiltersMenu = !!target.closest(
+                '[data-filters-menu="1"]',
+            );
+
+            if (
+                touchedFilterInput ||
+                touchedFiltersButton ||
+                touchedFiltersMenu
+            ) {
                 return;
             }
 
@@ -242,11 +230,6 @@ export const MainContent: React.FC<MainContentProps> = ({
             ) as HTMLInputElement | null;
 
             if (input && document.activeElement === input) {
-                (
-                    window as Window & {
-                        __allowFilterBlurAt?: number;
-                    }
-                ).__allowFilterBlurAt = Date.now();
                 input.blur();
             }
 

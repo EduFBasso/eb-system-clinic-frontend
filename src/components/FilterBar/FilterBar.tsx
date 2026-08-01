@@ -45,7 +45,6 @@ export const FilterBar = React.memo(function FilterBar({
     const debounceRef = React.useRef<number | null>(null);
     const inputRef = React.useRef<HTMLInputElement | null>(null);
     const isInputFocusedRef = React.useRef(false);
-    const forceRefocusRef = React.useRef(false);
     const isMobileUA = React.useMemo(() => {
         if (typeof navigator === 'undefined') return false;
         return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -104,54 +103,19 @@ export const FilterBar = React.memo(function FilterBar({
         ).__filterInputFocused = true;
     }, [onCloseMobileFilters]);
 
-    const handleFilterInputBlur = React.useCallback(
-        (event: React.FocusEvent<HTMLInputElement>) => {
-            if (isMobileUA) {
-                const allowBlurAt = (
-                    window as Window & {
-                        __allowFilterBlurAt?: number;
-                    }
-                ).__allowFilterBlurAt;
-                const blurFromCardTouch =
-                    typeof allowBlurAt === 'number' &&
-                    Date.now() - allowBlurAt < 900;
-
-                if (!blurFromCardTouch && !forceRefocusRef.current) {
-                    const active = document.activeElement as HTMLElement | null;
-                    if (active?.id === 'client-filter') return;
-
-                    forceRefocusRef.current = true;
-                    event.currentTarget.focus({ preventScroll: true });
-                    forceRefocusRef.current = false;
-
-                    // Fallback in case iOS ignores synchronous focus during blur.
-                    requestAnimationFrame(() => {
-                        const focused =
-                            document.activeElement as HTMLElement | null;
-                        if (focused?.id === 'client-filter') return;
-                        const inputEl = document.getElementById(
-                            'client-filter',
-                        ) as HTMLInputElement | null;
-                        inputEl?.focus?.({ preventScroll: true });
-                    });
-                    return;
-                }
+    const handleFilterInputBlur = React.useCallback(() => {
+        isInputFocusedRef.current = false;
+        (
+            window as Window & {
+                __filterInputFocused?: boolean;
             }
-
-            isInputFocusedRef.current = false;
-            (
-                window as Window & {
-                    __filterInputFocused?: boolean;
-                }
-            ).__filterInputFocused = false;
-            if (debounceRef.current) {
-                window.clearTimeout(debounceRef.current);
-                debounceRef.current = null;
-            }
-            commitFilter(localFilter);
-        },
-        [commitFilter, isMobileUA, localFilter],
-    );
+        ).__filterInputFocused = false;
+        if (debounceRef.current) {
+            window.clearTimeout(debounceRef.current);
+            debounceRef.current = null;
+        }
+        commitFilter(localFilter);
+    }, [commitFilter, localFilter]);
 
     const handleFilterClearClick = React.useCallback(() => {
         setLocalFilter('');
@@ -162,54 +126,10 @@ export const FilterBar = React.memo(function FilterBar({
         onFilterClear();
     }, [onFilterClear]);
 
-    const handleFilterContainerTouchStartCapture = React.useCallback(
-        (event: React.TouchEvent<HTMLDivElement>) => {
-            const target = event.target as HTMLElement | null;
-            if (!target) return;
-
-            const touchedInput = !!target.closest('#client-filter');
-            const touchedFiltersButton = !!target.closest(
-                '[data-filters-toggle="1"]',
-            );
-            const touchedFiltersMenu = !!target.closest(
-                '[data-filters-menu="1"]',
-            );
-
-            if (touchedInput || touchedFiltersButton || touchedFiltersMenu) {
-                return;
-            }
-
-            (
-                window as Window & {
-                    __allowFilterBlurAt?: number;
-                    __suppressFilterToggleUntil?: number;
-                }
-            ).__allowFilterBlurAt = Date.now();
-
-            if (
-                inputRef.current &&
-                document.activeElement === inputRef.current
-            ) {
-                (
-                    window as Window & {
-                        __suppressFilterToggleUntil?: number;
-                    }
-                ).__suppressFilterToggleUntil = Date.now() + 320;
-                inputRef.current.blur();
-            }
-
-            if (mobileFiltersOpen) {
-                onCloseMobileFilters();
-            }
-        },
-        [mobileFiltersOpen, onCloseMobileFilters],
-    );
-
     return (
         <div
             data-filter-bar-root='1'
             className={`${styles.filterContainer}${mobileFiltersOpen ? ` ${styles.filterContainerMenuOpen}` : ''}`}
-            onTouchStartCapture={handleFilterContainerTouchStartCapture}
         >
             <div className={styles.filterRow}>
                 <div className={styles.filterInputWrapper}>
@@ -298,27 +218,9 @@ export const FilterBar = React.memo(function FilterBar({
                         onClick={e => {
                             e.stopPropagation();
 
-                            const suppressUntil = (
-                                window as Window & {
-                                    __suppressFilterToggleUntil?: number;
-                                }
-                            ).__suppressFilterToggleUntil;
-                            if (
-                                typeof suppressUntil === 'number' &&
-                                Date.now() < suppressUntil
-                            ) {
-                                e.preventDefault();
-                                return;
-                            }
-
                             if (mobileFiltersOpen) {
                                 onCloseMobileFilters();
                             } else {
-                                (
-                                    window as Window & {
-                                        __allowFilterBlurAt?: number;
-                                    }
-                                ).__allowFilterBlurAt = Date.now();
                                 inputRef.current?.blur();
                                 onOpenMobileFilters(e);
                             }
