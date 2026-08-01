@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { API_BASE } from '../config/api';
 import { ClientForm } from '../components/ClientForm/ClientForm';
 import type { AnamneseBaseData, ClientData } from '../types/ClientData';
+import styles from './AnamnesisPublicPage.module.css';
 
 type ValidateResponse = {
     client?: {
@@ -128,59 +129,26 @@ export default function AnamnesisPublicPage() {
 
     if (loading) {
         return (
-            <div
-                style={{
-                    minHeight: '100vh',
-                    display: 'grid',
-                    placeItems: 'center',
-                    background: 'var(--color-bg)',
-                    padding: '1.25rem',
-                }}
-            >
-                <p style={{ margin: 0 }}>Validando link da ficha...</p>
+            <div className={styles.centeredState}>
+                <p className={styles.loadingMessage}>
+                    Validando link da ficha...
+                </p>
             </div>
         );
     }
 
     if (expired || !cliente || !token) {
         return (
-            <div
-                style={{
-                    minHeight: '100vh',
-                    display: 'grid',
-                    placeItems: 'center',
-                    background: 'var(--color-bg)',
-                    padding: '1.25rem',
-                }}
-            >
-                <div
-                    style={{
-                        width: 'min(560px, 96vw)',
-                        background: 'var(--card-bg)',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: 14,
-                        padding: '1.25rem 1rem',
-                        textAlign: 'center',
-                        lineHeight: 1.5,
-                    }}
-                >
-                    <p style={{ margin: 0 }}>{EXPIRED_MESSAGE}</p>
+            <div className={styles.centeredState}>
+                <div className={styles.expiredCard}>
+                    <p className={styles.expiredText}>{EXPIRED_MESSAGE}</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div
-            style={{
-                maxWidth: 900,
-                padding: '2rem',
-                margin: '0 auto',
-                background: 'var(--color-bg)',
-                minHeight: '100vh',
-                boxSizing: 'border-box',
-            }}
-        >
+        <div className={styles.pageContainer}>
             <ClientForm cliente={cliente} isPublicMode token={token} />
         </div>
     );

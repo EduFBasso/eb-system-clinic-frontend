@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { AnamnesisField } from '../../types/AnamnesisTypes';
-import styles from './ClientForm.module.css';
+import styles from './ClientPodologiaSection.module.css';
 
 interface Props {
     fields: AnamnesisField[];

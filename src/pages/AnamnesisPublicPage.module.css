@@ -1,0 +1,42 @@
+.centeredState {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background: var(--color-bg);
+    padding: 1.25rem;
+}
+
+.loadingMessage {
+    margin: 0;
+    color: var(--color-text-main);
+}
+
+.expiredCard {
+    width: min(560px, 96vw);
+    background: var(--card-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1rem;
+    text-align: center;
+    line-height: 1.5;
+}
+
+.expiredText {
+    margin: 0;
+    color: var(--color-text-main);
+}
+
+.pageContainer {
+    max-width: 900px;
+    padding: 2rem;
+    margin: 0 auto;
+    background: var(--color-bg);
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+    .pageContainer {
+        padding: 1rem;
+    }
+}
