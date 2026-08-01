@@ -43,6 +43,7 @@ export const FilterBar = React.memo(function FilterBar({
 }: FilterBarProps) {
     const [localFilter, setLocalFilter] = React.useState(filter);
     const debounceRef = React.useRef<number | null>(null);
+    const inputRef = React.useRef<HTMLInputElement | null>(null);
     const isInputFocusedRef = React.useRef(false);
     const forceRefocusRef = React.useRef(false);
     const isMobileUA = React.useMemo(() => {
@@ -95,12 +96,13 @@ export const FilterBar = React.memo(function FilterBar({
 
     const handleFilterInputFocus = React.useCallback(() => {
         isInputFocusedRef.current = true;
+        onCloseMobileFilters();
         (
             window as Window & {
                 __filterInputFocused?: boolean;
             }
         ).__filterInputFocused = true;
-    }, []);
+    }, [onCloseMobileFilters]);
 
     const handleFilterInputBlur = React.useCallback(
         (event: React.FocusEvent<HTMLInputElement>) => {
@@ -167,6 +169,7 @@ export const FilterBar = React.memo(function FilterBar({
             <div className={styles.filterRow}>
                 <div className={styles.filterInputWrapper}>
                     <input
+                        ref={inputRef}
                         id='client-filter'
                         type='text'
                         className={styles.filterInput}
@@ -251,6 +254,12 @@ export const FilterBar = React.memo(function FilterBar({
                             if (mobileFiltersOpen) {
                                 onCloseMobileFilters();
                             } else {
+                                (
+                                    window as Window & {
+                                        __allowFilterBlurAt?: number;
+                                    }
+                                ).__allowFilterBlurAt = Date.now();
+                                inputRef.current?.blur();
                                 onOpenMobileFilters(e);
                             }
                         }}
