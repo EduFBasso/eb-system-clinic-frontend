@@ -293,7 +293,7 @@ export const MainContent: React.FC<MainContentProps> = ({
     const applyFilterMode = React.useCallback(
         (mode: FilterMode) => {
             React.startTransition(() => {
-                setFilterMode(prev => (prev === mode ? 'all' : mode));
+                setFilterMode(mode);
             });
             setFilter('');
             closeMobileFilters();
@@ -673,27 +673,8 @@ export const MainContent: React.FC<MainContentProps> = ({
     }, [clients]);
     const ongoingCount = ongoingClients.length;
 
-    // Fase 2: estado de fade suave para reset do filtro ongoing
-    const [isResettingFilter, setIsResettingFilter] = React.useState(false);
-
-    // Se o filtro de pendentes estiver ativo mas não houver mais pendentes, desativa
-    React.useEffect(() => {
-        if (filterMode === 'pending' && pendingCount === 0) {
-            React.startTransition(() => setFilterMode('all'));
-        }
-    }, [filterMode, pendingCount]);
-
-    // Se o filtro de em atendimento estiver ativo mas não houver mais, desativa com fade
-    React.useEffect(() => {
-        if (filterMode === 'ongoing' && ongoingCount === 0) {
-            setIsResettingFilter(true);
-            const timer = setTimeout(() => {
-                setFilterMode('all');
-                setIsResettingFilter(false);
-            }, 280);
-            return () => clearTimeout(timer);
-        }
-    }, [filterMode, ongoingCount]);
+    // Fase 2: estado de fade suave (mantido para compatibilidade visual)
+    const [isResettingFilter] = React.useState(false);
 
     const displayedClients = React.useMemo(() => {
         if (filterMode === 'pending') return pendingClients;
@@ -818,7 +799,9 @@ export const MainContent: React.FC<MainContentProps> = ({
                 setSelectedClientId(null);
             }
 
-            if (filterMode !== 'all')
+            // Ao digitar busca textual, volta para "Sem filtro".
+            // Não resetamos o modo em blur com valor vazio para evitar oscilacao no mobile.
+            if (value.trim() && filterMode !== 'all')
                 React.startTransition(() => setFilterMode('all'));
         },
         [filterMode, selectedClientId, setSelectedClientId],
