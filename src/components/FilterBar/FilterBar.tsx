@@ -162,10 +162,54 @@ export const FilterBar = React.memo(function FilterBar({
         onFilterClear();
     }, [onFilterClear]);
 
+    const handleFilterContainerTouchStartCapture = React.useCallback(
+        (event: React.TouchEvent<HTMLDivElement>) => {
+            const target = event.target as HTMLElement | null;
+            if (!target) return;
+
+            const touchedInput = !!target.closest('#client-filter');
+            const touchedFiltersButton = !!target.closest(
+                '[data-filters-toggle="1"]',
+            );
+            const touchedFiltersMenu = !!target.closest(
+                '[data-filters-menu="1"]',
+            );
+
+            if (touchedInput || touchedFiltersButton || touchedFiltersMenu) {
+                return;
+            }
+
+            (
+                window as Window & {
+                    __allowFilterBlurAt?: number;
+                    __suppressFilterToggleUntil?: number;
+                }
+            ).__allowFilterBlurAt = Date.now();
+
+            if (
+                inputRef.current &&
+                document.activeElement === inputRef.current
+            ) {
+                (
+                    window as Window & {
+                        __suppressFilterToggleUntil?: number;
+                    }
+                ).__suppressFilterToggleUntil = Date.now() + 320;
+                inputRef.current.blur();
+            }
+
+            if (mobileFiltersOpen) {
+                onCloseMobileFilters();
+            }
+        },
+        [mobileFiltersOpen, onCloseMobileFilters],
+    );
+
     return (
         <div
             data-filter-bar-root='1'
             className={`${styles.filterContainer}${mobileFiltersOpen ? ` ${styles.filterContainerMenuOpen}` : ''}`}
+            onTouchStartCapture={handleFilterContainerTouchStartCapture}
         >
             <div className={styles.filterRow}>
                 <div className={styles.filterInputWrapper}>
@@ -248,10 +292,25 @@ export const FilterBar = React.memo(function FilterBar({
 
                 <div className={styles.filterActionsMobile}>
                     <button
+                        data-filters-toggle='1'
                         ref={mobileFiltersButtonRef}
                         className={`${styles.filtersMenuButton}${filterMode !== 'all' ? ' ' + styles.filtersMenuButtonActive : pendingCount > 0 ? ' ' + styles.filtersMenuButtonPending : ''}`}
                         onClick={e => {
                             e.stopPropagation();
+
+                            const suppressUntil = (
+                                window as Window & {
+                                    __suppressFilterToggleUntil?: number;
+                                }
+                            ).__suppressFilterToggleUntil;
+                            if (
+                                typeof suppressUntil === 'number' &&
+                                Date.now() < suppressUntil
+                            ) {
+                                e.preventDefault();
+                                return;
+                            }
+
                             if (mobileFiltersOpen) {
                                 onCloseMobileFilters();
                             } else {
@@ -285,6 +344,7 @@ export const FilterBar = React.memo(function FilterBar({
 
                     {mobileFiltersOpen && (
                         <div
+                            data-filters-menu='1'
                             className={styles.filtersMenuPanel}
                             style={mobileFiltersMenuStyle}
                             role='menu'
