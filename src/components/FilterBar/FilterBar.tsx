@@ -164,6 +164,7 @@ export const FilterBar = React.memo(function FilterBar({
 
     return (
         <div
+            data-filter-bar-root='1'
             className={`${styles.filterContainer}${mobileFiltersOpen ? ` ${styles.filterContainerMenuOpen}` : ''}`}
         >
             <div className={styles.filterRow}>
