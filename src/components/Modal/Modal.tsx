@@ -447,6 +447,10 @@ export function AppModal(props: AppModalProps) {
         };
     }, [open]);
 
+    // Guarda a transicao de open para executar efeitos de fechamento apenas
+    // quando o modal realmente esteve aberto antes.
+    const wasOpenRef = React.useRef(open);
+
     // Task #35 + Task #52: Defensive restoration de scroll + instrumentação.
     // Observado: em alguns fluxos (cancelar edição via mini-card) a página fica "travada".
     // Hipótese: corrida onde MUI remove classes após nosso efeito checar, ou restore abortado
@@ -455,7 +459,12 @@ export function AppModal(props: AppModalProps) {
     // 2. Fallback global (window.ensureScrollUnlocked) disparado em vários eventos.
     // 3. Export implícita via evento custom 'ensureScrollUnlocked'.
     React.useEffect(() => {
-        if (open) return; // Só atua no fechamento
+        const wasOpen = wasOpenRef.current;
+        wasOpenRef.current = open;
+
+        // Só atua em transição real aberto -> fechado.
+        // Evita blur indevido de inputs quando há AppModal montado com open=false.
+        if (open || !wasOpen) return;
 
         // Função de restauração idempotente (múltiplas tentativas em timers diferentes)
         const restore = (source?: string) => {

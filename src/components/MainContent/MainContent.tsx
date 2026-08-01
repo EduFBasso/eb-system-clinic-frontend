@@ -293,7 +293,7 @@ export const MainContent: React.FC<MainContentProps> = ({
     const applyFilterMode = React.useCallback(
         (mode: FilterMode) => {
             React.startTransition(() => {
-                setFilterMode(mode);
+                setFilterMode(prev => (prev === mode ? 'all' : mode));
             });
             setFilter('');
             closeMobileFilters();
