@@ -2,6 +2,7 @@ import React from 'react';
 import type { AnamneseBaseData } from '../../types/ClientData';
 import styles from './ClientAnamnesisForm.module.css';
 import { useTheme } from '../../contexts/ThemeContext';
+import type { AppTheme } from '../../contexts/ThemeContext';
 
 interface Props {
     anamneseBase: AnamneseBaseData;
@@ -10,14 +11,17 @@ interface Props {
         value: AnamneseBaseData[K],
     ) => void;
     isEdit?: boolean;
+    themeOverride?: AppTheme;
 }
 
 export default function ClientAnamnesisForm({
     anamneseBase,
     onBaseChange,
     isEdit = false,
+    themeOverride,
 }: Props) {
     const { theme } = useTheme();
+    const activeTheme = themeOverride ?? theme;
 
     const yesNoOptions = ['Não', 'Sim'];
     const painOptions = ['Baixa', 'Moderada', 'Alta'];
@@ -130,7 +134,7 @@ export default function ClientAnamnesisForm({
     };
 
     return (
-        <div data-theme={theme} className={styles.wrapper}>
+        <div data-theme={activeTheme} className={styles.wrapper}>
             <div className={styles.form}>
                 <header className={styles.header}>
                     <span className={styles.eyebrow}>

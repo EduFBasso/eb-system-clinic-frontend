@@ -26,6 +26,7 @@ import { openClientForm } from '../../utils/openClientForm';
 import { useNowTick } from '../../hooks/useNowTick';
 import { emit } from '../../events/bus';
 import { getAccessToken } from '../../utils/auth/session';
+import { useTheme } from '../../contexts/ThemeContext';
 import EditClientActionsModal from './EditClientActionsModal';
 import ClientCardAgendaSection from './ClientCardAgendaSection';
 import {
@@ -58,6 +59,7 @@ function ClientCardBase({
     filterMode = 'all',
 }: ClientCardProps) {
     const navigate = useNavigate();
+    const { theme } = useTheme();
     // Feature flag: disable per-client ongoing probe unless explicitly enabled (reduces debug traffic)
     const ENABLE_ONGOING_PROBE =
         (import.meta as ImportMeta).env.VITE_ENABLE_ONGOING_PROBE === 'true';
@@ -389,7 +391,11 @@ function ClientCardBase({
                         | undefined
                 )?.trim() || window.location.origin;
             const normalizedBase = basePublicUrl.replace(/\/+$/, '');
-            const link = `${normalizedBase}/anamnesis/public?token=${encodeURIComponent(data.token)}`;
+            const params = new URLSearchParams({
+                token: data.token,
+                theme,
+            });
+            const link = `${normalizedBase}/anamnesis/public?${params.toString()}`;
             const message = `Olá ${client.first_name}, por favor preencha sua ficha ou atualize seus dados: ${link}`;
 
             const openResult = openWhatsAppInNewTab({
@@ -422,7 +428,7 @@ function ClientCardBase({
         } finally {
             setSendingAnamnesisLink(false);
         }
-    }, [client.first_name, client.id, client.phone]);
+    }, [client.first_name, client.id, client.phone, theme]);
 
     const requestAnamnesisFromModal = React.useCallback(() => {
         void sendAnamnesisByWhatsApp();

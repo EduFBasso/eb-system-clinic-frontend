@@ -4,6 +4,7 @@ import { API_BASE } from '../config/api';
 import { ClientForm } from '../components/ClientForm/ClientForm';
 import type { AnamneseBaseData, ClientData } from '../types/ClientData';
 import styles from './AnamnesisPublicPage.module.css';
+import type { AppTheme } from '../contexts/ThemeContext';
 
 type ValidateResponse = {
     client?: {
@@ -32,12 +33,25 @@ type ValidateResponse = {
 const EXPIRED_MESSAGE =
     'Este link expirou ou é inválido. Por favor, solicite uma nova ficha de saúde com o profissional.';
 
+const FALLBACK_PUBLIC_THEME: AppTheme = 'blue';
+
+function isAppTheme(value: string): value is AppTheme {
+    return value === 'blue' || value === 'green' || value === 'pink';
+}
+
 export default function AnamnesisPublicPage() {
     const [searchParams] = useSearchParams();
     const token = (searchParams.get('token') || '').trim();
+    const requestedTheme = (searchParams.get('theme') || '')
+        .trim()
+        .toLowerCase();
+    const publicTheme: AppTheme = isAppTheme(requestedTheme)
+        ? requestedTheme
+        : FALLBACK_PUBLIC_THEME;
 
     const [loading, setLoading] = React.useState(true);
     const [expired, setExpired] = React.useState(false);
+    const [submitted, setSubmitted] = React.useState(false);
     const [cliente, setCliente] = React.useState<Partial<ClientData> | null>(
         null,
     );
@@ -129,7 +143,7 @@ export default function AnamnesisPublicPage() {
 
     if (loading) {
         return (
-            <div className={styles.centeredState}>
+            <div className={styles.centeredState} data-theme={publicTheme}>
                 <p className={styles.loadingMessage}>
                     Validando link da ficha...
                 </p>
@@ -139,7 +153,7 @@ export default function AnamnesisPublicPage() {
 
     if (expired || !cliente || !token) {
         return (
-            <div className={styles.centeredState}>
+            <div className={styles.centeredState} data-theme={publicTheme}>
                 <div className={styles.expiredCard}>
                     <p className={styles.expiredText}>{EXPIRED_MESSAGE}</p>
                 </div>
@@ -147,9 +161,28 @@ export default function AnamnesisPublicPage() {
         );
     }
 
+    if (submitted) {
+        return (
+            <div className={styles.centeredState} data-theme={publicTheme}>
+                <div className={styles.successToast}>
+                    <p className={styles.successText}>
+                        Obrigado! Seus dados foram atualizados com sucesso. Você
+                        já pode fechar esta página.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className={styles.pageContainer}>
-            <ClientForm cliente={cliente} isPublicMode token={token} />
+        <div className={styles.pageContainer} data-theme={publicTheme}>
+            <ClientForm
+                cliente={cliente}
+                isPublicMode
+                token={token}
+                themeOverride={publicTheme}
+                onPublicSubmitSuccess={() => setSubmitted(true)}
+            />
         </div>
     );
 }

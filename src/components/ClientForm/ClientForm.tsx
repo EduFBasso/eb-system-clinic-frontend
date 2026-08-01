@@ -14,6 +14,7 @@ import InfoModal from '../shared/InfoModal';
 import DeleteConfirmModal from '../shared/DeleteConfirmModal';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
+import type { AppTheme } from '../../contexts/ThemeContext';
 import { getAccessToken } from '../../utils/auth/session';
 import { SmartSection } from '../SmartSection/SmartSection';
 import { useClientAnamnesis } from '../../hooks/useClientAnamnesis';
@@ -22,6 +23,8 @@ interface ClientFormProps {
     cliente?: Partial<ClientData>;
     isPublicMode?: boolean;
     token?: string;
+    themeOverride?: AppTheme;
+    onPublicSubmitSuccess?: () => void;
 }
 
 function buildDefaultClientData(cliente?: Partial<ClientData>): ClientData {
@@ -80,8 +83,11 @@ export function ClientForm({
     cliente,
     isPublicMode = false,
     token: publicToken,
+    themeOverride,
+    onPublicSubmitSuccess,
 }: ClientFormProps) {
     const { theme } = useTheme();
+    const activeTheme = themeOverride ?? theme;
     const navigate = useNavigate();
 
     type HandledError = Error & { handled?: boolean };
@@ -167,6 +173,14 @@ export function ClientForm({
     const toggleSection = (sectionId: string) => {
         setOpenSection(prev => (prev === sectionId ? null : sectionId));
     };
+    const publicClientName = [formData.first_name, formData.last_name]
+        .map(value => value?.trim())
+        .filter(Boolean)
+        .join(' ');
+    const withPublicClientName = (baseTitle: string) =>
+        isPublicMode && publicClientName
+            ? `${baseTitle} — ${publicClientName}`
+            : baseTitle;
 
     function handleChange(
         fieldOrEvent:
@@ -387,6 +401,13 @@ export function ClientForm({
                     anamnesisValues,
                 });
                 setDirty(false);
+                if (onPublicSubmitSuccess) {
+                    setFormData(buildDefaultClientData());
+                    setAnamneseBase(buildDefaultAnamneseBase());
+                    setAnamnesisValues({});
+                    onPublicSubmitSuccess();
+                    return;
+                }
                 setInfoModal({
                     title: 'Obrigado!',
                     message:
@@ -535,9 +556,13 @@ export function ClientForm({
 
     return (
         <>
-            <form ref={formRef} onSubmit={handleSubmit} data-theme={theme}>
+            <form
+                ref={formRef}
+                onSubmit={handleSubmit}
+                data-theme={activeTheme}
+            >
                 <SmartSection
-                    title='Dados pessoais'
+                    title={withPublicClientName('Dados pessoais')}
                     stickyWhenOpen
                     isOpen={openSection === 'personal'}
                     onToggle={() => toggleSection('personal')}
@@ -548,11 +573,12 @@ export function ClientForm({
                         feedback={feedback}
                         isEdit={isEdit}
                         lockRequiredFields={isPublicMode}
+                        themeOverride={themeOverride}
                     />
                 </SmartSection>
 
                 <SmartSection
-                    title='Endereço'
+                    title={withPublicClientName('Endereço')}
                     stickyWhenOpen
                     isOpen={openSection === 'address'}
                     onToggle={() => toggleSection('address')}
@@ -561,11 +587,12 @@ export function ClientForm({
                         formData={formData}
                         handleChange={handleChange}
                         isEdit={isEdit}
+                        themeOverride={themeOverride}
                     />
                 </SmartSection>
 
                 <SmartSection
-                    title='Anamnese geral'
+                    title={withPublicClientName('Anamnese geral')}
                     stickyWhenOpen
                     isOpen={openSection === 'anamnesis'}
                     onToggle={() => toggleSection('anamnesis')}
@@ -574,6 +601,7 @@ export function ClientForm({
                         anamneseBase={anamneseBase}
                         onBaseChange={handleBaseChange}
                         isEdit={isEdit}
+                        themeOverride={themeOverride}
                     />
                 </SmartSection>
 

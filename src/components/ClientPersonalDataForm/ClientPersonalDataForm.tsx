@@ -5,6 +5,7 @@ import { formatPhone } from '../../utils/formatPhone';
 import { formatCpf, formatCnpj } from '../../utils/formatCpf';
 import styles from './ClientPersonalDataForm.module.css';
 import { useTheme } from '../../contexts/ThemeContext';
+import type { AppTheme } from '../../contexts/ThemeContext';
 import { formatDOBInputMask } from '../../utils/dateOfBirth';
 
 type ChangeHandler = (
@@ -22,6 +23,7 @@ interface Props {
     feedback?: { type: 'error'; message: string } | null;
     isEdit?: boolean;
     lockRequiredFields?: boolean;
+    themeOverride?: AppTheme;
 }
 
 export default function ClientPersonalDataForm({
@@ -30,11 +32,13 @@ export default function ClientPersonalDataForm({
     feedback,
     isEdit = false,
     lockRequiredFields = false,
+    themeOverride,
 }: Props) {
     const { theme } = useTheme();
+    const activeTheme = themeOverride ?? theme;
 
     return (
-        <div data-theme={theme} className={styles.wrapper}>
+        <div data-theme={activeTheme} className={styles.wrapper}>
             <div className={styles.form}>
                 <header className={styles.header}>
                     <span className={styles.eyebrow}>

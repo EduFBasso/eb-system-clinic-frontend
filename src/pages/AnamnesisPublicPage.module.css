@@ -1,9 +1,12 @@
 .centeredState {
     min-height: 100vh;
-    display: grid;
-    place-items: center;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: var(--color-bg);
-    padding: 1.25rem;
+    padding: max(1.25rem, env(safe-area-inset-top, 0px)) 1.25rem
+        max(1.25rem, env(safe-area-inset-bottom, 0px));
 }
 
 .loadingMessage {
@@ -24,6 +27,23 @@
 .expiredText {
     margin: 0;
     color: var(--color-text-main);
+}
+
+.successToast {
+    width: min(560px, 96vw);
+    background: var(--color-panel);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1rem;
+    text-align: center;
+    line-height: 1.5;
+    box-shadow: var(--shadow-soft-sm);
+}
+
+.successText {
+    margin: 0;
+    color: var(--color-primary);
+    font-weight: 600;
 }
 
 .pageContainer {

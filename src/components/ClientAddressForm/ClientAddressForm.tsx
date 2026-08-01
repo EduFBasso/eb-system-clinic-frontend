@@ -7,6 +7,7 @@ import { BR_UFS } from '../../data/br-ufs';
 import { useViaCep } from '../../hooks/useViaCep';
 import styles from './ClientAddressForm.module.css';
 import { useTheme } from '../../contexts/ThemeContext';
+import type { AppTheme } from '../../contexts/ThemeContext';
 
 type ChangeHandler = (
     fieldOrEvent:
@@ -21,14 +22,17 @@ interface Props {
     formData: ClientData;
     handleChange: ChangeHandler;
     isEdit?: boolean;
+    themeOverride?: AppTheme;
 }
 
 export default function ClientAddressForm({
     formData,
     handleChange,
     isEdit = false,
+    themeOverride,
 }: Props) {
     const { theme } = useTheme();
+    const activeTheme = themeOverride ?? theme;
 
     const onFound = useCallback(
         (data: {
@@ -48,7 +52,7 @@ export default function ClientAddressForm({
     const { status, lookup } = useViaCep(onFound);
 
     return (
-        <div data-theme={theme} className={styles.wrapper}>
+        <div data-theme={activeTheme} className={styles.wrapper}>
             <div className={styles.form}>
                 <header className={styles.header}>
                     <span className={styles.eyebrow}>
