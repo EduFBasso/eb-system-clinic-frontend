@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ClientCard } from '../clientCard/ClientCard';
+import { ThemeProvider } from '../../contexts/ThemeContext';
 import type { ClientBasic } from '../../types/ClientBasic';
 
 // Mock focus util to avoid scroll logic noise
@@ -54,6 +55,16 @@ beforeEach(() => {
 });
 
 describe('ClientCard pending state', () => {
+    function renderClientCard(client: ClientBasic, onView = () => {}) {
+        return render(
+            <MemoryRouter>
+                <ThemeProvider>
+                    <ClientCard client={client} onView={onView} />
+                </ThemeProvider>
+            </MemoryRouter>,
+        );
+    }
+
     function makeClient(overrides: Partial<ClientBasic> = {}): ClientBasic {
         return {
             id: 1,
@@ -90,7 +101,7 @@ describe('ClientCard pending state', () => {
             'pendingActions:open',
             listener as EventListener,
         );
-        render(<MemoryRouter><ClientCard client={client} onView={onView} /></MemoryRouter>);
+        renderClientCard(client, onView);
         await act(async () => {
             vi.advanceTimersByTime(200); // surpass hysteresis 140ms
         });
@@ -126,7 +137,7 @@ describe('ClientCard pending state', () => {
             'pendingActions:open',
             listener as EventListener,
         );
-        render(<MemoryRouter><ClientCard client={client} onView={() => {}} /></MemoryRouter>);
+        renderClientCard(client);
         await act(async () => {
             vi.advanceTimersByTime(200);
         });
@@ -154,7 +165,7 @@ describe('ClientCard pending state', () => {
                 Date.now() + 60 * 60 * 1000,
             ).toISOString(),
         });
-        render(<MemoryRouter><ClientCard client={client} onView={() => {}} /></MemoryRouter>);
+        renderClientCard(client);
         expect(screen.queryByText('Compromisso pendente')).toBeNull();
     });
     // Botão específico de resolver foi removido; a ação agora está no +
