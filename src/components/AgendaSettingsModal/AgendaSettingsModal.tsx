@@ -647,6 +647,12 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
                         Ative os lembretes, conecte sua conta e valide com um
                         teste.
                     </p>
+                    <div className={modalStyles.telegramEnvironmentNote}>
+                        O bot do Telegram é único para o sistema. O vínculo
+                        conecta a sua conta individual a esse bot. Fora do
+                        expediente, os lembretes ficam retidos até o próximo
+                        início de expediente.
+                    </div>
 
                     <div className={modalStyles.telegramStepCard}>
                         <div className={modalStyles.telegramStepHeader}>
