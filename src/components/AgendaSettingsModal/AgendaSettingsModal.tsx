@@ -26,6 +26,7 @@ const durationOptions = [
 const reminderMinuteOptions = [
     5, 10, 15, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360,
 ];
+const TELEGRAM_PENDING_LINK_KEY = 'agenda.telegram.pendingLink';
 const visitTypes = [
     { value: 'consulta', label: 'Consulta' },
     { value: 'avaliacao', label: 'Avaliação' },
@@ -89,6 +90,54 @@ function getReminderOptionLabel(minutes: number): string {
     }
 
     return `${minutes} min (${hourLabel} antes)`;
+}
+
+function persistPendingTelegramLink(url: string, token: string) {
+    try {
+        sessionStorage.setItem(
+            TELEGRAM_PENDING_LINK_KEY,
+            JSON.stringify({
+                url,
+                token,
+                createdAt: Date.now(),
+            }),
+        );
+    } catch {
+        /* noop */
+    }
+}
+
+function restorePendingTelegramLink(): { url: string; token: string } | null {
+    try {
+        const raw = sessionStorage.getItem(TELEGRAM_PENDING_LINK_KEY);
+        if (!raw) return null;
+        const data = JSON.parse(raw) as {
+            url?: unknown;
+            token?: unknown;
+            createdAt?: unknown;
+        };
+        const url = typeof data.url === 'string' ? data.url.trim() : '';
+        const token = typeof data.token === 'string' ? data.token.trim() : '';
+        const createdAt =
+            typeof data.createdAt === 'number' ? data.createdAt : Date.now();
+        if (!url || !token) return null;
+        // Backend token TTL is 15 min; keep a short safety margin client-side.
+        if (Date.now() - createdAt > 14 * 60 * 1000) {
+            sessionStorage.removeItem(TELEGRAM_PENDING_LINK_KEY);
+            return null;
+        }
+        return { url, token };
+    } catch {
+        return null;
+    }
+}
+
+function clearPendingTelegramLink() {
+    try {
+        sessionStorage.removeItem(TELEGRAM_PENDING_LINK_KEY);
+    } catch {
+        /* noop */
+    }
 }
 
 export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
@@ -234,8 +283,10 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
         hasUserEditedRef.current = false;
         setSavedMsg(null);
         setMsgType(null);
-        setTelegramStartUrl('');
-        setTelegramStartToken('');
+
+        const pending = restorePendingTelegramLink();
+        setTelegramStartUrl(pending?.url || '');
+        setTelegramStartToken(pending?.token || '');
 
         const current = getAgendaSettingsSnapshot();
         const currentStart = clampHM(current.workStart, DEFAULTS.workStart);
@@ -381,6 +432,7 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
             }
             setTelegramStartUrl(result.linkUrl);
             setTelegramStartToken(result.startToken);
+            persistPendingTelegramLink(result.linkUrl, result.startToken);
             emit('systemMessage', {
                 text: 'Link gerado. Abra no Telegram e toque em Iniciar.',
                 type: 'info',
@@ -392,10 +444,16 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
                     'noopener,noreferrer',
                 );
                 if (!opened) {
-                    window.location.href = result.linkUrl;
+                    emit('systemMessage', {
+                        text: 'Nao foi possivel abrir automaticamente. Use "Abrir Telegram" ou copie o link.',
+                        type: 'warning',
+                    });
                 }
             } catch {
-                window.location.href = result.linkUrl;
+                emit('systemMessage', {
+                    text: 'Nao foi possivel abrir automaticamente. Use "Abrir Telegram" ou copie o link.',
+                    type: 'warning',
+                });
             }
         } catch (error) {
             emit('systemMessage', {
@@ -476,6 +534,9 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
             setTelegramLinkActive(snapshot.telegramLinkActive);
             setTelegramUsername(snapshot.telegramUsername);
             setTelegramLastError(snapshot.telegramLastError);
+            clearPendingTelegramLink();
+            setTelegramStartUrl('');
+            setTelegramStartToken('');
             emit('systemMessage', {
                 text: 'Telegram conectado com sucesso.',
                 type: 'success',
