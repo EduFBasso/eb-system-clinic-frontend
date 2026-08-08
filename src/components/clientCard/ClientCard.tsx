@@ -49,6 +49,56 @@ interface ClientCardProps {
     filterMode?: 'all' | 'pending' | 'today' | 'tomorrow';
 }
 
+const LOCAL_HOST_PATTERN = /^(localhost|127\.0\.0\.1|::1)$/i;
+
+function isLocalHostname(hostname: string): boolean {
+    return LOCAL_HOST_PATTERN.test((hostname || '').trim());
+}
+
+function parseAbsoluteUrl(value: string): URL | null {
+    try {
+        return new URL(value);
+    } catch {
+        return null;
+    }
+}
+
+function resolvePublicAnamnesisBaseUrl(): string {
+    const currentOrigin = window.location.origin.replace(/\/+$/, '');
+
+    // In local development, keep domain parity with the current access mode.
+    // If user opened with localhost, generate localhost link.
+    // If user opened with LAN IP, generate LAN IP link.
+    if (import.meta.env.DEV) {
+        return currentOrigin;
+    }
+
+    const configuredBase = (
+        import.meta.env.VITE_PUBLIC_ANAMNESIS_BASE_URL as string | undefined
+    )?.trim();
+    if (configuredBase && /^https?:\/\//i.test(configuredBase)) {
+        return configuredBase.replace(/\/+$/, '');
+    }
+
+    const currentHost = window.location.hostname || '';
+
+    // If app is running on localhost, try inferring a LAN host from API_BASE
+    // so links can be opened by another device (e.g., client phone).
+    if (isLocalHostname(currentHost)) {
+        const apiUrl = parseAbsoluteUrl(API_BASE);
+        if (apiUrl && !isLocalHostname(apiUrl.hostname)) {
+            const protocol = window.location.protocol || apiUrl.protocol;
+            const frontendPort = window.location.port || '5173';
+            return `${protocol}//${apiUrl.hostname}:${frontendPort}`.replace(
+                /\/+$/,
+                '',
+            );
+        }
+    }
+
+    return currentOrigin;
+}
+
 function ClientCardBase({
     client,
     onView,
@@ -384,19 +434,37 @@ function ClientCardBase({
                 );
             }
 
-            const basePublicUrl =
-                (
-                    import.meta.env.VITE_PUBLIC_ANAMNESIS_BASE_URL as
-                        | string
-                        | undefined
-                )?.trim() || window.location.origin;
+            const basePublicUrl = resolvePublicAnamnesisBaseUrl();
             const normalizedBase = basePublicUrl.replace(/\/+$/, '');
             const params = new URLSearchParams({
                 token: data.token,
                 theme,
             });
             const link = `${normalizedBase}/anamnesis/public?${params.toString()}`;
-            const message = `Olá ${client.first_name}, por favor preencha sua ficha ou atualize seus dados: ${link}`;
+
+            const resolvedHost =
+                parseAbsoluteUrl(normalizedBase)?.hostname || '';
+            if (isLocalHostname(resolvedHost)) {
+                window.dispatchEvent(
+                    new CustomEvent('systemMessage', {
+                        detail: {
+                            text: 'Link de anamnese gerado com localhost. Para abrir em outro aparelho, configure VITE_PUBLIC_ANAMNESIS_BASE_URL com uma URL acessível (LAN, túnel ou domínio público).',
+                            type: 'warning',
+                        },
+                    }),
+                );
+            }
+
+            const message = [
+                `Olá ${client.first_name}!`,
+                '',
+                'Para preencher ou atualizar sua ficha, toque no link abaixo:',
+                link,
+                '',
+                'Este link é válido por 1 hora.',
+                '',
+                'Se não abrir automaticamente, copie e cole o link no navegador.',
+            ].join('\n');
 
             const userAgent =
                 typeof navigator !== 'undefined' ? navigator.userAgent : '';

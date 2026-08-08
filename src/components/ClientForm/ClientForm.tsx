@@ -173,14 +173,7 @@ export function ClientForm({
     const toggleSection = (sectionId: string) => {
         setOpenSection(prev => (prev === sectionId ? null : sectionId));
     };
-    const publicClientName = [formData.first_name, formData.last_name]
-        .map(value => value?.trim())
-        .filter(Boolean)
-        .join(' ');
-    const withPublicClientName = (baseTitle: string) =>
-        isPublicMode && publicClientName
-            ? `${baseTitle} — ${publicClientName}`
-            : baseTitle;
+    const withPublicClientName = (baseTitle: string) => baseTitle;
 
     function handleChange(
         fieldOrEvent:
