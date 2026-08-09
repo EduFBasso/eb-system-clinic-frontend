@@ -57,12 +57,34 @@ describe('NavBar login code flow', () => {
         };
     });
 
-    it('exibe o botao Face ID quando o email esta preenchido mesmo sem marcador local', async () => {
+    it('exibe o botao Face ID quando um profissional e selecionado', async () => {
+        vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+            new Response(
+                JSON.stringify([
+                    {
+                        id: 1,
+                        first_name: 'Bruna',
+                        last_name: 'Dentista',
+                        email: 'brunadentista@mail.com',
+                        specialty: 'Odontologia',
+                    },
+                ]),
+                {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                },
+            ),
+        );
+
         renderNavBar();
 
-        fireEvent.change(screen.getByPlaceholderText('E-mail'), {
-            target: { value: 'brunadentista@mail.com' },
+        const selectorButton = await screen.findByRole('button', {
+            name: /profissional/i,
         });
+        fireEvent.click(selectorButton);
+        fireEvent.click(
+            screen.getByRole('button', { name: /Bruna Dentista/i }),
+        );
 
         await waitFor(() => {
             expect(
@@ -71,7 +93,7 @@ describe('NavBar login code flow', () => {
         });
     });
 
-    it('preenche email e código TOTP e autentica', async () => {
+    it('seleciona profissional e senha e autentica', async () => {
         const professionalEmail = 'pro1@example.com';
 
         vi.spyOn(globalThis, 'fetch').mockImplementation(
@@ -83,7 +105,30 @@ describe('NavBar login code flow', () => {
                           ? input.toString()
                           : (input as Request).url;
 
-                if (/totp\/verify\//.test(url) && init?.method === 'POST') {
+                if (
+                    /professionals-basic\//.test(url) &&
+                    (!init || !init.method || init.method === 'GET')
+                ) {
+                    return Promise.resolve(
+                        new Response(
+                            JSON.stringify([
+                                {
+                                    id: 1,
+                                    first_name: 'Ana',
+                                    last_name: 'Silva',
+                                    email: professionalEmail,
+                                    specialty: 'Podologia',
+                                },
+                            ]),
+                            {
+                                status: 200,
+                                headers: { 'Content-Type': 'application/json' },
+                            },
+                        ),
+                    );
+                }
+
+                if (/\/token\//.test(url) && init?.method === 'POST') {
                     return Promise.resolve(
                         new Response(
                             JSON.stringify({
@@ -114,13 +159,15 @@ describe('NavBar login code flow', () => {
 
         renderNavBar();
 
-        // Preenche email
-        const emailInput = screen.getByPlaceholderText('E-mail');
-        fireEvent.change(emailInput, { target: { value: professionalEmail } });
+        fireEvent.click(
+            await screen.findByRole('button', {
+                name: /Selecionar profissional|Carregando profissionais/i,
+            }),
+        );
+        fireEvent.click(screen.getByRole('button', { name: /Ana Silva/i }));
 
-        // Preenche código TOTP (6 dígitos)
-        const codeInput = screen.getByPlaceholderText('Código (6 dígitos)');
-        fireEvent.change(codeInput, { target: { value: '123456' } });
+        const passwordInput = screen.getByPlaceholderText('Senha');
+        fireEvent.change(passwordInput, { target: { value: 'Senha123' } });
 
         // Botão Entrar deve estar habilitado
         const enterBtn = screen.getByRole('button', { name: /Entrar/i });

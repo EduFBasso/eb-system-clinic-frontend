@@ -136,10 +136,12 @@ export const FilterBar = React.memo(function FilterBar({
                     <input
                         ref={inputRef}
                         id='client-filter'
+                        name='client-filter'
                         type='text'
                         className={styles.filterInput}
                         placeholder='Digite o nome do cliente...'
                         value={localFilter}
+                        autoComplete='off'
                         autoCapitalize='none'
                         autoCorrect='off'
                         spellCheck={false}

@@ -22,6 +22,13 @@ type VerifyResponse = {
     device_id?: string;
     message?: string;
 };
+type ProfessionalLoginOption = {
+    id: number;
+    email: string;
+    first_name: string;
+    last_name: string;
+    specialty?: string;
+};
 import type { Professional as ProfessionalBasic } from '../../types/models';
 import styles from './NavBar.module.css';
 import { AgendaSettingsModal } from '../AgendaSettingsModal/AgendaSettingsModal';
@@ -66,8 +73,12 @@ export const NavBar: React.FC<NavBarProps> = ({
     const [loginEmail, setLoginEmail] = useState<string>(
         () => localStorage.getItem('lastLoginEmail') ?? '',
     );
-    const [totpCode, setTotpCode] = useState('');
+    const [loginPassword, setLoginPassword] = useState('');
     const [loadingOtp, setLoadingOtp] = useState(false);
+    const [professionals, setProfessionals] = useState<
+        ProfessionalLoginOption[]
+    >([]);
+    const [loadingProfessionals, setLoadingProfessionals] = useState(false);
     const [loggedProfessional, setLoggedProfessional] =
         useState<ProfessionalBasic | null>(() => {
             const stored = localStorage.getItem('loggedProfessional');
@@ -83,6 +94,10 @@ export const NavBar: React.FC<NavBarProps> = ({
     // Consulta dropdown state
     const [consultaDropdownOpen, setConsultaDropdownOpen] = useState(false);
     const consultaDropdownRef = useRef<HTMLDivElement>(null);
+    const [professionalDropdownOpen, setProfessionalDropdownOpen] =
+        useState(false);
+    const professionalDropdownRef = useRef<HTMLDivElement>(null);
+    const loginButtonRef = useRef<HTMLButtonElement>(null);
 
     // Modal state
     const [modalOpen, setModalOpen] = useState(false);
@@ -103,7 +118,12 @@ export const NavBar: React.FC<NavBarProps> = ({
     const [platformAuthenticatorAvailable, setPlatformAuthenticatorAvailable] =
         useState(false);
     const [, setBiometricConfigured] = useState(false);
-    const hasWebAuthn = !!loginEmail && platformAuthenticatorAvailable;
+    const isSecureWebAuthnContext =
+        typeof window !== 'undefined' ? (window.isSecureContext ?? true) : true;
+    const hasWebAuthn =
+        !!loginEmail &&
+        platformAuthenticatorAvailable &&
+        isSecureWebAuthnContext;
     // Estado para modal de sessão expirada
     const [sessionExpiredOpen, setSessionExpiredOpen] = useState(false);
     const [sessionExpiredMessage, setSessionExpiredMessage] = useState(
@@ -124,10 +144,17 @@ export const NavBar: React.FC<NavBarProps> = ({
                 setAgendaDropdownOpen(false);
             }
             if (
+                isSecureWebAuthnContext &&
                 consultaDropdownRef.current &&
                 !consultaDropdownRef.current.contains(target)
             ) {
                 setConsultaDropdownOpen(false);
+            }
+            if (
+                professionalDropdownRef.current &&
+                !professionalDropdownRef.current.contains(target)
+            ) {
+                setProfessionalDropdownOpen(false);
             }
         }
         document.addEventListener('mousedown', handleClickOutside);
@@ -147,6 +174,46 @@ export const NavBar: React.FC<NavBarProps> = ({
     }, []);
 
     useEffect(() => {
+        let active = true;
+        if (loggedProfessional) {
+            return;
+        }
+        const loadProfessionals = async () => {
+            setLoadingProfessionals(true);
+            try {
+                const res = await fetch(
+                    `${API_BASE}/register/professionals-basic/?ecosystem=clinic`,
+                );
+                if (!res.ok) {
+                    throw new Error('Falha ao carregar profissionais.');
+                }
+                const data = await res.json();
+                const items = Array.isArray(data)
+                    ? data
+                    : Array.isArray(data?.results)
+                      ? data.results
+                      : [];
+                if (!active) {
+                    return;
+                }
+                setProfessionals(items);
+            } catch {
+                if (active) {
+                    setProfessionals([]);
+                }
+            } finally {
+                if (active) {
+                    setLoadingProfessionals(false);
+                }
+            }
+        };
+        void loadProfessionals();
+        return () => {
+            active = false;
+        };
+    }, [loggedProfessional]);
+
+    useEffect(() => {
         const disposeLogin = on('auth:login', () => {
             try {
                 const stored = localStorage.getItem('loggedProfessional');
@@ -162,7 +229,7 @@ export const NavBar: React.FC<NavBarProps> = ({
 
         const disposeLogout = on('auth:logout', detail => {
             setLoggedProfessional(null);
-            setTotpCode('');
+            setLoginPassword('');
             setDropdownOpen(false);
             setAgendaDropdownOpen(false);
             setConsultaDropdownOpen(false);
@@ -626,192 +693,293 @@ export const NavBar: React.FC<NavBarProps> = ({
                             onClick={() => {
                                 setLoggedProfessional(null);
                                 setLoginEmail('');
-                                setTotpCode('');
+                                setLoginPassword('');
                                 dispatchLogout('manual');
                             }}
                         >
                             Sair
                         </button>
-                        {/* Superusers são redirecionados para /admin no login e não usam ações do NavBar */}
                     </div>
                 ) : (
                     <>
-                        {/* TOTP login: email + código do Google Authenticator */}
-                        <input
-                            type='email'
-                            placeholder='E-mail'
-                            className={styles.loginInput}
-                            value={loginEmail}
-                            onChange={e => setLoginEmail(e.target.value)}
-                            style={{ marginRight: 6 }}
-                            autoComplete='username'
-                        />
-                        <input
-                            type='text'
-                            inputMode='numeric'
-                            pattern='[0-9]*'
-                            placeholder='Código (6 dígitos)'
-                            className={styles.loginInput}
-                            value={totpCode}
-                            onChange={e =>
-                                setTotpCode(
-                                    e.target.value
-                                        .replace(/\D/g, '')
-                                        .slice(0, 6),
-                                )
-                            }
-                            style={{ marginRight: 6, width: 120 }}
-                            autoComplete='one-time-code'
-                            autoCorrect='off'
-                            autoCapitalize='off'
-                            spellCheck={false}
-                            onKeyDown={e => {
-                                if (e.key === 'Enter')
-                                    e.currentTarget
-                                        .closest('form')
-                                        ?.requestSubmit();
-                            }}
-                        />
-                        {hasWebAuthn && (
-                            <button
-                                className={styles.loginButton}
-                                disabled={biometricLoading || !loginEmail}
-                                onClick={handleWebAuthnLogin}
-                                title='Entrar com biometria'
-                                style={{ marginRight: 6 }}
-                            >
-                                {biometricLoading ? '...' : '🔒 Face ID'}
-                            </button>
-                        )}
-                        <button
-                            className={styles.loginButton}
-                            disabled={
-                                loadingOtp ||
-                                !loginEmail ||
-                                totpCode.length !== 6
-                            }
-                            aria-busy={loadingOtp}
-                            onClick={async () => {
-                                setLoadingOtp(true);
-                                try {
-                                    const deviceIdKey = 'device_id';
-                                    const deviceId =
-                                        getOrCreateDeviceId(deviceIdKey);
-                                    const res = await fetch(
-                                        `${API_BASE}/register/auth/totp/verify/`,
-                                        {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type':
-                                                    'application/json',
-                                            },
-                                            body: JSON.stringify({
-                                                email: loginEmail,
-                                                code: totpCode,
-                                                device_id: deviceId,
-                                            }),
-                                        },
-                                    );
-                                    let data: VerifyResponse = {};
-                                    try {
-                                        data = await res.json();
-                                    } catch {
-                                        data = {
-                                            message:
-                                                'Falha ao interpretar resposta do servidor',
-                                        };
-                                    }
-                                    if (res.ok && data.access) {
-                                        setModalMessage(
-                                            'Login realizado! Dados dos clientes liberados.',
-                                        );
-                                        setModalOpen(true);
-                                        localStorage.setItem(
-                                            'accessToken',
-                                            data.access,
-                                        );
-                                        setTotpCode('');
-                                        setLoggedProfessional(
-                                            data.professional || null,
-                                        );
-                                        localStorage.setItem(
-                                            'loggedProfessional',
-                                            JSON.stringify(data.professional),
-                                        );
-                                        if (data.device_id) {
-                                            localStorage.setItem(
-                                                deviceIdKey,
-                                                String(data.device_id),
-                                            );
-                                        }
-                                        if (data.professional?.is_superuser) {
-                                            navigate('/admin', {
-                                                replace: true,
-                                            });
-                                            return;
-                                        }
-                                        emit('auth:login', undefined);
-                                        window.dispatchEvent(
-                                            new Event('updateClients'),
-                                        );
-                                        window.dispatchEvent(
-                                            new Event('clearClients'),
-                                        );
-                                        localStorage.setItem(
-                                            'lastLoginEmail',
-                                            loginEmail,
-                                        );
-                                        // Offer biometric registration if not already set
-                                        if (
-                                            !localStorage.getItem(
-                                                biometricStorageKey(loginEmail),
-                                            ) &&
-                                            typeof PublicKeyCredential !==
-                                                'undefined' &&
-                                            typeof (
-                                                PublicKeyCredential as {
-                                                    isUserVerifyingPlatformAuthenticatorAvailable?: () => Promise<boolean>;
-                                                }
+                        {(() => {
+                            const selected = professionals.find(
+                                p => p.email === loginEmail,
+                            );
+                            const buttonLabel = selected
+                                ? `Alterar profissional: ${selected.first_name} ${selected.last_name}`
+                                : loadingProfessionals
+                                  ? 'Carregando profissionais'
+                                  : 'Selecionar profissional';
+                            return (
+                                <div
+                                    className={styles.dropdownWrapper}
+                                    ref={professionalDropdownRef}
+                                >
+                                    <button
+                                        className={`${styles.menuButton} ${styles.profSelectorBtn} ${styles.profSelectorLayout}`}
+                                        type='button'
+                                        onClick={() =>
+                                            setProfessionalDropdownOpen(
+                                                open => !open,
                                             )
-                                                .isUserVerifyingPlatformAuthenticatorAvailable ===
-                                                'function'
-                                        ) {
-                                            try {
-                                                const ok = await (
-                                                    PublicKeyCredential as {
-                                                        isUserVerifyingPlatformAuthenticatorAvailable: () => Promise<boolean>;
-                                                    }
-                                                ).isUserVerifyingPlatformAuthenticatorAvailable();
-                                                if (ok)
-                                                    setOfferBiometricOpen(true);
-                                            } catch {
-                                                /* ignore */
-                                            }
                                         }
-                                    } else {
-                                        setModalMessage(
-                                            String(
-                                                data.message ||
-                                                    'Código inválido',
-                                            ),
-                                        );
-                                        setModalOpen(true);
-                                    }
-                                } catch (err) {
-                                    const detail =
-                                        err instanceof Error
-                                            ? err.message
-                                            : String(err);
-                                    setModalMessage(
-                                        `Erro ao validar código: ${detail}`,
-                                    );
-                                    setModalOpen(true);
-                                }
-                                setLoadingOtp(false);
-                            }}
-                        >
-                            {loadingOtp ? 'Entrando...' : 'Entrar'}
-                        </button>
+                                        aria-haspopup='listbox'
+                                        aria-expanded={professionalDropdownOpen}
+                                        aria-label={buttonLabel}
+                                        title={buttonLabel}
+                                    >
+                                        <span className={styles.profIcon}>
+                                            🧑‍⚕️
+                                        </span>
+                                        {selected ? (
+                                            <span
+                                                className={
+                                                    styles.selectedProfName
+                                                }
+                                                title={`${selected.first_name} ${selected.last_name}${selected.specialty ? ' • ' + selected.specialty : ''}`}
+                                            >
+                                                {selected.first_name}
+                                            </span>
+                                        ) : (
+                                            <span
+                                                className={
+                                                    styles.selectedProfName
+                                                }
+                                            >
+                                                Profissional
+                                            </span>
+                                        )}
+                                        <span className={styles.caret}>▼</span>
+                                    </button>
+                                    {professionalDropdownOpen && (
+                                        <div
+                                            className={`${styles.dropdownMenu} ${styles.dropdownMenuRight}`}
+                                            role='listbox'
+                                        >
+                                            {professionals.length === 0 ? (
+                                                <button
+                                                    type='button'
+                                                    className={
+                                                        styles.dropdownItem
+                                                    }
+                                                    disabled
+                                                >
+                                                    Nenhum profissional
+                                                    disponível
+                                                </button>
+                                            ) : (
+                                                professionals.map(prof => (
+                                                    <button
+                                                        key={prof.id}
+                                                        type='button'
+                                                        className={
+                                                            styles.dropdownItem
+                                                        }
+                                                        onClick={() => {
+                                                            setLoginEmail(
+                                                                prof.email,
+                                                            );
+                                                            setProfessionalDropdownOpen(
+                                                                false,
+                                                            );
+                                                        }}
+                                                    >
+                                                        {prof.first_name}{' '}
+                                                        {prof.last_name} •{' '}
+                                                        {prof.specialty ||
+                                                            'Sem especialidade'}
+                                                    </button>
+                                                ))
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
+                        {loginEmail && (
+                            <div className={styles.passBlock}>
+                                <div className={styles.passInlineRow}>
+                                    <input
+                                        type='text'
+                                        value={loginEmail}
+                                        readOnly
+                                        tabIndex={-1}
+                                        aria-hidden='true'
+                                        autoComplete='username'
+                                        className={styles.authHiddenField}
+                                    />
+                                    <input
+                                        type='password'
+                                        name='clinic-password'
+                                        placeholder='Senha'
+                                        className={styles.loginInput}
+                                        value={loginPassword}
+                                        onChange={e =>
+                                            setLoginPassword(e.target.value)
+                                        }
+                                        autoComplete='current-password'
+                                        autoCorrect='off'
+                                        autoCapitalize='off'
+                                        spellCheck={false}
+                                        autoFocus
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                loginButtonRef.current?.click();
+                                            }
+                                        }}
+                                    />
+                                    {hasWebAuthn && (
+                                        <button
+                                            className={styles.loginButton}
+                                            disabled={biometricLoading}
+                                            onClick={handleWebAuthnLogin}
+                                            title='Entrar com biometria (Face ID)'
+                                            aria-label='Face ID'
+                                        >
+                                            {biometricLoading ? '...' : '🔒'}
+                                        </button>
+                                    )}
+                                </div>
+                                <button
+                                    ref={loginButtonRef}
+                                    className={`${styles.loginButton} ${styles.enterButton}`}
+                                    disabled={loadingOtp || !loginPassword}
+                                    aria-busy={loadingOtp}
+                                    onClick={async () => {
+                                        setLoadingOtp(true);
+                                        try {
+                                            const deviceIdKey = 'device_id';
+                                            const deviceId =
+                                                getOrCreateDeviceId(
+                                                    deviceIdKey,
+                                                );
+                                            const res = await fetch(
+                                                `${API_BASE}/token/`,
+                                                {
+                                                    method: 'POST',
+                                                    headers: {
+                                                        'Content-Type':
+                                                            'application/json',
+                                                    },
+                                                    body: JSON.stringify({
+                                                        email: loginEmail,
+                                                        password: loginPassword,
+                                                        device_id: deviceId,
+                                                    }),
+                                                },
+                                            );
+                                            let data: VerifyResponse = {};
+                                            try {
+                                                data = await res.json();
+                                            } catch {
+                                                data = {
+                                                    message:
+                                                        'Falha ao interpretar resposta do servidor',
+                                                };
+                                            }
+                                            if (res.ok && data.access) {
+                                                setModalMessage(
+                                                    'Login realizado! Dados dos clientes liberados.',
+                                                );
+                                                setModalOpen(true);
+                                                localStorage.setItem(
+                                                    'accessToken',
+                                                    data.access,
+                                                );
+                                                setLoginPassword('');
+                                                setLoggedProfessional(
+                                                    data.professional || null,
+                                                );
+                                                localStorage.setItem(
+                                                    'loggedProfessional',
+                                                    JSON.stringify(
+                                                        data.professional,
+                                                    ),
+                                                );
+                                                if (data.device_id) {
+                                                    localStorage.setItem(
+                                                        deviceIdKey,
+                                                        String(data.device_id),
+                                                    );
+                                                }
+                                                if (
+                                                    data.professional
+                                                        ?.is_superuser
+                                                ) {
+                                                    navigate('/admin', {
+                                                        replace: true,
+                                                    });
+                                                    return;
+                                                }
+                                                emit('auth:login', undefined);
+                                                window.dispatchEvent(
+                                                    new Event('updateClients'),
+                                                );
+                                                window.dispatchEvent(
+                                                    new Event('clearClients'),
+                                                );
+                                                localStorage.setItem(
+                                                    'lastLoginEmail',
+                                                    loginEmail,
+                                                );
+                                                if (
+                                                    !localStorage.getItem(
+                                                        biometricStorageKey(
+                                                            loginEmail,
+                                                        ),
+                                                    ) &&
+                                                    typeof PublicKeyCredential !==
+                                                        'undefined' &&
+                                                    typeof (
+                                                        PublicKeyCredential as {
+                                                            isUserVerifyingPlatformAuthenticatorAvailable?: () => Promise<boolean>;
+                                                        }
+                                                    )
+                                                        .isUserVerifyingPlatformAuthenticatorAvailable ===
+                                                        'function'
+                                                ) {
+                                                    try {
+                                                        const ok = await (
+                                                            PublicKeyCredential as {
+                                                                isUserVerifyingPlatformAuthenticatorAvailable: () => Promise<boolean>;
+                                                            }
+                                                        ).isUserVerifyingPlatformAuthenticatorAvailable();
+                                                        if (ok)
+                                                            setOfferBiometricOpen(
+                                                                true,
+                                                            );
+                                                    } catch {
+                                                        /* ignore */
+                                                    }
+                                                }
+                                            } else {
+                                                setModalMessage(
+                                                    String(
+                                                        data.message ||
+                                                            'Credenciais inválidas',
+                                                    ),
+                                                );
+                                                setModalOpen(true);
+                                            }
+                                        } catch (err) {
+                                            const detail =
+                                                err instanceof Error
+                                                    ? err.message
+                                                    : String(err);
+                                            setModalMessage(
+                                                `Erro ao validar credenciais: ${detail}`,
+                                            );
+                                            setModalOpen(true);
+                                        }
+                                        setLoadingOtp(false);
+                                    }}
+                                >
+                                    {loadingOtp ? 'Entrando...' : 'Entrar'}
+                                </button>
+                            </div>
+                        )}
                     </>
                 )}
             </div>

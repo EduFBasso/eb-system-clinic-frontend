@@ -378,3 +378,109 @@
 }
 
 /* Removido limite de largura em desktop para ocupar 100% */
+
+/* Dropdown alinhado à direita do trigger — usado no seletor de profissional */
+.dropdownMenuRight {
+    right: 0;
+    left: auto;
+}
+
+/* Botão do seletor de profissional: ícone ~20% maior que os demais botões */
+.profSelectorBtn {
+    font-size: 1.2rem;
+}
+
+.profSelectorLayout {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    white-space: nowrap;
+}
+
+.profIcon {
+    line-height: 1;
+}
+
+/* Nome do profissional selecionado — mesma fonte dos menus (16px = 1rem) */
+.selectedProfName {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text-main, #1a2a3a);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 9rem;
+    line-height: 1.2;
+}
+
+/* Desktop: senha/biometria/entrar na mesma linha */
+.passBlock {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.passInlineRow {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.passInlineRow .loginInput {
+    width: 9rem;
+}
+
+.passInlineRow .loginButton {
+    flex-shrink: 0;
+}
+
+.enterButton {
+    min-width: 6.25rem;
+}
+
+.authHiddenField {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+    border: 0;
+    padding: 0;
+}
+
+@media screen and (max-width: 600px) {
+    .profSelectorLayout {
+        max-width: var(--right-col-max-vw);
+        justify-content: flex-start;
+    }
+
+    .selectedProfName {
+        font-size: 1rem;
+        max-width: 5.5rem;
+        text-align: left;
+    }
+
+    /* Mobile: botão Entrar abaixo do input e input com ~50% da coluna direita */
+    .passBlock {
+        width: 100%;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.3rem;
+    }
+
+    .passInlineRow {
+        width: 56%;
+    }
+
+    .passInlineRow .loginInput {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .enterButton {
+        width: 56%;
+        min-width: 0;
+    }
+}
