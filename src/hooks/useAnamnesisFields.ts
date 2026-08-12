@@ -13,7 +13,7 @@ export function useAnamnesisFields() {
             setLoading(false);
             return;
         }
-        fetch(`${API_BASE}/anamnesis/fields/`, {
+        fetch(`${API_BASE}/clinic/podology/anamnesis/fields/`, {
             headers: { Authorization: `Bearer ${token}` },
         })
             .then(r => {

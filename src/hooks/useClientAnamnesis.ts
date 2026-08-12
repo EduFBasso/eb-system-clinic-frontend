@@ -156,9 +156,12 @@ export function useClientAnamnesis(clientId?: number): ClientAnamnesisHook {
         }
         const token = getAccessToken();
         if (!token) return;
-        fetch(`${API_BASE}/anamnesis/responses/?client=${clientId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-        })
+        fetch(
+            `${API_BASE}/clinic/podology/anamnesis/responses/?client=${clientId}`,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            },
+        )
             .then(r => (r.ok ? r.json() : Promise.resolve([])))
             .then((data: AnamnesisResponse[]) => {
                 const map: Record<number, string> = {};
@@ -214,14 +217,29 @@ export function useClientAnamnesis(clientId?: number): ClientAnamnesisHook {
                 value: normalizedValues[field.id] ?? '',
             }));
 
-        await fetch(`${API_BASE}/anamnesis/responses/bulk_save/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
+        const response = await fetch(
+            `${API_BASE}/clinic/podology/anamnesis/responses/bulk_save/`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ client: clientId, responses: entries }),
             },
-            body: JSON.stringify({ client: clientId, responses: entries }),
-        });
+        );
+        if (!response.ok) {
+            let detail = 'Falha ao salvar anamnese de podologia.';
+            try {
+                const data = await response.json();
+                if (typeof data?.detail === 'string') {
+                    detail = data.detail;
+                }
+            } catch {
+                /* noop */
+            }
+            throw new Error(detail);
+        }
     }
 
     return {

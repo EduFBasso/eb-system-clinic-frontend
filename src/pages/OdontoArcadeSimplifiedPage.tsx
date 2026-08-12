@@ -31,7 +31,8 @@ import styles from '../styles/pages/OdontoArcadeSimplifiedPage.module.css';
 function dateKeyFromProcedure(proc: ProcedureItem): string {
     const eventDate = eventDateISO(proc);
     if (eventDate) return eventDate;
-    const createdAt = (proc as ProcedureItem & { created_at?: string }).created_at;
+    const createdAt = (proc as ProcedureItem & { created_at?: string })
+        .created_at;
     if (createdAt && createdAt.length >= 10) return createdAt.slice(0, 10);
     return todayISODate();
 }
@@ -51,7 +52,10 @@ export default function OdontoArcadeSimplifiedPage() {
     const { clientId } = useParams();
 
     const canAccess = React.useMemo(() => hasOdontoAccess(), []);
-    const numericClientId = React.useMemo(() => Number(clientId || 0), [clientId]);
+    const numericClientId = React.useMemo(
+        () => Number(clientId || 0),
+        [clientId],
+    );
 
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
@@ -66,22 +70,32 @@ export default function OdontoArcadeSimplifiedPage() {
     const [productFlowOpen, setProductFlowOpen] = React.useState(false);
     const [savingServiceFlow, setSavingServiceFlow] = React.useState(false);
     const [savingProductFlow, setSavingProductFlow] = React.useState(false);
-    const [expandedProcedureIds, setExpandedProcedureIds] = React.useState<Set<number>>(
-        new Set(),
-    );
-    const [editingProcedure, setEditingProcedure] = React.useState<ProcedureItem | null>(null);
+    const [expandedProcedureIds, setExpandedProcedureIds] = React.useState<
+        Set<number>
+    >(new Set());
+    const [editingProcedure, setEditingProcedure] =
+        React.useState<ProcedureItem | null>(null);
     const [editingProcedureName, setEditingProcedureName] = React.useState('');
-    const [editingProcedureValue, setEditingProcedureValue] = React.useState('');
-    const [editingProcedureNotes, setEditingProcedureNotes] = React.useState('');
+    const [editingProcedureValue, setEditingProcedureValue] =
+        React.useState('');
+    const [editingProcedureNotes, setEditingProcedureNotes] =
+        React.useState('');
     const [savingEditProcedure, setSavingEditProcedure] = React.useState(false);
+    const [savingCreateArcade, setSavingCreateArcade] = React.useState(false);
 
-    const [serviceFlowType, setServiceFlowType] = React.useState<ServiceFlowType>('tooth');
+    const [serviceFlowType, setServiceFlowType] =
+        React.useState<ServiceFlowType>('tooth');
     const [serviceRows, setServiceRows] = React.useState<ServiceRow[]>([]);
     const [productRows, setProductRows] = React.useState<ProductRow[]>([]);
     const [procedureNames, setProcedureNames] = React.useState<string[]>([]);
-    const [savingSuggestionIndex, setSavingSuggestionIndex] = React.useState<number | null>(null);
-    const [productCatalog, setProductCatalog] = React.useState<ProductCatalogItem[]>([]);
-    const [savingProductSuggestionIndex, setSavingProductSuggestionIndex] = React.useState<number | null>(null);
+    const [savingSuggestionIndex, setSavingSuggestionIndex] = React.useState<
+        number | null
+    >(null);
+    const [productCatalog, setProductCatalog] = React.useState<
+        ProductCatalogItem[]
+    >([]);
+    const [savingProductSuggestionIndex, setSavingProductSuggestionIndex] =
+        React.useState<number | null>(null);
 
     const arcadeLabelByValue = React.useMemo(
         () =>
@@ -139,13 +153,19 @@ export default function OdontoArcadeSimplifiedPage() {
         setError(null);
         try {
             const [arcadesRes, clientRes] = await Promise.all([
-                apiFetch(`/odonto/arcades/?client=${numericClientId}`),
-                apiFetch(`/register/clients/${numericClientId}/`).catch(() => null),
+                apiFetch(`/clinic/odonto/arcades/?client=${numericClientId}`),
+                apiFetch(`/register/clients/${numericClientId}/`).catch(
+                    () => null,
+                ),
             ]);
 
             if (clientRes && typeof clientRes === 'object') {
-                const c = clientRes as { first_name?: string; last_name?: string };
-                const fullName = `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim();
+                const c = clientRes as {
+                    first_name?: string;
+                    last_name?: string;
+                };
+                const fullName =
+                    `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim();
                 if (fullName) setClientName(fullName);
             }
 
@@ -166,8 +186,10 @@ export default function OdontoArcadeSimplifiedPage() {
             setArcade(currentArcade);
 
             const [teethRes, proceduresRes] = await Promise.all([
-                apiFetch(`/odonto/teeth/?arcade=${currentArcade.id}`),
-                apiFetch(`/odonto/procedures/?arcade=${currentArcade.id}`),
+                apiFetch(`/clinic/odonto/teeth/?arcade=${currentArcade.id}`),
+                apiFetch(
+                    `/clinic/odonto/procedures/?arcade=${currentArcade.id}`,
+                ),
             ]);
 
             const fetchedTeeth = asList<ToothItem>(teethRes).sort(
@@ -182,7 +204,9 @@ export default function OdontoArcadeSimplifiedPage() {
                 err instanceof ApiError
                     ? err.message
                     : 'Nao foi possivel carregar os dados da arcada.';
-            setError(message || 'Nao foi possivel carregar os dados da arcada.');
+            setError(
+                message || 'Nao foi possivel carregar os dados da arcada.',
+            );
         } finally {
             setLoading(false);
         }
@@ -194,12 +218,22 @@ export default function OdontoArcadeSimplifiedPage() {
 
     const loadProcedureNames = React.useCallback(async () => {
         try {
-            const response = await apiFetch('/odonto/procedures/distinct-names/');
-            if (response && typeof response === 'object' && 'names' in response) {
+            const response = await apiFetch(
+                '/clinic/odonto/procedures/distinct-names/',
+            );
+            if (
+                response &&
+                typeof response === 'object' &&
+                'names' in response
+            ) {
                 const names = Array.isArray(response.names)
                     ? (response.names as string[])
                           .map(name => String(name))
-                          .sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
+                          .sort((a, b) =>
+                              a.localeCompare(b, 'pt-BR', {
+                                  sensitivity: 'base',
+                              }),
+                          )
                     : [];
                 setProcedureNames(names);
             }
@@ -215,8 +249,14 @@ export default function OdontoArcadeSimplifiedPage() {
 
     const loadProductCatalog = React.useCallback(async () => {
         try {
-            const response = await apiFetch('/odonto/procedures/products/distinct-names/');
-            if (response && typeof response === 'object' && 'catalog' in response) {
+            const response = await apiFetch(
+                '/clinic/odonto/procedures/products/distinct-names/',
+            );
+            if (
+                response &&
+                typeof response === 'object' &&
+                'catalog' in response
+            ) {
                 const catalog = Array.isArray(response.catalog)
                     ? (response.catalog as ProductCatalogItem[])
                     : [];
@@ -231,6 +271,41 @@ export default function OdontoArcadeSimplifiedPage() {
         if (!productFlowOpen) return;
         void loadProductCatalog();
     }, [productFlowOpen, loadProductCatalog]);
+
+    async function createArcade() {
+        if (!numericClientId || savingCreateArcade) return;
+        setSavingCreateArcade(true);
+        try {
+            const created = (await apiFetch('/clinic/odonto/arcades/', {
+                method: 'POST',
+                body: {
+                    client: numericClientId,
+                    status: 'pending',
+                    started_at: todayISODate(),
+                },
+            })) as { id: number };
+            await apiFetch(
+                `/clinic/odonto/arcades/${created.id}/initialize-default-structure/`,
+                { method: 'POST' },
+            );
+            await loadArcade();
+            emit('systemMessage', {
+                text: 'Arcada criada com sucesso.',
+                type: 'success',
+            });
+        } catch (err) {
+            const message =
+                err instanceof ApiError
+                    ? err.message
+                    : 'Nao foi possivel criar a arcada.';
+            emit('systemMessage', {
+                text: message || 'Nao foi possivel criar a arcada.',
+                type: 'error',
+            });
+        } finally {
+            setSavingCreateArcade(false);
+        }
+    }
 
     function openServiceFlowModal() {
         setServiceFlowType('tooth');
@@ -343,7 +418,7 @@ export default function OdontoArcadeSimplifiedPage() {
         try {
             for (const row of serviceRows) {
                 const amount = row.value.trim() ? parseAmount(row.value) : null;
-                await apiFetch('/odonto/procedures/', {
+                await apiFetch('/clinic/odonto/procedures/', {
                     method: 'POST',
                     body: {
                         arcade: arcade.id,
@@ -398,12 +473,14 @@ export default function OdontoArcadeSimplifiedPage() {
 
         setSavingProductSuggestionIndex(index);
         try {
-            await apiFetch('/odonto/procedures/products/suggest-name/', {
+            await apiFetch('/clinic/odonto/procedures/products/suggest-name/', {
                 method: 'POST',
                 body: {
                     name,
                     arcade_id: arcade.id,
-                    ...(row.value.trim() && { value: row.value.replace(',', '.') }),
+                    ...(row.value.trim() && {
+                        value: row.value.replace(',', '.'),
+                    }),
                 },
             });
             await loadProductCatalog();
@@ -429,7 +506,7 @@ export default function OdontoArcadeSimplifiedPage() {
 
         setSavingSuggestionIndex(index);
         try {
-            await apiFetch('/odonto/procedures/suggest-name/', {
+            await apiFetch('/clinic/odonto/procedures/suggest-name/', {
                 method: 'POST',
                 body: {
                     name,
@@ -479,7 +556,7 @@ export default function OdontoArcadeSimplifiedPage() {
         setSavingProductFlow(true);
         try {
             const dateToUse = todayISODate();
-            const parent = (await apiFetch('/odonto/procedures/', {
+            const parent = (await apiFetch('/clinic/odonto/procedures/', {
                 method: 'POST',
                 body: {
                     arcade: arcade.id,
@@ -501,7 +578,7 @@ export default function OdontoArcadeSimplifiedPage() {
 
             for (const row of validProducts) {
                 const amount = row.value.trim() ? parseAmount(row.value) : null;
-                await apiFetch('/odonto/procedures/', {
+                await apiFetch('/clinic/odonto/procedures/', {
                     method: 'POST',
                     body: {
                         arcade: arcade.id,
@@ -546,7 +623,9 @@ export default function OdontoArcadeSimplifiedPage() {
     async function deleteProcedure(procId: number) {
         if (!window.confirm('Deseja apagar este item?')) return;
         try {
-            await apiFetch(`/odonto/procedures/${procId}/`, { method: 'DELETE' });
+            await apiFetch(`/clinic/odonto/procedures/${procId}/`, {
+                method: 'DELETE',
+            });
             await loadArcade();
         } catch (err) {
             const message =
@@ -609,16 +688,19 @@ export default function OdontoArcadeSimplifiedPage() {
 
         setSavingEditProcedure(true);
         try {
-            await apiFetch(`/odonto/procedures/${editingProcedure.id}/`, {
-                method: 'PATCH',
-                body: {
-                    name,
-                    patient_amount: editingProcedureValue.trim()
-                        ? parseAmount(editingProcedureValue)
-                        : null,
-                    notes: editingProcedureNotes.trim(),
+            await apiFetch(
+                `/clinic/odonto/procedures/${editingProcedure.id}/`,
+                {
+                    method: 'PATCH',
+                    body: {
+                        name,
+                        patient_amount: editingProcedureValue.trim()
+                            ? parseAmount(editingProcedureValue)
+                            : null,
+                        notes: editingProcedureNotes.trim(),
+                    },
                 },
-            });
+            );
 
             closeEditProcedureModal();
             await loadArcade();
@@ -645,9 +727,14 @@ export default function OdontoArcadeSimplifiedPage() {
             <div className={styles.page}>
                 <h1 className={styles.title}>Arcada odontologica</h1>
                 <p className={styles.text}>
-                    Este modulo esta disponivel apenas para profissionais da area odontologica.
+                    Este modulo esta disponivel apenas para profissionais da
+                    area odontologica.
                 </p>
-                <button type='button' onClick={() => navigate('/')} className={styles.btn}>
+                <button
+                    type='button'
+                    onClick={() => navigate('/')}
+                    className={styles.btn}
+                >
                     Voltar
                 </button>
             </div>
@@ -670,7 +757,9 @@ export default function OdontoArcadeSimplifiedPage() {
                             X
                         </button>
                     </div>
-                    <p className={styles.subtitle}>{clientName ?? `Cliente #${clientId}`}</p>
+                    <p className={styles.subtitle}>
+                        {clientName ?? `Cliente #${clientId}`}
+                    </p>
                 </div>
 
                 <div className={styles.headerActions}>
@@ -694,16 +783,28 @@ export default function OdontoArcadeSimplifiedPage() {
                         </button>
                     </div>
                 </div>
-
             </header>
 
             {loading && <p className={styles.text}>Carregando...</p>}
 
-            {!loading && error && <div className={styles.errorCard}>{error}</div>}
+            {!loading && error && (
+                <div className={styles.errorCard}>{error}</div>
+            )}
 
             {!loading && !error && !arcade && (
                 <div className={styles.emptyCard}>
-                    <p className={styles.text}>Este cliente ainda nao possui arcada cadastrada.</p>
+                    <p className={styles.text}>
+                        Este cliente ainda nao possui arcada cadastrada.
+                    </p>
+                    <button
+                        type='button'
+                        className={styles.btnPrimary}
+                        onClick={() => void createArcade()}
+                        disabled={savingCreateArcade}
+                        aria-busy={savingCreateArcade}
+                    >
+                        {savingCreateArcade ? 'Criando...' : 'Criar Arcada'}
+                    </button>
                 </div>
             )}
 
@@ -711,15 +812,29 @@ export default function OdontoArcadeSimplifiedPage() {
                 <>
                     <section className={styles.card}>
                         <div className={styles.sectionHeaderRow}>
-                            <h2 className={styles.sectionTitle}>Mapa da arcada</h2>
+                            <h2 className={styles.sectionTitle}>
+                                Mapa da arcada
+                            </h2>
                             <button
                                 type='button'
                                 className={styles.viewBtn}
                                 onClick={() => setMapVisible(prev => !prev)}
-                                aria-label={mapVisible ? 'Ocultar mapa da arcada' : 'Ver mapa da arcada'}
-                                title={mapVisible ? 'Ocultar mapa da arcada' : 'Ver mapa da arcada'}
+                                aria-label={
+                                    mapVisible
+                                        ? 'Ocultar mapa da arcada'
+                                        : 'Ver mapa da arcada'
+                                }
+                                title={
+                                    mapVisible
+                                        ? 'Ocultar mapa da arcada'
+                                        : 'Ver mapa da arcada'
+                                }
                             >
-                                <svg viewBox='0 0 24 24' aria-hidden='true' className={styles.viewIcon}>
+                                <svg
+                                    viewBox='0 0 24 24'
+                                    aria-hidden='true'
+                                    className={styles.viewIcon}
+                                >
                                     <path
                                         d='M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z'
                                         fill='none'
@@ -728,7 +843,14 @@ export default function OdontoArcadeSimplifiedPage() {
                                         strokeLinecap='round'
                                         strokeLinejoin='round'
                                     />
-                                    <circle cx='12' cy='12' r='3.2' fill='none' stroke='currentColor' strokeWidth='1.8' />
+                                    <circle
+                                        cx='12'
+                                        cy='12'
+                                        r='3.2'
+                                        fill='none'
+                                        stroke='currentColor'
+                                        strokeWidth='1.8'
+                                    />
                                 </svg>
                                 {mapVisible ? 'Ocultar' : 'Ver'}
                             </button>
@@ -751,20 +873,29 @@ export default function OdontoArcadeSimplifiedPage() {
                     <section className={styles.card}>
                         <h2 className={styles.sectionTitle}>Atendimentos</h2>
                         {groupedProcedures.length === 0 ? (
-                            <p className={styles.textMuted}>Nenhum procedimento cadastrado.</p>
+                            <p className={styles.textMuted}>
+                                Nenhum procedimento cadastrado.
+                            </p>
                         ) : (
                             <div className={styles.groupList}>
                                 {groupedProcedures.map(group => (
-                                    <div key={group.key} className={styles.groupCard}>
-                                        <strong className={styles.groupDate}>{group.label}</strong>
+                                    <div
+                                        key={group.key}
+                                        className={styles.groupCard}
+                                    >
+                                        <strong className={styles.groupDate}>
+                                            {group.label}
+                                        </strong>
                                         {group.procedures.map(proc => {
                                             const tooth = proc.tooth
-                                                ? toothById.get(proc.tooth) ?? null
+                                                ? (toothById.get(proc.tooth) ??
+                                                  null)
                                                 : null;
                                             const products = procedures.filter(
                                                 item =>
                                                     item.is_product &&
-                                                    item.parent_procedure === proc.id,
+                                                    item.parent_procedure ===
+                                                        proc.id,
                                             );
                                             return (
                                                 <OdontoProcedureCard
@@ -772,11 +903,19 @@ export default function OdontoArcadeSimplifiedPage() {
                                                     proc={proc}
                                                     tooth={tooth}
                                                     products={products}
-                                                    isExpanded={expandedProcedureIds.has(proc.id)}
-                                                    arcadeLabelByValue={arcadeLabelByValue}
-                                                    onToggleDetails={toggleProcedureDetails}
+                                                    isExpanded={expandedProcedureIds.has(
+                                                        proc.id,
+                                                    )}
+                                                    arcadeLabelByValue={
+                                                        arcadeLabelByValue
+                                                    }
+                                                    onToggleDetails={
+                                                        toggleProcedureDetails
+                                                    }
                                                     onEdit={openEditProcedure}
-                                                    onDelete={id => void deleteProcedure(id)}
+                                                    onDelete={id =>
+                                                        void deleteProcedure(id)
+                                                    }
                                                 />
                                             );
                                         })}
@@ -803,7 +942,10 @@ export default function OdontoArcadeSimplifiedPage() {
                 onUpdateRow={updateServiceRow}
                 onToggleToothRow={toggleToothServiceRow}
                 onAddItem={() =>
-                    setServiceRows(prev => [...prev, buildEmptyServiceRow(serviceFlowType)])
+                    setServiceRows(prev => [
+                        ...prev,
+                        buildEmptyServiceRow(serviceFlowType),
+                    ])
                 }
                 onSaveSuggestion={index => void saveTreatmentSuggestion(index)}
             />
@@ -817,7 +959,9 @@ export default function OdontoArcadeSimplifiedPage() {
                 onClose={closeProductFlowModal}
                 onSave={() => void saveProductFlow()}
                 onRowsChange={setProductRows}
-                onSaveSuggestion={index => void saveProductNameSuggestion(index)}
+                onSaveSuggestion={index =>
+                    void saveProductNameSuggestion(index)
+                }
             />
 
             <OdontoEditProcedureModal
