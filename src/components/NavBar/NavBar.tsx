@@ -73,7 +73,7 @@ export const NavBar: React.FC<NavBarProps> = ({
         () => localStorage.getItem('lastLoginEmail') ?? '',
     );
     const [loginPassword, setLoginPassword] = useState('');
-    const [loadingOtp, setLoadingOtp] = useState(false);
+    const [loadingLogin, setLoadingLogin] = useState(false);
     const [professionals, setProfessionals] = useState<
         ProfessionalLoginOption[]
     >([]);
@@ -355,7 +355,7 @@ export const NavBar: React.FC<NavBarProps> = ({
 
     // handleAgendaNew removido (menu Novo Compromisso retirado)
 
-    // --- WebAuthn: register biometric after TOTP login ---
+    // --- WebAuthn: register biometric after login ---
     const handleRegisterBiometric = async () => {
         setBiometricLoading(true);
         try {
@@ -843,10 +843,10 @@ export const NavBar: React.FC<NavBarProps> = ({
                                 <button
                                     ref={loginButtonRef}
                                     className={`${styles.loginButton} ${styles.enterButton}`}
-                                    disabled={loadingOtp || !loginPassword}
-                                    aria-busy={loadingOtp}
+                                    disabled={loadingLogin || !loginPassword}
+                                    aria-busy={loadingLogin}
                                     onClick={async () => {
-                                        setLoadingOtp(true);
+                                        setLoadingLogin(true);
                                         try {
                                             const deviceIdKey = 'device_id';
                                             const deviceId =
@@ -971,10 +971,10 @@ export const NavBar: React.FC<NavBarProps> = ({
                                             );
                                             setModalOpen(true);
                                         }
-                                        setLoadingOtp(false);
+                                        setLoadingLogin(false);
                                     }}
                                 >
-                                    {loadingOtp ? 'Entrando...' : 'Entrar'}
+                                    {loadingLogin ? 'Entrando...' : 'Entrar'}
                                 </button>
                             </div>
                         )}
