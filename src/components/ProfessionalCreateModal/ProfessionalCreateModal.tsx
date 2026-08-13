@@ -9,7 +9,7 @@ interface Props {
     onClose: () => void;
 }
 
-type Step = 'form' | 'qr';
+type Step = 'form' | 'success';
 
 interface FormData {
     email: string;
@@ -101,7 +101,7 @@ export const ProfessionalCreateModal: React.FC<Props> = ({ open, onClose }) => {
             setCreatedName(
                 `${data.professional.first_name} ${data.professional.last_name}`,
             );
-            setStep('qr');
+            setStep('success');
         } catch {
             setError('Erro de conexão. Verifique o servidor.');
         } finally {
