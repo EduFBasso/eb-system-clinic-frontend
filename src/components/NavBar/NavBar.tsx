@@ -44,7 +44,6 @@ import {
     getAccessToken,
 } from '../../utils/auth/session';
 import { ProfessionalCreateModal } from '../ProfessionalCreateModal/ProfessionalCreateModal';
-import { TotpAdminResetModal } from '../TotpAdminResetModal/TotpAdminResetModal';
 import {
     startRegistration,
     startAuthentication,
@@ -111,7 +110,6 @@ export const NavBar: React.FC<NavBarProps> = ({
     const [aboutOpen, setAboutOpen] = useState(false);
     // Admin modals (superuser only)
     const [createProfOpen, setCreateProfOpen] = useState(false);
-    const [totpResetOpen, setTotpResetOpen] = useState(false);
     // Biometric / WebAuthn
     const [offerBiometricOpen, setOfferBiometricOpen] = useState(false);
     const [biometricLoading, setBiometricLoading] = useState(false);
@@ -1019,11 +1017,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                 open={createProfOpen}
                 onClose={() => setCreateProfOpen(false)}
             />
-            <TotpAdminResetModal
-                open={totpResetOpen}
-                onClose={() => setTotpResetOpen(false)}
-            />
-            {/* Modal: oferecer registro de biometria após login TOTP */}
+            {/* Modal: oferecer registro de biometria após login */}
             <AppModal
                 open={offerBiometricOpen}
                 onClose={() => setOfferBiometricOpen(false)}

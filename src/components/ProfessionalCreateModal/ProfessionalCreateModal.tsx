@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
-import QRCode from 'qrcode';
+import React, { useState, useEffect } from 'react';
 import { AppModal } from '../Modal/Modal';
 import { API_BASE } from '../../config/api';
 import '../../styles/modal-message.css';
@@ -50,9 +49,7 @@ export const ProfessionalCreateModal: React.FC<Props> = ({ open, onClose }) => {
     const [form, setForm] = useState<FormData>(EMPTY_FORM);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [qrDataUrl, setQrDataUrl] = useState('');
     const [createdName, setCreatedName] = useState('');
-    const canvasRef = useRef<HTMLCanvasElement>(null);
 
     // Reset when modal opens
     useEffect(() => {
@@ -60,16 +57,8 @@ export const ProfessionalCreateModal: React.FC<Props> = ({ open, onClose }) => {
             setStep('form');
             setForm(EMPTY_FORM);
             setError('');
-            setQrDataUrl('');
         }
     }, [open]);
-
-    // Generate QR image when otpauth_uri is available
-    useEffect(() => {
-        if (step === 'qr' && qrDataUrl === '' && canvasRef.current) {
-            // qrDataUrl is set from the API response — render it into the canvas
-        }
-    }, [step, qrDataUrl]);
 
     function handleChange(
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -109,13 +98,6 @@ export const ProfessionalCreateModal: React.FC<Props> = ({ open, onClose }) => {
                 setError(data.message || 'Erro ao criar profissional.');
                 return;
             }
-            // Generate QR code from otpauth_uri
-            const dataUrl = await QRCode.toDataURL(data.otpauth_uri, {
-                width: 240,
-                margin: 2,
-                color: { dark: '#000000', light: '#ffffff' },
-            });
-            setQrDataUrl(dataUrl);
             setCreatedName(
                 `${data.professional.first_name} ${data.professional.last_name}`,
             );
@@ -274,33 +256,9 @@ export const ProfessionalCreateModal: React.FC<Props> = ({ open, onClose }) => {
                 ) : (
                     <>
                         <h3>Profissional criado!</h3>
-                        <p style={{ marginBottom: 8 }}>
-                            <strong>{createdName}</strong> foi cadastrado.
-                            <br />
-                            Peça que o profissional escaneie o QR code abaixo no
-                            Google Authenticator.
-                        </p>
-                        {qrDataUrl && (
-                            <img
-                                src={qrDataUrl}
-                                alt='QR code TOTP'
-                                style={{
-                                    display: 'block',
-                                    margin: '0 auto 12px',
-                                    width: 220,
-                                    height: 220,
-                                }}
-                            />
-                        )}
-                        <p
-                            style={{
-                                fontSize: 12,
-                                color: '#666',
-                                marginBottom: 12,
-                            }}
-                        >
-                            Este QR code não será exibido novamente. Se perder o
-                            acesso, use "Resetar Autenticador".
+                        <p style={{ marginBottom: 12 }}>
+                            <strong>{createdName}</strong> foi cadastrado com
+                            sucesso.
                         </p>
                         <button onClick={handleClose} style={{ width: '100%' }}>
                             Concluir
@@ -311,4 +269,3 @@ export const ProfessionalCreateModal: React.FC<Props> = ({ open, onClose }) => {
         </AppModal>
     );
 };
-
