@@ -247,7 +247,6 @@ export function ClientForm({
         setDentalAnamnesisValues(prev => ({ ...prev, [key]: value }));
     }
 
-    // TODO: endpoint backend pendente — implementar AnamneseOdonto + /clinic/odonto/anamnesis/
     async function saveDentalAnamnesis(
         clientId: number,
         authToken: string,
@@ -259,7 +258,7 @@ export function ClientForm({
                 Authorization: `Bearer ${authToken}`,
             },
             body: JSON.stringify({
-                client: clientId,
+                client_id: clientId,
                 ...dentalAnamnesisValues,
             }),
         });
