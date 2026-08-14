@@ -31,6 +31,26 @@ interface ClientViewProps {
     openToken?: number;
 }
 
+type DentalAnamnesisData = {
+    gum_bleeding?: boolean | null;
+    floss_usage?: boolean | null;
+    bruxism_clenching?: boolean | null;
+    tooth_brushing_frequency?: string | null;
+    chief_dental_complaint?: string | null;
+};
+
+const odontoFields: Array<{ key: string; label: string; isBool?: boolean }> = [
+    { key: 'gum_bleeding', label: 'Gengiva sangra ao escovar', isBool: true },
+    { key: 'floss_usage', label: 'Usa fio dental diariamente', isBool: true },
+    {
+        key: 'bruxism_clenching',
+        label: 'Ranger/Apertar dentes (Bruxismo)',
+        isBool: true,
+    },
+    { key: 'tooth_brushing_frequency', label: 'Frequência de escovação' },
+    { key: 'chief_dental_complaint', label: 'Queixa principal bucal' },
+];
+
 // ── label maps ──────────────────────────────────────────────────────────────
 
 const SEX_LABELS: Record<string, string> = {
@@ -94,6 +114,21 @@ function getAnamnesePodologia(client: ClientViewProps['client']) {
         null) as Partial<AnamnesePodologiaData> | null;
 }
 
+function getAnamneseOdontologia(client: ClientViewProps['client']) {
+    const alt = client as ClientData & {
+        odontologia?: Partial<DentalAnamnesisData> | null;
+        anamnese_odontologia?: Partial<DentalAnamnesisData> | null;
+        anamnesis_odontologia?: Partial<DentalAnamnesisData> | null;
+        dental_anamnesis?: Partial<DentalAnamnesisData> | null;
+    };
+
+    return (alt.odontologia ??
+        alt.anamnese_odontologia ??
+        alt.anamnesis_odontologia ??
+        alt.dental_anamnesis ??
+        null) as Partial<DentalAnamnesisData> | null;
+}
+
 function hasValue(value: unknown): boolean {
     return value !== null && value !== undefined && String(value).trim() !== '';
 }
@@ -103,6 +138,14 @@ function normalizeSectorName(value: string) {
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .toLowerCase();
+}
+
+function normalizeSpecialty(value: string) {
+    return value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
 }
 
 function getPodologyResponses(client: ClientViewProps['client']) {
@@ -214,6 +257,18 @@ export const ClientView: React.FC<ClientViewProps> = ({
     const { theme } = useTheme();
     const rootRef = React.useRef<HTMLDivElement | null>(null);
 
+    const isDentalProfessional = React.useMemo(() => {
+        try {
+            const raw = localStorage.getItem('loggedProfessional');
+            if (!raw) return false;
+            const parsed = JSON.parse(raw) as { specialty?: string };
+            const specialty = normalizeSpecialty(parsed?.specialty || '');
+            return specialty.includes('odonto');
+        } catch {
+            return false;
+        }
+    }, []);
+
     useEffect(() => {
         const node = rootRef.current;
         if (!node) return;
@@ -232,6 +287,10 @@ export const ClientView: React.FC<ClientViewProps> = ({
     const anamneseBase = React.useMemo(() => getAnamneseBase(client), [client]);
     const anamnesePodologia = React.useMemo(
         () => getAnamnesePodologia(client),
+        [client],
+    );
+    const anamneseOdontologia = React.useMemo(
+        () => getAnamneseOdontologia(client),
         [client],
     );
     const dynamicPodologyResponses = React.useMemo(
@@ -356,6 +415,26 @@ export const ClientView: React.FC<ClientViewProps> = ({
                 ].filter(row => hasValue(row.value) && row.value !== '-')
               : [];
 
+    const odontoRows: { label: string; value: string }[] = anamneseOdontologia
+        ? odontoFields
+              .map(({ key, label, isBool }) => {
+                  const rawValue = (
+                      anamneseOdontologia as Record<string, unknown>
+                  )[key];
+                  if (rawValue === null || rawValue === undefined) return null;
+
+                  const value = isBool
+                      ? rawValue === true
+                          ? 'Sim'
+                          : 'Não'
+                      : String(rawValue);
+
+                  if (!hasValue(value)) return null;
+                  return { label, value };
+              })
+              .filter((row): row is { label: string; value: string } => !!row)
+        : [];
+
     return (
         <div ref={rootRef} className={styles.viewRoot}>
             {/* ── Header: avatar + nome ── */}
@@ -405,13 +484,23 @@ export const ClientView: React.FC<ClientViewProps> = ({
                 emptyMessage='Nenhum histórico registrado'
             />
 
-            <ViewSection
-                theme={theme}
-                eyebrow='Visualização'
-                title='Anamnese Podologia'
-                rows={podologiaRows}
-                emptyMessage='Nenhum histórico registrado'
-            />
+            {isDentalProfessional ? (
+                <ViewSection
+                    theme={theme}
+                    eyebrow='Visualização'
+                    title='Anamnese Odontologia'
+                    rows={odontoRows}
+                    emptyMessage='Nenhum histórico registrado'
+                />
+            ) : (
+                <ViewSection
+                    theme={theme}
+                    eyebrow='Visualização'
+                    title='Anamnese Podologia'
+                    rows={podologiaRows}
+                    emptyMessage='Nenhum histórico registrado'
+                />
+            )}
         </div>
     );
 };
