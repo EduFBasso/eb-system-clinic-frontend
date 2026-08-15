@@ -46,7 +46,6 @@ export type PendingResolvedPayload = {
     clientId: number;
     status: 'done' | 'canceled';
 };
-export type ClientClearOngoingPayload = { clientId: number };
 export type AppointmentStatusChangedPayload = {
     id?: number;
     status?: string;
@@ -73,7 +72,6 @@ export interface EventMap {
     'pendingActions:open': PendingActionsOpenDetail;
     'pendingActions:forceClose': PendingActionsForceClosePayload;
     'pending:resolved': PendingResolvedPayload;
-    'client:clearOngoing': ClientClearOngoingPayload;
     'appointment:statusChanged': AppointmentStatusChangedPayload;
     'modal:closed': ModalClosedPayload;
     'agenda:closeAll': AgendaCloseAllPayload;
@@ -93,7 +91,6 @@ export const events: (keyof EventMap)[] = [
     'pendingActions:open',
     'pendingActions:forceClose',
     'pending:resolved',
-    'client:clearOngoing',
     'appointment:statusChanged',
     'modal:closed',
     'agenda:closeAll',

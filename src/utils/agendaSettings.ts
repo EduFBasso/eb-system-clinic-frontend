@@ -21,12 +21,7 @@ export type DefaultDuration =
     | 300
     | 330
     | 360;
-export type DefaultVisitType =
-    | 'consulta'
-    | 'avaliacao'
-    | 'retorno'
-    | 'procedimento'
-    | 'outro';
+export type DefaultVisitType = 'consulta' | 'retorno' | 'outro';
 
 export type AgendaSettingsSnapshot = {
     workStart: string;
@@ -154,9 +149,7 @@ function normalizeDefaultDuration(value: unknown): DefaultDuration {
 function normalizeDefaultVisitType(value: unknown): DefaultVisitType {
     switch (value) {
         case 'consulta':
-        case 'avaliacao':
         case 'retorno':
-        case 'procedimento':
         case 'outro':
             return value;
         default:

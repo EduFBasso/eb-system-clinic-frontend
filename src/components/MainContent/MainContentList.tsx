@@ -92,11 +92,7 @@ export function MainContentList({
                         <ClientCard
                             client={client}
                             selected={selectedClientId === client.id}
-                            filterMode={
-                                filterMode === 'ongoing'
-                                    ? undefined
-                                    : filterMode
-                            }
+                            filterMode={filterMode}
                             notifyAppt={
                                 filterMode === 'tomorrow'
                                     ? tomorrowClientAppts.get(client.id)

@@ -30,7 +30,7 @@ Single source of truth for the mini card visuals and behavior.
 - Behavior:
 
 - Click priority: pending+onResolvePending → onEdit → onUseTime → onClick.
-- Ongoing appointments block clicks.
+- Compromissos `pending` abrem o fluxo de resolução; não existe estado `ongoing`.
 - Left colored stripe and background computed via centralized status tokens.
 - Client name rendered top-left; visit type under the status badge on the right.
 - Notes clamped to 2 lines by default.
@@ -42,31 +42,15 @@ Single source of truth for the mini card visuals and behavior.
 - `size='sm'` applies local overrides to `--card-*-size` variables,
         reducing typography without affecting layout.
 
-### Early finalize e `original_end_at`
+### Resolução de compromissos pendentes
 
-Quando um agendamento é finalizado antes do horário previsto, o backend (ou um
-PATCH de ajuste) pode encurtar o `end_at` para o horário real de fechamento. Sem
-tratamento extra isso impede detectar que houve encerramento antecipado, pois
-`end_at` deixa de representar o término planejado.
+A resolução de um compromisso pendente usa somente as mutações do backend:
 
-Para preservar a semântica:
+- `POST /agenda/appointments/<id>/done/` para concluir;
+- `POST /agenda/appointments/<id>/cancel/` para cancelar.
 
-1. O primeiro override que sinaliza estado final (`done` ou `canceled`) pode
-   incluir `original_end_at`.
-2. Se um override subsequente alterar `end_at` e ainda não existir
-   `original_end_at`, armazenamos o valor anterior automaticamente em
-   `overrides.ts`.
-3. O `AppointmentCard` usa `original_end_at` (quando disponível) para:
-    - Comparar `real_closed_at` vs término planejado (com margem de 30s) e
-      decidir se exibe o pill “Finalizado às HH:MM”.
-    - Renderizar a faixa de horário (TimeRangeLabel) com o término ORIGINAL
-      mesmo após encurtamento.
-
-Resultado: o usuário vê a janela planejada intacta e, adicionalmente, a hora
-real de finalização quando o atendimento terminou antes do previsto.
-
-Se no futuro precisarmos exibir também cancelamentos com lógica similar, basta
-reutilizar `original_end_at` e ajustar a condicional do pill.
+O frontend não encurta `end_at`, não mantém `original_end_at` para simular
+encerramento e não possui um botão ou estado `ongoing`.
 
 ## ClientCardRow
 

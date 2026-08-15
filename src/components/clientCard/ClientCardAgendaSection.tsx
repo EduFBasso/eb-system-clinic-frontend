@@ -3,7 +3,6 @@ import { FaCalendarAlt, FaEdit, FaPlus } from 'react-icons/fa';
 import type { Appointment } from '../../hooks/useAppointments';
 import type { ClientBasic } from '../../types/ClientBasic';
 import styles from './ClientCard.module.css';
-import FinalizeButton from './FinalizeButton';
 import SolveButton from './SolveButton';
 import { FutureAppointmentsList } from '../../domain/futureAppointments';
 import { API_BASE } from '../../config/api';
@@ -28,8 +27,6 @@ interface ClientCardAgendaSectionProps {
     hasAgendaLine: boolean;
     isScheduled: boolean;
     isPending: boolean;
-    isOngoing: boolean;
-    effectiveOngoing: boolean;
     activeStartISO: string | null;
     activeEndISO: string | null;
     displayStartISO: string | null;
@@ -43,9 +40,6 @@ interface ClientCardAgendaSectionProps {
     iconColor: string;
     separatorColor: string;
     separatorOpacity: number;
-    finishing: boolean;
-    effectiveApptId?: number | null;
-    onFinalize: () => Promise<void> | void;
     onOpenMonthlyAgenda: (dateISO?: string | null) => void;
     onOpenQuickSchedule: (appointment?: Appointment | null) => void;
     onSolvePending: () => Promise<void> | void;
@@ -102,8 +96,6 @@ export default function ClientCardAgendaSection({
     hasAgendaLine,
     isScheduled,
     isPending,
-    isOngoing,
-    effectiveOngoing,
     activeStartISO,
     activeEndISO,
     displayStartISO,
@@ -117,9 +109,6 @@ export default function ClientCardAgendaSection({
     iconColor,
     separatorColor,
     separatorOpacity,
-    finishing,
-    effectiveApptId,
-    onFinalize,
     onOpenMonthlyAgenda,
     onOpenQuickSchedule,
     onSolvePending,
@@ -208,9 +197,7 @@ export default function ClientCardAgendaSection({
 
             {hasAgendaLine && (
                 <>
-                    {(isScheduled ||
-                        effectiveOngoing ||
-                        futureAppointments.length > 0) && (
+                    {(isScheduled || futureAppointments.length > 0) && (
                         <div className={styles.infoRow}>
                             <span
                                 className={styles.label}
@@ -276,7 +263,7 @@ export default function ClientCardAgendaSection({
                                 requireEnd: true,
                             })}
                         </span>
-                        {client.next_appointment_id && !effectiveOngoing && (
+                        {client.next_appointment_id && (
                             <button
                                 className={styles.iconButton}
                                 title='Editar agendamento'
@@ -286,67 +273,28 @@ export default function ClientCardAgendaSection({
                             </button>
                         )}
                     </div>
-                    {(isScheduled || effectiveOngoing) &&
-                        client.next_appointment_notes?.trim() && (
-                            <div
-                                className={styles.infoRow}
-                                style={{ paddingTop: 2 }}
-                            >
-                                <span
-                                    className={styles.value}
-                                    style={{
-                                        color: valueColor,
-                                        fontSize: 13,
-                                        lineHeight: 1.35,
-                                        whiteSpace: 'pre-wrap',
-                                        overflowWrap: 'anywhere',
-                                    }}
-                                >
-                                    <span className={styles.notesText}>
-                                        {client.next_appointment_notes.trim()}
-                                    </span>
-                                </span>
-                            </div>
-                        )}
-                    {effectiveOngoing && (
+                    {isScheduled && client.next_appointment_notes?.trim() && (
                         <div
                             className={styles.infoRow}
                             style={{ paddingTop: 2 }}
                         >
-                            <div
+                            <span
+                                className={styles.value}
                                 style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    width: '100%',
-                                    gap: 12,
+                                    color: valueColor,
+                                    fontSize: 13,
+                                    lineHeight: 1.35,
+                                    whiteSpace: 'pre-wrap',
+                                    overflowWrap: 'anywhere',
                                 }}
                             >
-                                <span
-                                    style={{
-                                        background: 'var(--color-ongoing)',
-                                        color: '#fff',
-                                        borderRadius: 6,
-                                        padding: '2px 8px',
-                                        fontWeight: 700,
-                                        fontSize: 12,
-                                        lineHeight: 1.2,
-                                    }}
-                                >
-                                    Em andamento
+                                <span className={styles.notesText}>
+                                    {client.next_appointment_notes.trim()}
                                 </span>
-                                <FinalizeButton
-                                    finishing={finishing}
-                                    disabled={!effectiveApptId}
-                                    isEarly={isOngoing}
-                                    clientId={client.id}
-                                    appointmentId={effectiveApptId}
-                                    onFinalize={onFinalize}
-                                />
-                            </div>
+                            </span>
                         </div>
                     )}
-                    {isScheduled && !effectiveOngoing && (
+                    {isScheduled && (
                         <div
                             className={styles.infoRow}
                             style={{ paddingTop: 2 }}
@@ -381,7 +329,7 @@ export default function ClientCardAgendaSection({
                 </>
             )}
 
-            {!hasAgendaLine && !isPending && !isOngoing && (
+            {!hasAgendaLine && !isPending && (
                 <div className={styles.infoRow}>
                     <span
                         className={styles.label}
@@ -423,7 +371,7 @@ export default function ClientCardAgendaSection({
                 </div>
             )}
 
-            {isPending && !isOngoing && (
+            {isPending && (
                 <>
                     <div
                         aria-hidden

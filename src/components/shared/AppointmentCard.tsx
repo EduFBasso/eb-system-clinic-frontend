@@ -6,19 +6,17 @@ import TimeRangeLabel from './TimeRangeLabel';
 import { formatTime } from '../../utils/timeFormat';
 import { FaEdit, FaBan, FaWhatsapp } from 'react-icons/fa';
 import { useAppointmentCardState } from '../../hooks/useAppointmentCardState.ts';
-import type { PendingReturnContext } from '../../types/agendaFlow';
 import {
     statusStripeColor,
     statusBackgroundColor,
 } from '../../utils/appointments/status';
-import { requestFinalizeAppointment } from '../../utils/appointments/requestFinalizeAppointment';
 
 export interface SharedAppointmentLike {
     id: number;
     title?: string;
     start_at: string;
     end_at: string;
-    status: 'scheduled' | 'pending' | 'done' | 'canceled' | 'ongoing';
+    status: 'scheduled' | 'pending' | 'done' | 'canceled';
     notes?: string;
     client_name?: string;
     client?: { id: number; name: string } | number;
@@ -38,8 +36,6 @@ export interface AppointmentCardProps<
     onResolvePending?: (appt: T) => void;
     onEdit?: (appt: T) => void;
     onCancel?: (appt: T) => void;
-    onFinalize?: (appt: T) => Promise<void> | void;
-    finalizeRequestContext?: PendingReturnContext;
     onDetails?: (appt: T) => void;
     highlight?: boolean;
     editingActive?: boolean;
@@ -73,8 +69,6 @@ function AppointmentCardViewInner<T extends SharedAppointmentLike>({
     onResolvePending,
     onEdit,
     onCancel,
-    onFinalize,
-    finalizeRequestContext,
     onDetails,
     highlight,
     editingActive,
@@ -92,11 +86,13 @@ function AppointmentCardViewInner<T extends SharedAppointmentLike>({
     style,
     now = new Date(),
 }: AppointmentCardProps<T>) {
-    const { status, canEdit, canCancel, isOngoing, start, end } =
-        useAppointmentCardState(appt, now);
-    const [actionPrompt, setActionPrompt] = React.useState<
-        'scheduled' | 'ongoing' | null
-    >(null);
+    const { status, canEdit, canCancel, start, end } = useAppointmentCardState(
+        appt,
+        now,
+    );
+    const [actionPrompt, setActionPrompt] = React.useState<'scheduled' | null>(
+        null,
+    );
     const deferredActionFrameRef = React.useRef<number | null>(null);
     const deferredActionTimeoutRef = React.useRef<number | null>(null);
     const displayEndForRange = appt.end_at;
@@ -128,10 +124,12 @@ function AppointmentCardViewInner<T extends SharedAppointmentLike>({
             return;
         }
         if (typeof window.requestAnimationFrame === 'function') {
-            deferredActionFrameRef.current = window.requestAnimationFrame(() => {
-                deferredActionFrameRef.current = null;
-                callback();
-            });
+            deferredActionFrameRef.current = window.requestAnimationFrame(
+                () => {
+                    deferredActionFrameRef.current = null;
+                    callback();
+                },
+            );
             return;
         }
         deferredActionTimeoutRef.current = window.setTimeout(() => {
@@ -144,23 +142,6 @@ function AppointmentCardViewInner<T extends SharedAppointmentLike>({
     ).padStart(2, '0')} - ${String(end.getHours()).padStart(2, '0')}:${String(
         end.getMinutes(),
     ).padStart(2, '0')}`;
-    const requestFinalize = React.useCallback(() => {
-        const clientId =
-            typeof (appt as SharedAppointmentLike).client === 'number'
-                ? ((appt as SharedAppointmentLike).client as number)
-                : typeof (appt as SharedAppointmentLike).client === 'object' &&
-                    (appt as SharedAppointmentLike).client
-                  ? ((appt as SharedAppointmentLike).client as { id?: number })
-                        .id
-                  : undefined;
-        requestFinalizeAppointment({
-            clientId,
-            appointmentId: appt.id,
-            isEarly: true,
-            returnContext: finalizeRequestContext,
-            proceed: () => onFinalize?.(appt),
-        });
-    }, [appt, finalizeRequestContext, onFinalize]);
     React.useEffect(() => {
         return () => {
             if (
@@ -198,7 +179,6 @@ function AppointmentCardViewInner<T extends SharedAppointmentLike>({
         ((!!onCancel || !!scheduledEditAction) &&
             status === 'scheduled' &&
             (canCancel || canEdit)) ||
-        ((!!onFinalize || !!onCancel) && status === 'ongoing') ||
         !!onEdit ||
         !!onUseTime ||
         !!onClick;
@@ -242,384 +222,383 @@ function AppointmentCardViewInner<T extends SharedAppointmentLike>({
     return (
         <>
             <div
-            id={`appt-card-${appt.id}`}
-            data-appt-id={appt.id}
-            data-highlighted={highlight ? 'true' : 'false'}
-            data-selected={selected ? 'true' : 'false'}
-            data-editing-active={editingActive ? 'true' : 'false'}
-            data-original-start-at={appt.start_at}
-            data-original-end-at={appt.end_at}
-            className={className}
-            style={base}
-            onClick={() => {
-                if (appt.status === 'canceled') return;
-                if (isPending && onResolvePending) {
-                    onResolvePending(appt);
-                    return;
-                }
-                if (status === 'ongoing') {
-                    if (onFinalize || onCancel) setActionPrompt('ongoing');
-                    return;
-                }
-                // Novo: para concluídos, o clique do cartão abre detalhes (ícone removido)
-                if (onDetails && status === 'done') {
-                    onDetails(appt);
-                    return;
-                }
-                if (status === 'scheduled' && (onCancel || scheduledEditAction)) {
-                    setActionPrompt('scheduled');
-                    return;
-                }
-                // Prioriza edição quando disponível
-                if (onEdit) {
-                    onEdit(appt);
-                } else if (onUseTime) {
-                    onUseTime(appt);
-                } else if (onClick) {
-                    onClick(appt);
-                }
-            }}
-        >
-            {/* Left status color stripe */}
-            <div
-                aria-hidden
-                style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: 5,
-                    background: stripeColor,
-                    borderTopLeftRadius: 8,
-                    borderBottomLeftRadius: 8,
-                }}
-            />
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0,1.35fr) auto',
-                    columnGap: 10,
-                    alignItems: 'center',
-                    // Reserve a bit of vertical space to avoid micro layout shifts
-                    minHeight: compact ? 20 : 24,
+                id={`appt-card-${appt.id}`}
+                data-appt-id={appt.id}
+                data-highlighted={highlight ? 'true' : 'false'}
+                data-selected={selected ? 'true' : 'false'}
+                data-editing-active={editingActive ? 'true' : 'false'}
+                data-original-start-at={appt.start_at}
+                data-original-end-at={appt.end_at}
+                className={className}
+                style={base}
+                onClick={() => {
+                    if (appt.status === 'canceled') return;
+                    if (isPending && onResolvePending) {
+                        onResolvePending(appt);
+                        return;
+                    }
+                    // Novo: para concluídos, o clique do cartão abre detalhes (ícone removido)
+                    if (onDetails && status === 'done') {
+                        onDetails(appt);
+                        return;
+                    }
+                    if (
+                        status === 'scheduled' &&
+                        (onCancel || scheduledEditAction)
+                    ) {
+                        setActionPrompt('scheduled');
+                        return;
+                    }
+                    // Prioriza edição quando disponível
+                    if (onEdit) {
+                        onEdit(appt);
+                    } else if (onUseTime) {
+                        onUseTime(appt);
+                    } else if (onClick) {
+                        onClick(appt);
+                    }
                 }}
             >
-                {/* Left: Closed pill (if any) + Client name */}
+                {/* Left status color stripe */}
+                <div
+                    aria-hidden
+                    style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 5,
+                        background: stripeColor,
+                        borderTopLeftRadius: 8,
+                        borderBottomLeftRadius: 8,
+                    }}
+                />
                 <div
                     style={{
-                        minWidth: 0,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 2,
+                        display: 'grid',
+                        gridTemplateColumns: 'minmax(0,1.35fr) auto',
+                        columnGap: 10,
+                        alignItems: 'center',
+                        // Reserve a bit of vertical space to avoid micro layout shifts
+                        minHeight: compact ? 20 : 24,
                     }}
                 >
-                    {!nameInFooter && (
+                    {/* Left: Closed pill (if any) + Client name */}
+                    <div
+                        style={{
+                            minWidth: 0,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 2,
+                        }}
+                    >
+                        {!nameInFooter && (
+                            <span
+                                style={{
+                                    fontWeight: 'var(--card-name-weight)',
+                                    fontSize: 'var(--card-name-size)',
+                                    color: 'var(--color-heading)',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    minWidth: 0,
+                                    maxWidth: '100%',
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                    lineHeight: 1.15,
+                                }}
+                                title={clientName || 'Cliente'}
+                            >
+                                {clientName || 'Cliente'}
+                            </span>
+                        )}
+                    </div>
+                    {/* Right: Actions + Status badge, with visit type below status */}
+                    <span
+                        style={{
+                            marginLeft: 'auto',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            flexShrink: 0,
+                            minHeight: 20,
+                        }}
+                    >
+                        {/* Always show time on non-compact cards for clarity (canceled/done included) */}
+                        {!compact &&
+                            showTime &&
+                            (timeInline ? (
+                                <span
+                                    style={{
+                                        fontSize: 12,
+                                        fontWeight: 'var(--card-time-weight)',
+                                        color: 'var(--color-text)',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    {formatTime(appt.start_at)} –{' '}
+                                    {formatTime(displayEndForRange)}
+                                </span>
+                            ) : (
+                                <TimeRangeLabel
+                                    start={appt.start_at}
+                                    end={displayEndForRange}
+                                    size='sm'
+                                />
+                            ))}
+                        {/* Optional edit/cancel buttons (details icon removido; clique do cartão cobre 'done') */}
+                        {(() => {
+                            const showEdit = !!(
+                                onEdit &&
+                                showEditAction &&
+                                canEdit
+                            );
+                            const showCancel = !!(
+                                onCancel &&
+                                canCancel &&
+                                status === 'scheduled' &&
+                                showEditAction
+                            );
+                            // Só preservar placeholders de layout quando for útil (cards não compactos, sem stack e com ações visíveis)
+                            const preserveActionsLayout =
+                                !compact &&
+                                !stackName &&
+                                showEditAction !== false;
+                            const hiddenStyle: React.CSSProperties = {
+                                visibility: 'hidden',
+                                pointerEvents: 'none',
+                            };
+                            const maybeRender = (
+                                shouldShow: boolean,
+                                element: React.ReactNode,
+                            ) => {
+                                if (shouldShow) return element;
+                                if (preserveActionsLayout) return element; // será estilizado como hidden no próprio botão
+                                return null;
+                            };
+                            return (
+                                <>
+                                    {maybeRender(
+                                        showEdit,
+                                        <button
+                                            type='button'
+                                            title='Edit appointment'
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                if (showEdit && onEdit)
+                                                    onEdit(appt);
+                                            }}
+                                            style={{
+                                                border: '1px solid var(--color-border)',
+                                                borderRadius: 6,
+                                                background: 'var(--color-bg)',
+                                                padding: 6,
+                                                cursor: 'pointer',
+                                                ...(showEdit
+                                                    ? undefined
+                                                    : hiddenStyle),
+                                            }}
+                                            disabled={!showEdit}
+                                            tabIndex={showEdit ? 0 : -1}
+                                            aria-hidden={
+                                                showEdit ? undefined : true
+                                            }
+                                        >
+                                            <FaEdit
+                                                color={'var(--color-heading)'}
+                                            />
+                                        </button>,
+                                    )}
+                                    {maybeRender(
+                                        showCancel,
+                                        <button
+                                            type='button'
+                                            title='Cancel appointment'
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                if (!showCancel) return;
+                                                handleCancel();
+                                            }}
+                                            style={{
+                                                border: '1px solid var(--color-border)',
+                                                borderRadius: 6,
+                                                background:
+                                                    'var(--color-canceled-bg)',
+                                                padding: 6,
+                                                cursor: 'pointer',
+                                                ...(showCancel
+                                                    ? undefined
+                                                    : hiddenStyle),
+                                            }}
+                                            disabled={!showCancel}
+                                            tabIndex={showCancel ? 0 : -1}
+                                            aria-hidden={
+                                                showCancel ? undefined : true
+                                            }
+                                        >
+                                            <FaBan
+                                                color={'var(--color-canceled)'}
+                                            />
+                                        </button>,
+                                    )}
+                                </>
+                            );
+                        })()}
+                        <div
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'flex-end',
+                                minWidth: 0,
+                            }}
+                        >
+                            <StatusBadge status={status} size='md' />
+                            {appt.whatsapp_confirmed &&
+                                status === 'scheduled' && (
+                                    <span
+                                        title='WhatsApp enviado'
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 2,
+                                            fontSize: 10,
+                                            fontWeight: 600,
+                                            color: '#25d366',
+                                            marginTop: 2,
+                                        }}
+                                    >
+                                        <FaWhatsapp size={11} />
+                                        enviado
+                                    </span>
+                                )}
+                            {!compact && (
+                                <span
+                                    style={{
+                                        fontSize: 'var(--card-type-size)',
+                                        fontWeight: 'var(--card-type-weight)',
+                                        color: 'var(--color-heading)',
+                                        marginTop: 2,
+                                        maxWidth: 160,
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                    }}
+                                    title={(() => {
+                                        const vt = (
+                                            appt as unknown as {
+                                                visit_type?: string;
+                                            }
+                                        ).visit_type;
+                                        const map: Record<string, string> = {
+                                            retorno: 'Retorno',
+                                            outro: 'Outro',
+                                            consulta: 'Consulta',
+                                        };
+                                        return (
+                                            (vt && map[vt]) ||
+                                            (appt as SharedAppointmentLike)
+                                                .title ||
+                                            'Consulta'
+                                        );
+                                    })()}
+                                >
+                                    {(() => {
+                                        const vt = (
+                                            appt as unknown as {
+                                                visit_type?: string;
+                                            }
+                                        ).visit_type;
+                                        const map: Record<string, string> = {
+                                            retorno: 'Retorno',
+                                            outro: 'Outro',
+                                            consulta: 'Consulta',
+                                        };
+                                        return (
+                                            (vt && map[vt]) ||
+                                            (appt as SharedAppointmentLike)
+                                                .title ||
+                                            'Consulta'
+                                        );
+                                    })()}
+                                </span>
+                            )}
+                        </div>
+                    </span>
+                </div>
+                {/* Footer line: Nome (forte) + Comentários na última linha */}
+                {!compact && showFooterLine && (
+                    <div
+                        style={{
+                            display: 'flex',
+                            gap: 6,
+                            alignItems: 'baseline',
+                            minWidth: 0,
+                        }}
+                    >
                         <span
                             style={{
-                                fontWeight: 'var(--card-name-weight)',
-                                fontSize: 'var(--card-name-size)',
+                                fontWeight: 800,
                                 color: 'var(--color-heading)',
+                                whiteSpace: 'nowrap',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
-                                minWidth: 0,
-                                maxWidth: '100%',
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                                lineHeight: 1.15,
+                                maxWidth: '40%',
                             }}
                             title={clientName || 'Cliente'}
                         >
                             {clientName || 'Cliente'}
                         </span>
-                    )}
-                </div>
-                {/* Right: Actions + Status badge, with visit type below status */}
-                <span
-                    style={{
-                        marginLeft: 'auto',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        flexShrink: 0,
-                        minHeight: 20,
-                    }}
-                >
-                    {/* Always show time on non-compact cards for clarity (canceled/done included) */}
-                    {!compact &&
-                        showTime &&
-                        (timeInline ? (
+                        {appt.notes && (
                             <span
                                 style={{
                                     fontSize: 12,
-                                    fontWeight: 'var(--card-time-weight)',
                                     color: 'var(--color-text)',
-                                    whiteSpace: 'nowrap',
-                                }}
-                            >
-                                {formatTime(appt.start_at)} –{' '}
-                                {formatTime(displayEndForRange)}
-                            </span>
-                        ) : (
-                            <TimeRangeLabel
-                                start={appt.start_at}
-                                end={displayEndForRange}
-                                size='sm'
-                            />
-                        ))}
-                    {/* Optional edit/cancel buttons (details icon removido; clique do cartão cobre 'done') */}
-                    {(() => {
-                        const showEdit = !!(
-                            onEdit &&
-                            showEditAction &&
-                            canEdit
-                        );
-                        const showCancel = !!(
-                            onCancel &&
-                            canCancel &&
-                            status === 'scheduled' &&
-                            showEditAction
-                        );
-                        // Só preservar placeholders de layout quando for útil (cards não compactos, sem stack e com ações visíveis)
-                        const preserveActionsLayout =
-                            !compact && !stackName && showEditAction !== false;
-                        const hiddenStyle: React.CSSProperties = {
-                            visibility: 'hidden',
-                            pointerEvents: 'none',
-                        };
-                        const maybeRender = (
-                            shouldShow: boolean,
-                            element: React.ReactNode,
-                        ) => {
-                            if (shouldShow) return element;
-                            if (preserveActionsLayout) return element; // será estilizado como hidden no próprio botão
-                            return null;
-                        };
-                        return (
-                            <>
-                                {maybeRender(
-                                    showEdit,
-                                    <button
-                                        type='button'
-                                        title='Edit appointment'
-                                        onClick={e => {
-                                            e.stopPropagation();
-                                            if (showEdit && onEdit)
-                                                onEdit(appt);
-                                        }}
-                                        style={{
-                                            border: '1px solid var(--color-border)',
-                                            borderRadius: 6,
-                                            background: 'var(--color-bg)',
-                                            padding: 6,
-                                            cursor: 'pointer',
-                                            ...(showEdit
-                                                ? undefined
-                                                : hiddenStyle),
-                                        }}
-                                        disabled={!showEdit}
-                                        tabIndex={showEdit ? 0 : -1}
-                                        aria-hidden={
-                                            showEdit ? undefined : true
-                                        }
-                                    >
-                                        <FaEdit
-                                            color={'var(--color-heading)'}
-                                        />
-                                    </button>,
-                                )}
-                                {maybeRender(
-                                    showCancel,
-                                    <button
-                                        type='button'
-                                        title='Cancel appointment'
-                                        onClick={e => {
-                                            e.stopPropagation();
-                                            if (!showCancel) return;
-                                            handleCancel();
-                                        }}
-                                        style={{
-                                            border: '1px solid var(--color-border)',
-                                            borderRadius: 6,
-                                            background:
-                                                'var(--color-canceled-bg)',
-                                            padding: 6,
-                                            cursor: 'pointer',
-                                            ...(showCancel
-                                                ? undefined
-                                                : hiddenStyle),
-                                        }}
-                                        disabled={!showCancel}
-                                        tabIndex={showCancel ? 0 : -1}
-                                        aria-hidden={
-                                            showCancel ? undefined : true
-                                        }
-                                    >
-                                        <FaBan
-                                            color={'var(--color-canceled)'}
-                                        />
-                                    </button>,
-                                )}
-                            </>
-                        );
-                    })()}
-                    <div
-                        style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'flex-end',
-                            minWidth: 0,
-                        }}
-                    >
-                        <StatusBadge
-                            status={isOngoing ? 'ongoing' : status}
-                            size='md'
-                        />
-                        {appt.whatsapp_confirmed && status === 'scheduled' && (
-                            <span
-                                title='WhatsApp enviado'
-                                style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 2,
-                                    fontSize: 10,
-                                    fontWeight: 600,
-                                    color: '#25d366',
-                                    marginTop: 2,
-                                }}
-                            >
-                                <FaWhatsapp size={11} />
-                                enviado
-                            </span>
-                        )}
-                        {!compact && (
-                            <span
-                                style={{
-                                    fontSize: 'var(--card-type-size)',
-                                    fontWeight: 'var(--card-type-weight)',
-                                    color: 'var(--color-heading)',
-                                    marginTop: 2,
-                                    maxWidth: 160,
+                                    lineHeight: 1.3,
                                     whiteSpace: 'nowrap',
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
+                                    minWidth: 0,
+                                    flex: 1,
                                 }}
-                                title={(() => {
-                                    const vt = (
-                                        appt as unknown as {
-                                            visit_type?: string;
-                                        }
-                                    ).visit_type;
-                                    const map: Record<string, string> = {
-                                        avaliacao: 'Avaliação',
-                                        retorno: 'Retorno',
-                                        procedimento: 'Serviço',
-                                        outro: 'Outro',
-                                        consulta: 'Consulta',
-                                    };
-                                    return (
-                                        (vt && map[vt]) ||
-                                        (appt as SharedAppointmentLike).title ||
-                                        'Consulta'
-                                    );
-                                })()}
+                                title={appt.notes}
                             >
-                                {(() => {
-                                    const vt = (
-                                        appt as unknown as {
-                                            visit_type?: string;
-                                        }
-                                    ).visit_type;
-                                    const map: Record<string, string> = {
-                                        avaliacao: 'Avaliação',
-                                        retorno: 'Retorno',
-                                        procedimento: 'Serviço',
-                                        outro: 'Outro',
-                                        consulta: 'Consulta',
-                                    };
-                                    return (
-                                        (vt && map[vt]) ||
-                                        (appt as SharedAppointmentLike).title ||
-                                        'Consulta'
-                                    );
-                                })()}
+                                {appt.notes}
                             </span>
                         )}
                     </div>
-                </span>
-            </div>
-            {/* Footer line: Nome (forte) + Comentários na última linha */}
-            {!compact && showFooterLine && (
-                <div
-                    style={{
-                        display: 'flex',
-                        gap: 6,
-                        alignItems: 'baseline',
-                        minWidth: 0,
-                    }}
-                >
-                    <span
+                )}
+                {/* Back-compat notes block when footer is not used */}
+                {!compact && !showFooterLine && showNotes && appt.notes && (
+                    <div
                         style={{
-                            fontWeight: 800,
-                            color: 'var(--color-heading)',
-                            whiteSpace: 'nowrap',
+                            fontSize: 'var(--card-text-size)',
+                            color: 'var(--color-text)',
+                            lineHeight: 1.3,
+                            whiteSpace: 'pre-wrap',
+                            overflowWrap: 'anywhere',
+                            wordBreak: 'break-word',
+                            minWidth: 0,
                             overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            maxWidth: '40%',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
                         }}
-                        title={clientName || 'Cliente'}
                     >
-                        {clientName || 'Cliente'}
-                    </span>
-                    {appt.notes && (
-                        <span
-                            style={{
-                                fontSize: 12,
-                                color: 'var(--color-text)',
-                                lineHeight: 1.3,
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                minWidth: 0,
-                                flex: 1,
-                            }}
-                            title={appt.notes}
-                        >
-                            {appt.notes}
-                        </span>
-                    )}
-                </div>
-            )}
-            {/* Back-compat notes block when footer is not used */}
-            {!compact && !showFooterLine && showNotes && appt.notes && (
-                <div
-                    style={{
-                        fontSize: 'var(--card-text-size)',
-                        color: 'var(--color-text)',
-                        lineHeight: 1.3,
-                        whiteSpace: 'pre-wrap',
-                        overflowWrap: 'anywhere',
-                        wordBreak: 'break-word',
-                        minWidth: 0,
-                        overflow: 'hidden',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                    }}
-                >
-                    {appt.notes}
-                </div>
-            )}
-            {/* Time range footer (optional) */}
-            {compact && showTime && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <TimeRangeLabel
-                        start={appt.start_at}
-                        end={displayEndForRange}
-                        size='sm'
-                    />
-                </div>
-            )}
+                        {appt.notes}
+                    </div>
+                )}
+                {/* Time range footer (optional) */}
+                {compact && showTime && (
+                    <div
+                        style={{ display: 'flex', justifyContent: 'flex-end' }}
+                    >
+                        <TimeRangeLabel
+                            start={appt.start_at}
+                            end={displayEndForRange}
+                            size='sm'
+                        />
+                    </div>
+                )}
             </div>
             <ActionPromptModal
                 open={actionPrompt === 'scheduled'}
@@ -651,39 +630,6 @@ function AppointmentCardViewInner<T extends SharedAppointmentLike>({
                               },
                           ]
                         : []),
-                    ...(onCancel && canCancel
-                        ? [
-                              {
-                                  label: 'Cancelar compromisso',
-                                  onClick: () => {
-                                      setActionPrompt(null);
-                                      handleCancel();
-                                  },
-                                  variant: 'danger' as const,
-                              },
-                          ]
-                        : []),
-                ]}
-            />
-            <ActionPromptModal
-                open={actionPrompt === 'ongoing'}
-                onClose={() => setActionPrompt(null)}
-                title='Atendimento em andamento'
-                message='Deseja finalizar ou cancelar o atendimento agora?'
-                actions={[
-                    {
-                        label: 'Finalizar atendimento',
-                        onClick: () => {
-                            setActionPrompt(null);
-                            requestFinalize();
-                        },
-                        variant: 'success',
-                    },
-                    {
-                        label: 'Voltar',
-                        onClick: () => setActionPrompt(null),
-                        variant: 'neutral',
-                    },
                     ...(onCancel && canCancel
                         ? [
                               {
@@ -737,8 +683,6 @@ function areEqualShallow(
         prev.onResolvePending !== next.onResolvePending ||
         prev.onEdit !== next.onEdit ||
         prev.onCancel !== next.onCancel ||
-        prev.onFinalize !== next.onFinalize ||
-        prev.finalizeRequestContext !== next.finalizeRequestContext ||
         prev.onDetails !== next.onDetails
     )
         return false;
@@ -773,7 +717,7 @@ export function AppointmentCardContainer<T extends SharedAppointmentLike>(
 ) {
     // Simplificado: usar hora local do dispositivo (ou now passado por props)
     // Evitamos criar um "new Date()" a cada render para não invalidar a memoização do card.
-    // Atualizamos o "agora" apenas uma vez por minuto (suficiente para fins de status: ongoing/past).
+    // Atualizamos o "agora" apenas uma vez por minuto para refletir status pendente.
     function useNowTick(intervalMs: number) {
         const [now, setNow] = React.useState<Date>(() => new Date());
         React.useEffect(() => {

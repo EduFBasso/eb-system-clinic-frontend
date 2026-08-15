@@ -15,7 +15,6 @@ import { useAppointmentDetailsModal } from '../../hooks/useAppointmentDetailsMod
 import { openPendingActionsForAppointment } from '../../utils/appointments/openPendingActions';
 import { cancelAppointment } from '../../services/appointments';
 import { dispatchers } from '../../events/dispatchers';
-import { useAgendaFinalizeAction } from '../../hooks/useAgendaFinalizeAction';
 import { toISODate } from '../../utils/date';
 import {
     addDays,
@@ -78,9 +77,6 @@ export function WeeklyPreviewModal({
         undefined,
         reloadKey,
     );
-    const { handleFinalize } = useAgendaFinalizeAction(() => {
-        setReloadKey(x => x + 1);
-    });
     const handleCancel = React.useCallback(async (appt: Appointment) => {
         const res = await cancelAppointment(appt.id);
         if (!res.ok) {
@@ -571,20 +567,8 @@ export function WeeklyPreviewModal({
                                                     deriveStatus(
                                                         a,
                                                         new Date(),
-                                                    ) === 'scheduled' ||
-                                                    deriveStatus(
-                                                        a,
-                                                        new Date(),
-                                                    ) === 'ongoing'
+                                                    ) === 'scheduled'
                                                         ? handleCancel
-                                                        : undefined
-                                                }
-                                                onFinalize={
-                                                    deriveStatus(
-                                                        a,
-                                                        new Date(),
-                                                    ) === 'ongoing'
-                                                        ? handleFinalize
                                                         : undefined
                                                 }
                                             />

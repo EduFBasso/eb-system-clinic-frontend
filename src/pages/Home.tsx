@@ -102,7 +102,7 @@ export default function Home() {
     } | null>(null);
     const version = useAppVersionWatcher();
     // Live ping: keep a conservative refresh cadence while page is visible.
-    // 60s is enough after moving pending/ongoing truth to backend-driven fields/events.
+    // 60s is enough to keep agenda and pending data fresh.
     useAppointmentsLivePing({ enabled: true, pollIntervalMs: 60000 });
     const {
         pendingActionsOpen,

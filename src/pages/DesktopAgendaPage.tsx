@@ -27,18 +27,16 @@ import type {
 } from '../types/agendaFlow';
 import { cancelAppointment } from '../services/appointments';
 import { dispatchers } from '../events/dispatchers';
-import { useAgendaFinalizeAction } from '../hooks/useAgendaFinalizeAction';
 import { openPendingActionsForAppointment } from '../utils/appointments/openPendingActions';
 import { addDays, startOfDay } from '../utils/dateHelpers';
 
-type StatusKey = 'scheduled' | 'done' | 'canceled' | 'ongoing';
+type StatusKey = 'scheduled' | 'done' | 'canceled';
 type RawClientField = ClientLike | number | undefined | null;
 type EnrichedAppt = Appointment & {
     _start: Date;
     _end: Date;
     _isPast: boolean;
-    _isOngoing: boolean;
-    _derivedStatus: 'scheduled' | 'done' | 'canceled' | 'ongoing' | 'past';
+    _derivedStatus: 'scheduled' | 'done' | 'canceled' | 'past';
     client?: ClientLike | number;
 };
 
@@ -148,9 +146,6 @@ export default function DesktopAgendaPage() {
         undefined,
         reloadKey,
     );
-    const { handleFinalize } = useAgendaFinalizeAction(() => {
-        setReloadKey(x => x + 1);
-    });
     const handleCancel = React.useCallback(async (appt: Appointment) => {
         const res = await cancelAppointment(appt.id);
         if (!res.ok) {
@@ -175,10 +170,10 @@ export default function DesktopAgendaPage() {
         }
     }, []);
     const [statusFilter, setStatusFilter] = React.useState<
-        'all' | 'active' | 'past' | 'done' | 'canceled' | 'ongoing'
+        'all' | 'active' | 'past' | 'done' | 'canceled'
     >('active');
 
-    // Reactive now — ticks every 30 s to detect ongoing/past transitions
+    // Reactive now — ticks every 30 s to detect pending transitions
     const effectiveNowRef = useNowTick(30_000);
 
     // Recarregar quando qualquer compromisso for criado/alterado/cancelado
@@ -216,12 +211,8 @@ export default function DesktopAgendaPage() {
     const sorted = filtered.slice().sort((a, b) => {
         const t = a._start.getTime() - b._start.getTime();
         if (t !== 0) return t;
-        const ai = STATUS_ORDER.indexOf(
-            (a._isOngoing ? 'ongoing' : a.status) as StatusKey,
-        );
-        const bi = STATUS_ORDER.indexOf(
-            (b._isOngoing ? 'ongoing' : b.status) as StatusKey,
-        );
+        const ai = STATUS_ORDER.indexOf(a.status as StatusKey);
+        const bi = STATUS_ORDER.indexOf(b.status as StatusKey);
         return ai - bi;
     });
 
@@ -401,24 +392,21 @@ export default function DesktopAgendaPage() {
                 >
                     {[
                         { key: 'all' as const, label: 'Todos' },
-                        { key: 'ongoing' as const, label: 'Atendimento' },
                         { key: 'past' as const, label: 'Pendentes' },
                         { key: 'active' as const, label: 'Ativos' },
                         { key: 'done' as const, label: 'Concluídos' },
                         { key: 'canceled' as const, label: 'Cancelados' },
                     ].map(({ key, label }) => {
                         const activeBg =
-                            key === 'ongoing'
-                                ? 'var(--color-ongoing)'
-                                : key === 'past'
-                                  ? 'var(--color-pending)'
-                                  : key === 'active'
-                                    ? 'var(--color-primary)'
-                                    : key === 'done'
-                                      ? 'var(--color-done)'
-                                      : key === 'canceled'
-                                        ? 'var(--color-canceled)'
-                                        : 'var(--color-heading)';
+                            key === 'past'
+                                ? 'var(--color-pending)'
+                                : key === 'active'
+                                  ? 'var(--color-primary)'
+                                  : key === 'done'
+                                    ? 'var(--color-done)'
+                                    : key === 'canceled'
+                                      ? 'var(--color-canceled)'
+                                      : 'var(--color-heading)';
                         return (
                             <button
                                 key={key}
@@ -473,10 +461,7 @@ export default function DesktopAgendaPage() {
                 )}
                 {!loading &&
                     sorted.map(a => {
-                        const isActive =
-                            a.status === 'scheduled' &&
-                            !a._isPast &&
-                            !a._isOngoing;
+                        const isActive = a.status === 'scheduled' && !a._isPast;
                         const isEditing = inlineEditId === a.id;
                         return (
                             <div
@@ -561,21 +546,8 @@ export default function DesktopAgendaPage() {
                                                     : undefined
                                             }
                                             onCancel={
-                                                (a.status === 'scheduled' ||
-                                                    a.status === 'ongoing' ||
-                                                    a._isOngoing) &&
-                                                !(
-                                                    a.status === 'scheduled' &&
-                                                    !a._isOngoing &&
-                                                    a._end < effectiveNowRef
-                                                )
+                                                a._derivedStatus === 'scheduled'
                                                     ? handleCancel
-                                                    : undefined
-                                            }
-                                            onFinalize={
-                                                a.status === 'ongoing' ||
-                                                a._isOngoing
-                                                    ? handleFinalize
                                                     : undefined
                                             }
                                         />

@@ -1,7 +1,6 @@
 import React from 'react';
 import ClientDayList from '../shared/ClientDayList';
 import type { Appointment } from '../../hooks/useAppointments';
-import type { PendingReturnContext } from '../../types/agendaFlow';
 import { openPendingActionsForAppointment } from '../../utils/appointments/openPendingActions';
 import { getNow } from '../../utils/now';
 
@@ -21,8 +20,6 @@ export interface QuickScheduleDayListProps {
     onUseTime: (a: Appointment) => void;
     onEdit: (a: Appointment) => void;
     onCancel: (a: Appointment) => Promise<void>;
-    onFinalize?: (a: Appointment) => Promise<void> | void;
-    finalizeRequestContext?: PendingReturnContext;
     onDetails?: (a: Appointment) => void;
     minimal?: boolean; // when true, hide header/select and section title; show only minicards
 }
@@ -41,22 +38,18 @@ export const QuickScheduleDayList: React.FC<QuickScheduleDayListProps> = ({
     onUseTime,
     onEdit,
     onCancel,
-    onFinalize,
-    finalizeRequestContext,
     onDetails,
     minimal = false,
 }) => {
     const filterFn = React.useCallback(
         (a: Appointment) => {
             if (minimal) {
-                // No modo de criação: só mostra ativos que ainda não terminaram
-                if (a.status !== 'scheduled' && a.status !== 'ongoing')
-                    return false;
+                // No modo de criação: só mostra agendados que ainda não terminaram
+                if (a.status !== 'scheduled') return false;
                 return new Date(a.end_at).getTime() >= getNow().getTime();
             }
             if (dayFilter === 'todos') return true;
-            if (dayFilter === 'ativos')
-                return a.status === 'scheduled' || a.status === 'ongoing';
+            if (dayFilter === 'ativos') return a.status === 'scheduled';
             if (dayFilter === 'cancelados') return a.status === 'canceled';
             return true;
         },
@@ -135,9 +128,7 @@ export const QuickScheduleDayList: React.FC<QuickScheduleDayListProps> = ({
                                 Ativos (
                                 {
                                     appointments.filter(
-                                        a =>
-                                            a.status === 'scheduled' ||
-                                            a.status === 'ongoing',
+                                        a => a.status === 'scheduled',
                                     ).length
                                 }
                                 )
@@ -239,16 +230,11 @@ export const QuickScheduleDayList: React.FC<QuickScheduleDayListProps> = ({
                             currentEditId === appt.id,
                     })}
                     onResolvePending={appt => {
-                        openPendingActionsForAppointment(
-                            appt,
-                            finalizeRequestContext,
-                        );
+                        openPendingActionsForAppointment(appt);
                     }}
                     onUseTime={onUseTime}
                     onEdit={onEdit}
                     onCancel={onCancel}
-                    onFinalize={onFinalize}
-                    finalizeRequestContext={finalizeRequestContext}
                     onDetails={onDetails}
                     emptyPlaceholder={
                         !loading ? (

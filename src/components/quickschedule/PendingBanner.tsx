@@ -21,8 +21,9 @@ export default function PendingBanner({
 }: PendingBannerProps) {
     const handleResolve = React.useCallback(async () => {
         try {
-            const id = (pendingFound?.id ||
-                client.next_appointment_id) as number | undefined;
+            const id = (pendingFound?.id || client.next_appointment_id) as
+                | number
+                | undefined;
             if (!id) {
                 focusClientCard(client.id);
                 return;
@@ -32,10 +33,9 @@ export default function PendingBanner({
                 'Content-Type': 'application/json',
             };
             if (token) headers['Authorization'] = `Bearer ${token}`;
-            const resp = await fetch(
-                `${API_BASE}/agenda/appointments/${id}/`,
-                { headers },
-            );
+            const resp = await fetch(`${API_BASE}/agenda/appointments/${id}/`, {
+                headers,
+            });
             if (!resp.ok)
                 throw new Error('Falha ao carregar compromisso pendente');
             const appt = (await resp.json()) as Appointment;
@@ -77,7 +77,7 @@ export default function PendingBanner({
         >
             <div>
                 <strong>Atenção:</strong> há um compromisso pendente para este
-                cliente. Finalize-o antes de criar um novo.
+                cliente. Resolva-o antes de criar um novo.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
                 <button

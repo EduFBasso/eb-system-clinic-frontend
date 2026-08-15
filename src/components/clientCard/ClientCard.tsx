@@ -1,6 +1,5 @@
 // frontend/src/components/ClientCard.tsx
 import React from 'react';
-import { focusClientCard } from '../../utils/focusClientCard';
 import styles from './ClientCard.module.css';
 import { FaEye, FaWhatsapp, FaTooth } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
@@ -18,9 +17,6 @@ import { useClientPendingState } from '../../hooks/useClientPendingState';
 import { useClientCardFocusScroll } from '../clientCard/useClientCardFocusScroll';
 import { useClientFutureAppointments } from '../../domain/futureAppointments';
 // (hysteresis & appointment state consolidated inside hooks)
-import { useFinalizeAppointment } from '../../hooks/useFinalizeAppointment';
-// Replaced latch/snapshot/sweep logic by consolidated hook
-import { useClientOngoingState } from '../../hooks/useClientOngoingState';
 import { formatAppointmentDateRange } from '../../utils/agendaPresentation';
 import { openClientForm } from '../../utils/openClientForm';
 import { useNowTick } from '../../hooks/useNowTick';
@@ -110,21 +106,12 @@ function ClientCardBase({
 }: ClientCardProps) {
     const navigate = useNavigate();
     const { theme } = useTheme();
-    // Feature flag: disable per-client ongoing probe unless explicitly enabled (reduces debug traffic)
-    const ENABLE_ONGOING_PROBE =
-        (import.meta as ImportMeta).env.VITE_ENABLE_ONGOING_PROBE === 'true';
     const isScheduled = client.next_appointment_status === 'scheduled';
     // Futuros agora gerenciados por hook dedicado
     const { futureAppointments, loadingFuture, dynLimit } =
         useClientFutureAppointments({ client, isScheduled });
     const [pressed, setPressed] = React.useState(false);
-    const { finishing, finalize } = useFinalizeAppointment(client.id);
-    // Suprimir visual de "em andamento" por alguns segundos após finalizar/cancelar
-    // suppressOngoingUntil removido (gestão dentro do hook de ongoing)
-    // Tick a cada 5 s para refletir mudanças de estado (scheduled→ongoing) sem interação do usuário
     const now = useNowTick(5000);
-    // Removed resumeGrace (was used for previous ongoing suppression logic)
-    // const resumeGrace = useVisibilityResumeGrace(30000);
     // start derivado como Date não é necessário; mantemos ISO para o snapshot
     // end derivado não é necessário para estilização; snapshot usa ISO strings
     // Idade calculada uma vez (se data válida) para exibir em linha própria
@@ -154,51 +141,6 @@ function ClientCardBase({
             return false;
         }
     }, []);
-    // isScheduled já definido acima (reordenado para hook de futuros)
-    // Base: informações vindas do servidor (se disponíveis)
-    // startISO / endISO no longer directly used after ongoing refactor
-    // const startISO = client.next_appointment_start_at ?? null;
-    // const endISO = client.next_appointment_end_at ?? null;
-    const {
-        isOngoing,
-        // isOngoingRaw (raw signal) not needed in card after refactor
-        displayStartISO,
-        displayEndISO,
-        effectiveApptId,
-        afterFinalizeSuccess,
-    } = useClientOngoingState({
-        client,
-        now,
-        enableProbe: ENABLE_ONGOING_PROBE,
-        debug: false,
-    });
-
-    // Quando tivermos uma janela confiável e status scheduled, usamos o hook compartilhado
-    // legacy variables now derived via hook (kept for potential future use) startISO/endISO still used for future fetch logic
-
-    // Preferir dados confiáveis do servidor OU da varredura global quando houver janela atual
-    // Se houver um agendamento em andamento detectado pela varredura (windowFromOverride),
-    // usamos esse horário/ID em prioridade para refletir corretamente o estado "Em andamento".
-    // removed: local derivations now handled by useClientOngoingState
-
-    // Auto-clear latch some time after the end to avoid sticky ongoing if finalize didn't fire
-    // removed auto-clear effect (handled inside hook)
-
-    // Novo: limpar latch imediatamente se detectarmos que o appointment latched foi finalizado/cancelado, expirado ou janela deixou de ser confiável
-    // removed immediate-clear effect (handled in hook)
-
-    // On resume (visibility/pageshow), refresh local latched state from storage in case iOS flushed memory
-    // removed visibility storage refresh (handled in hook)
-
-    // Aplicar histerese visual: aguarda 250ms para entrar em ongoing; saída é imediata
-    // hysteresis now inside hook (isOngoing already stabilized)
-
-    // Instrumentação de diagnóstico opcional: loga decisão de ongoing/latch
-    // removed debug effect (handled via hook's debug option)
-
-    // Telemetry: entering ongoing window
-    // removed telemetry enter effect (done inside hook)
-
     // Hook centralizado de pendência
     const {
         effectivePending: isPending,
@@ -207,27 +149,22 @@ function ClientCardBase({
     } = useClientPendingState({
         client,
         now,
-        probeEnabled: ENABLE_ONGOING_PROBE,
     });
 
-    // Mostrar seção de agenda somente se há algo concreto (agendamento atual ou em andamento) ou futuros carregados.
+    // Mostrar seção de agenda somente se há algo concreto ou futuros carregados.
     // Estado pendente isolado não exibe cabeçalho/tipo para manter UI minimalista.
     // Agenda line (tipo / horário) é suprimida se pendente para manter visual minimalista.
     // Porém queremos ainda exibir a linha 'Data:' com o botão Solucionar mesmo que haja um agendamento (scheduled+pending).
     // Regra revisada:
     //  - Quando pendente: não mostramos linha de agenda nem linha Data (substituímos por bloco compacto de pendência)
-    //  - Linha de agenda aparece apenas se há scheduled ativo, em andamento ou futuros E não está pendente
-    // isTomorrowFilter / effectiveOngoing declarados aqui porque hasAgendaLine (abaixo) os usa
+    //  - Linha de agenda aparece apenas se há scheduled ou futuros e não está pendente
     const isTomorrowFilter = filterMode === 'tomorrow' && !!notifyAppt;
-    const effectiveOngoing = isOngoing && !isTomorrowFilter;
 
     const hasAgendaLine =
-        (isScheduled || effectiveOngoing || futureAppointments.length > 0) &&
-        !isPending;
+        (isScheduled || futureAppointments.length > 0) && !isPending;
 
     // Ações unificadas (+) para agenda e fallback
     const createActionAgenda = useClientCreateAction({
-        isOngoing,
         isPending,
         futureAppointmentsCount: futureAppointments.length,
         isScheduled,
@@ -241,7 +178,6 @@ function ClientCardBase({
         baseTitle: 'Novo agendamento',
     });
     const createActionFallback = useClientCreateAction({
-        isOngoing,
         isPending,
         futureAppointmentsCount: futureAppointments.length,
         isScheduled,
@@ -254,7 +190,6 @@ function ClientCardBase({
         openQuick: () => openGlobalQuickSchedule(),
         baseTitle: 'Agendar',
     });
-    // Estilos centralizados via hook: mantém regra de cartão branco durante atendimento
     const {
         containerStyle,
         labelColor,
@@ -263,7 +198,6 @@ function ClientCardBase({
         separatorColor,
         separatorOpacity,
     } = useClientCardStyle({
-        isOngoing: effectiveOngoing,
         selected,
         pressed,
         isScheduled,
@@ -308,57 +242,28 @@ function ClientCardBase({
     // Align with global forceClose: ensure any ClientCard modal closes too
     // PendingActions global — sem necessidade de listener local
 
-    // Finalização com encapsulamento via hook
-    const finalizeEarlyAware = React.useCallback(async () => {
-        const apptId = effectiveApptId;
-        if (!apptId) return;
-        const ok = await finalize(apptId, {
-            preferEarly: isOngoing,
-            openPendingAfter: async () => {
-                await tryOpenPendingElseQuick(() => {});
-            },
-        });
-        if (ok) {
-            afterFinalizeSuccess();
-            // Rola e foca o card após fechar o modal de finalização (mesmo padrão da notificação push)
-            focusClientCard(client.id, { delayMs: 400 });
-        }
-    }, [
-        effectiveApptId,
-        isOngoing,
-        finalize,
-        tryOpenPendingElseQuick,
-        afterFinalizeSuccess,
-        client.id,
-    ]);
     // Fechar modo edição ao clicar fora do card
     // Efeito de clique fora removido enquanto editor inline está desativado
     // Borda e fundo já definidos no hook (containerStyle)
     // title display moved into the agenda section below when scheduled
-    // Flash visual ao focar/entrar em andamento removido — mantemos apenas seleção + scroll
     useClientCardFocusScroll({
         clientId: client.id,
         cardRef,
         onSelect,
         futureAppointmentsCount: futureAppointments.length,
-        isOngoing,
         isScheduled,
     });
 
     // Inline effect de futuros removido (substituído pelo hook)
 
-    // Clear ongoing visual immediately when a targeted event is dispatched (same-tab UX)
-    // Clear ongoing event handling moved to hook; listener removed
-
     // Quando o filtro ativo é 'tomorrow' e temos o agendamento de amanhã, usamos seus dados
     // para o bloco "Data:" e o botão "Avisar" — substituindo os dados de hoje.
-    // (isTomorrowFilter e effectiveOngoing já declarados acima, antes de hasAgendaLine)
     const activeStartISO = isTomorrowFilter
         ? (notifyAppt?.start_at ?? null)
-        : displayStartISO || client.next_appointment_start_at || null;
+        : client.next_appointment_start_at || null;
     const activeEndISO = isTomorrowFilter
         ? (notifyAppt?.end_at ?? null)
-        : displayEndISO || client.next_appointment_end_at || null;
+        : client.next_appointment_end_at || null;
     // Ocultar o bloco "Próximos compromissos" quando um filtro de dia específico está ativo
     const hideFutureList = filterMode === 'today' || filterMode === 'tomorrow';
     const cardClassNames = [styles.card, selected ? styles.cardSelected : '']
@@ -682,11 +587,9 @@ function ClientCardBase({
                 hasAgendaLine={hasAgendaLine}
                 isScheduled={isScheduled}
                 isPending={isPending}
-                isOngoing={isOngoing}
-                effectiveOngoing={effectiveOngoing}
                 activeStartISO={activeStartISO}
                 activeEndISO={activeEndISO}
-                displayStartISO={displayStartISO}
+                displayStartISO={client.next_appointment_start_at || null}
                 futureAppointments={futureAppointments}
                 loadingFuture={loadingFuture}
                 hideFutureList={hideFutureList}
@@ -697,9 +600,6 @@ function ClientCardBase({
                 iconColor={iconColor}
                 separatorColor={separatorColor}
                 separatorOpacity={separatorOpacity}
-                finishing={finishing}
-                effectiveApptId={effectiveApptId}
-                onFinalize={finalizeEarlyAware}
                 onOpenMonthlyAgenda={openGlobalMonthlyAgenda}
                 onOpenQuickSchedule={openGlobalQuickSchedule}
                 onSolvePending={async () => {

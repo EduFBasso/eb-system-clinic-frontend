@@ -1,7 +1,7 @@
 import React from 'react';
 import styles from '../../styles/components/Main.module.css';
 
-export type FilterMode = 'all' | 'pending' | 'today' | 'tomorrow' | 'ongoing';
+export type FilterMode = 'all' | 'pending' | 'today' | 'tomorrow';
 
 export interface FilterBarProps {
     filter: string;
@@ -9,7 +9,6 @@ export interface FilterBarProps {
     pendingCount: number;
     todayCount: number;
     tomorrowCount: number;
-    ongoingCount: number;
     mobileFiltersOpen: boolean;
     mobileFiltersMenuStyle: React.CSSProperties;
     mobileFiltersButtonRef: React.RefObject<HTMLButtonElement | null>;
@@ -30,7 +29,6 @@ export const FilterBar = React.memo(function FilterBar({
     pendingCount,
     todayCount,
     tomorrowCount,
-    ongoingCount,
     mobileFiltersOpen,
     mobileFiltersMenuStyle,
     mobileFiltersButtonRef,
@@ -167,29 +165,6 @@ export const FilterBar = React.memo(function FilterBar({
                 </div>
                 <div className={styles.filterActionsDesktop}>
                     <button
-                        className={`${styles.filterToggleBtn}${filterMode === 'ongoing' ? ' ' + styles.filterToggleBtnActive : ''}`}
-                        onClick={() => onApplyFilterMode('ongoing')}
-                        title='Filtrar clientes em atendimento agora'
-                        style={
-                            ongoingCount === 0 ? { opacity: 0.5 } : undefined
-                        }
-                    >
-                        Em atendimento{' '}
-                        {ongoingCount > 0 && (
-                            <span
-                                key={`ongoing-${ongoingCount}`}
-                                className={styles.countBadge}
-                                style={{
-                                    display: 'inline-block',
-                                    marginLeft: '4px',
-                                    animation: 'badgePulse 0.35s ease-out',
-                                }}
-                            >
-                                ({ongoingCount})
-                            </span>
-                        )}
-                    </button>
-                    <button
                         className={`${styles.filterToggleBtn}${filterMode === 'pending' ? ' ' + styles.filterToggleBtnActive : ''}`}
                         onClick={() => onApplyFilterMode('pending')}
                         title='Filtrar por compromissos pendentes'
@@ -260,13 +235,6 @@ export const FilterBar = React.memo(function FilterBar({
                                 role='menuitem'
                             >
                                 Sem filtro
-                            </button>
-                            <button
-                                className={`${styles.filtersMenuItem}${filterMode === 'ongoing' ? ' ' + styles.filtersMenuItemActive : ''}`}
-                                onClick={() => onApplyFilterMode('ongoing')}
-                                role='menuitem'
-                            >
-                                Em atendimento ({ongoingCount})
                             </button>
                             <button
                                 className={`${styles.filtersMenuItem}${filterMode === 'pending' ? ' ' + styles.filtersMenuItemActive : ''}`}

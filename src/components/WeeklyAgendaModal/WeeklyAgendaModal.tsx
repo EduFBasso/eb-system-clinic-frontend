@@ -18,7 +18,6 @@ import { useNowTick } from '../../hooks/useNowTick';
 import { openPendingActionsForAppointment } from '../../utils/appointments/openPendingActions';
 import { cancelAppointment } from '../../services/appointments';
 import { dispatchers } from '../../events/dispatchers';
-import { useAgendaFinalizeAction } from '../../hooks/useAgendaFinalizeAction';
 import type { PendingReturnContext } from '../../types/agendaFlow';
 import QuickScheduleModal from '../QuickScheduleModal/QuickScheduleModal';
 import { makeClientBasic } from '../../utils/appointments/agendaHelpers';
@@ -99,9 +98,6 @@ function WeeklyAgendaContent({
         reloadKey,
     );
     const effectiveNowRef = useNowTick(30_000);
-    const { handleFinalize } = useAgendaFinalizeAction(() => {
-        setReloadKey(x => x + 1);
-    });
     const handleCancel = React.useCallback(async (appt: Appointment) => {
         const res = await cancelAppointment(appt.id);
         if (!res.ok) {
@@ -565,7 +561,6 @@ function WeeklyAgendaContent({
                                                             buildReturnContext(),
                                                         );
                                                     }}
-                                                    finalizeRequestContext={buildReturnContext()}
                                                     onDetails={
                                                         a.status === 'done'
                                                             ? appt =>
@@ -577,16 +572,8 @@ function WeeklyAgendaContent({
                                                     }
                                                     onCancel={
                                                         derivedStatus ===
-                                                            'scheduled' ||
-                                                        derivedStatus ===
-                                                            'ongoing'
+                                                        'scheduled'
                                                             ? handleCancel
-                                                            : undefined
-                                                    }
-                                                    onFinalize={
-                                                        derivedStatus ===
-                                                        'ongoing'
-                                                            ? handleFinalize
                                                             : undefined
                                                     }
                                                 />

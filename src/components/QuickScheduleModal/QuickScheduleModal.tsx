@@ -11,10 +11,7 @@ import QuickScheduleDayList, {
 import { AppointmentDetailsModal } from '../AppointmentDetailsModal/AppointmentDetailsModal';
 import type { ClientBasic } from '../../types/ClientBasic';
 import type { Appointment } from '../../hooks/useAppointments';
-import type {
-    QuickScheduleInitialDraft,
-    QuickScheduleReturnContext,
-} from '../../types/agendaFlow';
+import type { QuickScheduleInitialDraft } from '../../types/agendaFlow';
 import { useAppointmentsRange } from '../../hooks/useAppointments';
 import { getNow } from '../../utils/now';
 import { getWorkTimesFromSnapshot } from '../../utils/agendaSettings';
@@ -22,7 +19,6 @@ import { usePendingGuard } from '../../hooks/usePendingGuard';
 import { useQuickScheduleSave } from '../../hooks/useQuickScheduleSave';
 import { useAgendaSettings } from '../../hooks/useAgendaSettings';
 import { pad2, toMinutes, fromMinutes, weekdayLabel } from '../../utils/hmTime';
-import { useAgendaFinalizeAction } from '../../hooks/useAgendaFinalizeAction';
 import { useConflictFlow } from '../../hooks/useConflictFlow';
 import { useAppointmentCancel } from '../../hooks/useAppointmentCancel';
 import qsStyles from './QuickScheduleModal.module.css';
@@ -162,10 +158,6 @@ export default function QuickScheduleModal({
     const [detailsAppt, setDetailsAppt] = React.useState<Appointment | null>(
         null,
     );
-
-    const { handleFinalize } = useAgendaFinalizeAction(() => {
-        setReloadKey(k => k + 1);
-    });
 
     const isEditing = !!currentEdit;
     const baseClientFullName =
@@ -428,36 +420,6 @@ export default function QuickScheduleModal({
         };
     }, [client.first_name, isConflictEditing]);
 
-    const finalizeReturnContext =
-        React.useMemo<QuickScheduleReturnContext | null>(() => {
-            if (!open || client.id <= 0) return null;
-            if (conflictReturnDraft) {
-                return { kind: 'quick-schedule', draft: conflictReturnDraft };
-            }
-            if (currentEdit) return null;
-            return {
-                kind: 'quick-schedule',
-                draft: {
-                    clientId: client.id,
-                    selectedDateISO: selectedDate.toISOString(),
-                    startHM,
-                    endHM,
-                    visitType,
-                    notes,
-                },
-            };
-        }, [
-            client.id,
-            conflictReturnDraft,
-            currentEdit,
-            endHM,
-            notes,
-            open,
-            selectedDate,
-            startHM,
-            visitType,
-        ]);
-
     const { handleCancel } = useAppointmentCancel({
         clientId: client.id,
         currentEdit,
@@ -612,9 +574,7 @@ export default function QuickScheduleModal({
                                 }}
                             >
                                 <option value='consulta'>Consulta</option>
-                                <option value='avaliacao'>Avaliação</option>
                                 <option value='retorno'>Retorno</option>
-                                <option value='procedimento'>Serviço</option>
                                 <option value='outro'>Outro</option>
                             </select>
                         </label>
@@ -729,8 +689,6 @@ export default function QuickScheduleModal({
                             }
                         }}
                         onCancel={handleCancel}
-                        onFinalize={handleFinalize}
-                        finalizeRequestContext={finalizeReturnContext}
                     />
 
                     {!isEditing && isSelectedPast && (

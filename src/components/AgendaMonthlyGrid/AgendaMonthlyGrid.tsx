@@ -15,13 +15,7 @@ import FloatingDatePicker from '../FloatingDatePicker';
 import { toISODate } from '../../utils/date';
 import { formatTime } from '../../utils/timeFormat';
 
-type StatusFilter =
-    | 'all'
-    | 'ongoing'
-    | 'pending'
-    | 'active'
-    | 'done'
-    | 'canceled';
+type StatusFilter = 'all' | 'pending' | 'active' | 'done' | 'canceled';
 
 const MAX_BADGES = 5;
 
@@ -71,7 +65,7 @@ function groupByDay(items: Appointment[]): Record<string, Appointment[]> {
 export function AgendaMonthlyGrid() {
     const todayISO = React.useMemo(() => toISODate(new Date()), []);
 
-    // Ticks every 30 s (shared interval) so ongoing/past detection stays accurate
+    // Ticks every 30 s so pending status stays accurate.
     const now = useNowTick(30_000);
 
     const [anchorMonth, setAnchorMonth] = React.useState<Date>(() => {
@@ -109,14 +103,8 @@ export function AgendaMonthlyGrid() {
 
     const filtered = React.useMemo(() => {
         if (statusFilter === 'all') return items;
-        // Use fresh Date() for accuracy; `now` state exists only to trigger
-        // re-renders every minute so ongoing status updates automatically.
+        // Use fresh Date() for accuracy; `now` triggers periodic re-renders.
         const currentNow = new Date();
-        if (statusFilter === 'ongoing')
-            return items.filter(a => {
-                const e = enrichAppointment(a, currentNow);
-                return e._derivedStatus === 'ongoing';
-            });
         if (statusFilter === 'pending')
             return items.filter(a => {
                 const e = enrichAppointment(a, currentNow);
@@ -204,7 +192,6 @@ export function AgendaMonthlyGrid() {
                     {(
                         [
                             'all',
-                            'ongoing',
                             'pending',
                             'active',
                             'done',
@@ -214,28 +201,24 @@ export function AgendaMonthlyGrid() {
                         const label =
                             f === 'all'
                                 ? 'Todos'
-                                : f === 'ongoing'
-                                  ? 'Atendimento'
-                                  : f === 'pending'
-                                    ? 'Pendentes'
-                                    : f === 'active'
-                                      ? 'Ativos'
-                                      : f === 'done'
-                                        ? 'Concluídos'
-                                        : 'Cancelados';
+                                : f === 'pending'
+                                  ? 'Pendentes'
+                                  : f === 'active'
+                                    ? 'Ativos'
+                                    : f === 'done'
+                                      ? 'Concluídos'
+                                      : 'Cancelados';
                         const isSelected = statusFilter === f;
                         const activeBg =
-                            f === 'ongoing'
-                                ? 'var(--color-ongoing)'
-                                : f === 'pending'
-                                  ? 'var(--color-pending)'
-                                  : f === 'active'
-                                    ? 'var(--color-success)'
-                                    : f === 'done'
-                                      ? 'var(--color-done)'
-                                      : f === 'canceled'
-                                        ? 'var(--color-canceled)'
-                                        : 'var(--color-heading)';
+                            f === 'pending'
+                                ? 'var(--color-pending)'
+                                : f === 'active'
+                                  ? 'var(--color-success)'
+                                  : f === 'done'
+                                    ? 'var(--color-done)'
+                                    : f === 'canceled'
+                                      ? 'var(--color-canceled)'
+                                      : 'var(--color-heading)';
                         return (
                             <button
                                 key={f}

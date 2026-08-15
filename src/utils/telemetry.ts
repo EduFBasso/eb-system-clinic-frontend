@@ -18,25 +18,12 @@ export type TelemetryEvent =
           type: 'appointment_cancel_failed';
           payload: { id: number; error?: string };
       }
-    | { type: 'appointment_finalize_clicked'; payload: { id: number } }
-    | {
-          type: 'appointment_finalize_succeeded';
-          payload: { id: number; ms?: number };
-      }
-    | {
-          type: 'appointment_finalize_failed';
-          payload: { id: number; error?: string };
-      }
     | {
           type: 'appointment_card_clicked';
           payload: {
               id: number;
-              status: 'scheduled' | 'done' | 'canceled' | 'ongoing' | 'past';
+              status: 'scheduled' | 'done' | 'canceled' | 'past';
           };
-      }
-    | {
-          type: 'appointment_entered_ongoing';
-          payload: { id: number; start_at: string; client_id?: number };
       }
     | {
           type: 'appointment_created';

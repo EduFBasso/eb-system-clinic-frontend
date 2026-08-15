@@ -35,12 +35,12 @@ describe('AppointmentCard', () => {
         expect(screen.getByText('Pendente')).toBeInTheDocument();
     });
 
-    it('renders status badge "Em andamento" for ongoing', () => {
+    it('renders status badge "Ativo" for scheduled appointment in progress', () => {
         const s = new Date(Date.now() - 60_000).toISOString();
         const e = new Date(Date.now() + 60_000).toISOString();
-        const appt = makeAppt({ start_at: s, end_at: e, status: 'ongoing' });
+        const appt = makeAppt({ start_at: s, end_at: e, status: 'scheduled' });
         render(<AppointmentCard appt={appt} now={new Date()} />);
-        expect(screen.getByText('Em andamento')).toBeInTheDocument();
+        expect(screen.getByText('Ativo')).toBeInTheDocument();
     });
 
     it('renders status badge "Cancelado" for canceled', () => {
@@ -188,31 +188,6 @@ describe('AppointmentCard', () => {
         expect(onEdit).toHaveBeenCalledTimes(1);
     });
 
-    it('ongoing without finalize handler stays non-interactive', () => {
-        const s = new Date(Date.now() - 60_000).toISOString();
-        const e = new Date(Date.now() + 60_000).toISOString();
-        const appt = makeAppt({ start_at: s, end_at: e, status: 'ongoing' });
-        const onResolvePending = vi.fn();
-        const onEdit = vi.fn();
-        const onUseTime = vi.fn();
-        const onClick = vi.fn();
-        render(
-            <AppointmentCard
-                appt={appt}
-                onResolvePending={onResolvePending}
-                onEdit={onEdit}
-                onUseTime={onUseTime}
-                onClick={onClick}
-                now={new Date()}
-            />,
-        );
-        fireEvent.click(screen.getByText('Fulano'));
-        expect(onResolvePending).not.toHaveBeenCalled();
-        expect(onEdit).not.toHaveBeenCalled();
-        expect(onUseTime).not.toHaveBeenCalled();
-        expect(onClick).not.toHaveBeenCalled();
-    });
-
     it('scheduled: opens the action chooser and can edit without canceling', async () => {
         const appt = makeAppt({
             start_at: new Date(Date.now() + 10 * 60_000).toISOString(),
@@ -247,46 +222,6 @@ describe('AppointmentCard', () => {
             end_at: new Date(Date.now() + 20 * 60_000).toISOString(),
         });
         const onCancel = vi.fn();
-        render(<AppointmentCard appt={appt} onCancel={onCancel} now={new Date()} />);
-
-        fireEvent.click(screen.getByText('Fulano'));
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Cancelar compromisso' }),
-        );
-
-        expect(onCancel).toHaveBeenCalledTimes(1);
-    });
-
-    it('ongoing: opens finalize prompt and confirms finalization', () => {
-        const s = new Date(Date.now() - 60_000).toISOString();
-        const e = new Date(Date.now() + 60_000).toISOString();
-        const appt = makeAppt({ start_at: s, end_at: e, status: 'ongoing' });
-        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-        const onFinalize = vi.fn();
-        render(
-            <AppointmentCard
-                appt={appt}
-                onFinalize={onFinalize}
-                now={new Date()}
-            />,
-        );
-
-        fireEvent.click(screen.getByText('Fulano'));
-        expect(screen.getByText('Atendimento em andamento')).toBeInTheDocument();
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Finalizar atendimento' }),
-        );
-
-        expect(onFinalize).toHaveBeenCalledTimes(1);
-        confirmSpy.mockRestore();
-    });
-
-    it('ongoing: allows cancellation from the shared action prompt', () => {
-        const s = new Date(Date.now() - 60_000).toISOString();
-        const e = new Date(Date.now() + 60_000).toISOString();
-        const appt = makeAppt({ start_at: s, end_at: e, status: 'ongoing' });
-        const onCancel = vi.fn();
-
         render(
             <AppointmentCard
                 appt={appt}
@@ -296,7 +231,6 @@ describe('AppointmentCard', () => {
         );
 
         fireEvent.click(screen.getByText('Fulano'));
-        expect(screen.getByText('Atendimento em andamento')).toBeInTheDocument();
         fireEvent.click(
             screen.getByRole('button', { name: 'Cancelar compromisso' }),
         );

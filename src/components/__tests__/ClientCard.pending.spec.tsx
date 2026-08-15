@@ -11,10 +11,6 @@ vi.mock('../../utils/focusClientCard', () => ({
     focusClientCard: () => {},
 }));
 
-// Simplified mock for hook dependencies that might rely on timers/network
-vi.mock('../../hooks/useFinalizeAppointment', () => ({
-    useFinalizeAppointment: () => ({ finishing: false, finalize: vi.fn() }),
-}));
 // Mock fetch de pendência para cenário com janela futura
 vi.mock('../../services/pending', () => ({
     findFirstPendingForClient: vi.fn(async () => ({
@@ -28,27 +24,6 @@ vi.mock('../../services/pending', () => ({
         client_name: 'Maria Silva',
     })),
 }));
-vi.mock('../../hooks/useOngoingSnapshot', () => ({
-    useOngoingSnapshot: () => ({ snapshot: null }),
-}));
-vi.mock('../../hooks/useOngoingSweep', () => ({
-    useOngoingSweep: () => new Map(),
-}));
-vi.mock('../../hooks/useOngoingLatch', () => ({
-    useOngoingLatch: () => ({
-        latched: null,
-        setLatched: () => {},
-        clear: () => {},
-    }),
-    readOngoingLatch: () => null,
-}));
-vi.mock('../../hooks/useVisibilityResumeGrace', () => ({
-    useVisibilityResumeGrace: () => false,
-}));
-vi.mock('../../hooks/useAppointmentCardState.ts', () => ({
-    useAppointmentCardState: () => ({ isOngoing: false }),
-}));
-
 // Ensure events don't break tests
 beforeEach(() => {
     localStorage.clear();

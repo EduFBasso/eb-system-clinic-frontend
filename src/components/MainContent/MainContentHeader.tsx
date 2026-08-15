@@ -10,7 +10,6 @@ interface MainContentHeaderProps {
     pendingCount: number;
     todayCount: number;
     tomorrowCount: number;
-    ongoingCount: number;
     mobileFiltersOpen: boolean;
     mobileFiltersMenuStyle: React.CSSProperties;
     mobileFiltersButtonRef: React.RefObject<HTMLButtonElement | null>;
@@ -33,7 +32,6 @@ export function MainContentHeader({
     pendingCount,
     todayCount,
     tomorrowCount,
-    ongoingCount,
     mobileFiltersOpen,
     mobileFiltersMenuStyle,
     mobileFiltersButtonRef,
@@ -57,7 +55,6 @@ export function MainContentHeader({
                 pendingCount={pendingCount}
                 todayCount={todayCount}
                 tomorrowCount={tomorrowCount}
-                ongoingCount={ongoingCount}
                 mobileFiltersOpen={mobileFiltersOpen}
                 mobileFiltersMenuStyle={mobileFiltersMenuStyle}
                 mobileFiltersButtonRef={mobileFiltersButtonRef}

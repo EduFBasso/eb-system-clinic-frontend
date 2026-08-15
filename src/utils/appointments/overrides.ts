@@ -1,13 +1,12 @@
-// Global, ephemeral overrides to smooth out UI after mutations (e.g., finalize)
+// Global, ephemeral overrides to smooth out UI after mutations.
 // Keeps a minimal in-memory map of appointmentId -> { status?: 'pending'|'done'|'canceled'|'scheduled' }
-// and a small event bus to notify listeners. This avoids the brief "ongoing" blink
-// right after a finalize until network refetch completes.
+// and a small event bus to notify listeners until network refetch completes.
 
 type Status = 'scheduled' | 'pending' | 'done' | 'canceled';
 
 export type Override = {
     status?: Status;
-    // Permite sobrescrever o horário de término localmente (ex: cancelamento em andamento encurta fim para agora)
+    // Permite sobrescrever o horário de término localmente após um cancelamento.
     end_at?: string;
     // Momento real em que a sessão terminou (finalize ou cancel) para exibição imediata
     real_closed_at?: string;

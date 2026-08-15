@@ -7,7 +7,10 @@ import AppointmentCard, {
 } from '../shared/AppointmentCard';
 
 // Utility to build an appointment starting "now" and ending +30m
-function buildAppt(start: Date, status: SharedAppointmentLike['status'] = 'scheduled'): SharedAppointmentLike {
+function buildAppt(
+    start: Date,
+    status: SharedAppointmentLike['status'] = 'scheduled',
+): SharedAppointmentLike {
     const end = new Date(start.getTime() + 30 * 60 * 1000);
     return {
         id: 1,
@@ -20,16 +23,14 @@ function buildAppt(start: Date, status: SharedAppointmentLike['status'] = 'sched
 }
 
 describe('ServerTimeProvider (local-time only behavior)', () => {
-    it('marks as ongoing when status is ongoing', () => {
+    it('renders a scheduled appointment as active', () => {
         const localNow = new Date();
-        const appt = buildAppt(localNow, 'ongoing');
-        // ongoing status comes from server; AppointmentCard renders "Em andamento" badge
+        const appt = buildAppt(localNow, 'scheduled');
         render(
             <ServerTimeProvider fixedOffsetMs={-120000} disableFetch>
                 <AppointmentCard appt={appt} />
             </ServerTimeProvider>,
         );
-        const ongoing = screen.getByText(/Em andamento/i);
-        expect(ongoing).toBeTruthy();
+        expect(screen.getByText('Ativo')).toBeTruthy();
     });
 });

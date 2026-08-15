@@ -667,12 +667,6 @@ export const MainContent: React.FC<MainContentProps> = ({
     const todayCount = todayClients.length;
     const tomorrowCount = tomorrowClients.length;
 
-    // Clientes em atendimento agora: status 'ongoing' vem do servidor.
-    const ongoingClients = React.useMemo(() => {
-        return clients.filter(c => c.next_appointment_status === 'ongoing');
-    }, [clients]);
-    const ongoingCount = ongoingClients.length;
-
     // Fase 2: estado de fade suave (mantido para compatibilidade visual)
     const [isResettingFilter] = React.useState(false);
 
@@ -680,14 +674,12 @@ export const MainContent: React.FC<MainContentProps> = ({
         if (filterMode === 'pending') return pendingClients;
         if (filterMode === 'today') return todayClients;
         if (filterMode === 'tomorrow') return tomorrowClients;
-        if (filterMode === 'ongoing') return ongoingClients;
         return filteredClients;
     }, [
         filterMode,
         pendingClients,
         todayClients,
         tomorrowClients,
-        ongoingClients,
         filteredClients,
     ]);
 
@@ -890,7 +882,6 @@ export const MainContent: React.FC<MainContentProps> = ({
                 pendingCount={pendingCount}
                 todayCount={todayCount}
                 tomorrowCount={tomorrowCount}
-                ongoingCount={ongoingCount}
                 mobileFiltersOpen={mobileFiltersOpen}
                 mobileFiltersMenuStyle={mobileFiltersMenuStyle}
                 mobileFiltersButtonRef={mobileFiltersButtonRef}

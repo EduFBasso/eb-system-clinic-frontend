@@ -4,14 +4,12 @@ import { AppModal } from '../Modal/Modal';
 import type { SharedAppointmentLike } from '../shared/AppointmentCard';
 import { dispatchers } from '../../events/dispatchers';
 import { emit } from '../../events/bus';
-import { cancelFlow } from '../../services/flows/cancelFlow';
-import { finalizeFlow } from '../../services/flows/finalizeFlow';
 import { formatTime } from '../../utils/timeFormat';
 import { API_BASE } from '../../config/api';
 import { apiFetch } from '../../utils/apiFetch';
 import type { PendingReturnContext } from '../../types/agendaFlow';
 import { step, debugLog, isStepEnabled } from '../../debug/stepper';
-import { postDone } from '../../services/appointments';
+import { useResolveAppointment } from '../../hooks/useResolveAppointment';
 
 interface PendingActionsModalProps {
     open: boolean;
@@ -71,7 +69,10 @@ export function PendingActionsModal({
     appt,
     returnContext,
 }: PendingActionsModalProps) {
-    const [busy, setBusy] = React.useState<'cancel' | 'finalize' | 'finalize-no-record' | null>(null);
+    const [busy, setBusy] = React.useState<
+        'cancel' | 'done' | 'done-no-record' | null
+    >(null);
+    const { markAsDone, cancelAppointment } = useResolveAppointment();
     const [closing, setClosing] = React.useState(false);
     const [errorText, setErrorText] = React.useState<string | null>(null);
     const [hasPaidCharge, setHasPaidCharge] = React.useState(false);
@@ -146,17 +147,13 @@ export function PendingActionsModal({
         if (
             st &&
             st.toLowerCase() !== 'scheduled' &&
-            st.toLowerCase() !== 'ongoing' &&
             st.toLowerCase() !== 'pending'
         ) {
             try {
-                debugLog(
-                    'PendingActions: auto-close due to terminal status',
-                    {
-                        status: st,
-                        id: appt.id,
-                    },
-                );
+                debugLog('PendingActions: auto-close due to terminal status', {
+                    status: st,
+                    id: appt.id,
+                });
             } catch {
                 /* noop */
             }
@@ -176,21 +173,7 @@ export function PendingActionsModal({
 
     const navigate = useNavigate();
     if (!appt) return null;
-    // Regra revisada: permitir finalizar assim que o compromisso INICIA (antes o bloqueio aguardava o fim)
-    // Mantém bloqueio apenas se ainda não chegou no horário de início.
-    // Em casos de inconsistência (end < start) ou horário invertido, liberamos finalize imediatamente.
-    const startPlannedMs = new Date(appt.start_at).getTime();
-    const endPlannedMs = new Date(appt.end_at).getTime();
-    const nowMsForButtons = Date.now();
-    const inconsistentWindow =
-        !Number.isNaN(startPlannedMs) && !Number.isNaN(endPlannedMs)
-            ? endPlannedMs < startPlannedMs
-            : false;
-    const finalizeTimeLock =
-        appt.status === 'scheduled' && !Number.isNaN(startPlannedMs)
-            ? !inconsistentWindow && nowMsForButtons < startPlannedMs
-            : false;
-    const finalizeDisabled = !!busy || closing || finalizeTimeLock;
+    const doneDisabled = !!busy || closing;
     const cancelDisabled = !!busy || closing;
     const apptId = appt.id; // safe after null check
     const apptClientId =
@@ -226,25 +209,6 @@ export function PendingActionsModal({
         setBusy('cancel');
         setErrorText(null);
         try {
-            // Regra: não permitir cancelamento antes do compromisso iniciar
-            try {
-                // appt é garantido não-nulo acima (return null early), mas TS não infere dentro deste escopo
-                const startMs = new Date(appt!.start_at).getTime();
-                const nowMs = Date.now();
-                if (!Number.isNaN(startMs) && nowMs < startMs) {
-                    setErrorText(
-                        'Cancelamento só é permitido após o início do atendimento.',
-                    );
-                    debugLog('PendingActions: cancel blocked (not started)', {
-                        start_at: appt!.start_at,
-                        now: new Date().toISOString(),
-                    });
-                    setBusy(null);
-                    return; // aborta fluxo de cancelamento
-                }
-            } catch {
-                /* ignore guard errors; fallback para fluxo normal */
-            }
             const id = apptId;
             // Step with a timeout safety: auto-continue after 4s if something blocks user input
             await Promise.race([
@@ -255,54 +219,9 @@ export function PendingActionsModal({
                     debugLog('PendingActions: step timeout (auto-continue)');
                 })(),
             ]);
-            // Cancelar com reforço de sessão e diagnóstico
-            const resp = await cancelFlow(id);
-            debugLog('PendingActions: cancelFlow response', resp);
-            // Ajuste local imediato: se estava em andamento e backend ainda não encurtou end_at (response original ainda mostra fim futuro)
-            try {
-                if (resp.ok && resp.status === 200 && appt) {
-                    const nowMs = Date.now();
-                    const startMs = new Date(appt.start_at).getTime();
-                    const endMs = new Date(appt.end_at).getTime();
-                    const wasInProgress =
-                        !Number.isNaN(startMs) &&
-                        !Number.isNaN(endMs) &&
-                        startMs <= nowMs &&
-                        nowMs < endMs;
-                    if (wasInProgress) {
-                        const adjustedEndIso = new Date(nowMs).toISOString();
-                        window.dispatchEvent(
-                            new CustomEvent('appointment:statusChanged', {
-                                detail: {
-                                    id: appt.id,
-                                    status: 'canceled',
-                                    start_at: appt.start_at,
-                                    end_at: adjustedEndIso,
-                                    locallyShortened: true,
-                                },
-                            }),
-                        );
-                        debugLog(
-                            'PendingActions: dispatched local shortened end_at after cancel',
-                            {
-                                apptId: appt.id,
-                                adjustedEndIso,
-                            },
-                        );
-                    }
-                }
-            } catch {
-                /* noop local shorten */
-            }
-            if (!resp.ok) {
-                const friendly =
-                    resp.status === 403
-                        ? 'Sem permissão para cancelar este agendamento (403).'
-                        : resp.status === 401
-                          ? 'Sessão expirada (401).'
-                          : `Falha ao cancelar: ${resp.error || resp.status}`;
-                throw new Error(friendly);
-            }
+            const canceled = await cancelAppointment(id);
+            debugLog('PendingActions: cancelAppointment response', canceled);
+            if (!canceled) throw new Error('Falha ao cancelar compromisso');
             // Evento de resolução imediata (pendente -> estado final) para limpar UI do ClientCard
             try {
                 if (typeof apptClientId === 'number') {
@@ -365,24 +284,6 @@ export function PendingActionsModal({
                 } catch {
                     /* noop */
                 }
-                // Clear ongoing latch for this client (evita visual colado)
-                try {
-                    if (typeof apptClientId === 'number') {
-                        window.dispatchEvent(
-                            new CustomEvent('client:clearOngoing', {
-                                detail: { clientId: apptClientId },
-                            }),
-                        );
-                        debugLog(
-                            'PendingActions: client:clearOngoing dispatched',
-                            {
-                                clientId: apptClientId,
-                            },
-                        );
-                    }
-                } catch {
-                    /* noop */
-                }
                 try {
                     window.dispatchEvent(
                         new CustomEvent('systemMessage', {
@@ -440,9 +341,9 @@ export function PendingActionsModal({
         }
     }
 
-    async function doFinalize() {
+    async function doDone() {
         if (busy) return;
-        setBusy('finalize');
+        setBusy('done');
         setErrorText(null);
         // Captura antes de qualquer operação async (props podem mudar)
         const capturedStatus = appt?.status ?? 'scheduled';
@@ -452,19 +353,16 @@ export function PendingActionsModal({
         try {
             const id = apptId;
             await Promise.race([
-                step('PendingActions: doFinalize start', { id, instanceId }),
+                step('PendingActions: doDone start', { id, instanceId }),
                 (async () => {
                     if (!isStepEnabled()) return;
                     await sleep(4000);
                     debugLog('PendingActions: step timeout (auto-continue)');
                 })(),
             ]);
-            const res =
-                capturedStatus === 'pending'
-                    ? { ok: true, status: 200 }
-                    : await finalizeFlow(id);
-            debugLog('PendingActions: finalizeFlow response', res);
-            if (!res.ok) throw new Error(res.error || 'Falha ao finalizar');
+            const res = { ok: await markAsDone(id) };
+            debugLog('PendingActions: markAsDone response', res);
+            if (!res.ok) throw new Error('Falha ao concluir compromisso');
             // Dispara eventos de atualização com pequeno backoff para evitar corrida
             try {
                 // Coalesce refresh events to avoid bursts
@@ -478,27 +376,13 @@ export function PendingActionsModal({
                 } catch {
                     /* noop */
                 }
-                // Clear ongoing latch for this client in the same tab (evita visual colado)
-                if (typeof apptClientId === 'number') {
-                    window.dispatchEvent(
-                        new CustomEvent('client:clearOngoing', {
-                            detail: { clientId: apptClientId },
-                        }),
-                    );
-                    debugLog(
-                        'PendingActions: client:clearOngoing dispatched (finalize)',
-                        {
-                            clientId: apptClientId,
-                        },
-                    );
-                }
             } catch {
                 /* noop */
             }
             // Feche primeiro este modal; depois mensagem
             setClosing(true);
             await Promise.race([
-                step('PendingActions: before onClose (finalize)', {
+                step('PendingActions: before onClose (done)', {
                     id,
                     closing: true,
                 }),
@@ -547,7 +431,7 @@ export function PendingActionsModal({
                     try {
                         window.dispatchEvent(new Event('ensureScrollUnlocked'));
                         debugLog(
-                            'PendingActions: ensureScrollUnlocked (finalize fallback)',
+                            'PendingActions: ensureScrollUnlocked (done fallback)',
                         );
                     } catch {
                         /* noop */
@@ -564,7 +448,7 @@ export function PendingActionsModal({
                     }),
                 );
                 window.dispatchEvent(new Event('ensureScrollUnlocked'));
-                debugLog('PendingActions: systemMessage error (finalize)', {
+                debugLog('PendingActions: systemMessage error (done)', {
                     msg,
                 });
             } catch {
@@ -573,26 +457,20 @@ export function PendingActionsModal({
         } finally {
             setBusy(null);
             setClosing(false);
-            debugLog('PendingActions: doFinalize finally');
+            debugLog('PendingActions: doDone finally');
         }
     }
 
-    async function doFinalizeWithoutRecord() {
+    async function doDoneWithoutRecord() {
         if (busy) return;
-        setBusy('finalize-no-record');
+        setBusy('done-no-record');
         setErrorText(null);
         const capturedStatus = appt?.status ?? 'scheduled';
         try {
             const id = apptId;
-            // Se ainda não está pending, finaliza primeiro (scheduled → pending)
-            if (capturedStatus !== 'pending') {
-                const res = await finalizeFlow(id);
-                debugLog('PendingActions: finalizeFlow response (no-record)', res);
-                if (!res.ok) throw new Error(res.error || 'Falha ao finalizar');
-            }
             // Conclui direto (pending → done) sem criar Charge
-            const done = await postDone(id);
-            debugLog('PendingActions: postDone response (no-record)', done);
+            const done = await markAsDone(id);
+            debugLog('PendingActions: markAsDone response (no-record)', done);
             if (!done) throw new Error('Falha ao concluir atendimento');
             // Atualiza estado local
             try {
@@ -605,17 +483,6 @@ export function PendingActionsModal({
                     );
                 } catch {
                     /* noop */
-                }
-                if (typeof apptClientId === 'number') {
-                    window.dispatchEvent(
-                        new CustomEvent('client:clearOngoing', {
-                            detail: { clientId: apptClientId },
-                        }),
-                    );
-                    debugLog(
-                        'PendingActions: client:clearOngoing dispatched (no-record)',
-                        { clientId: apptClientId },
-                    );
                 }
             } catch {
                 /* noop */
@@ -645,17 +512,14 @@ export function PendingActionsModal({
                 }
                 setTimeout(() => {
                     try {
-                        window.dispatchEvent(
-                            new Event('ensureScrollUnlocked'),
-                        );
+                        window.dispatchEvent(new Event('ensureScrollUnlocked'));
                     } catch {
                         /* noop */
                     }
                 }, 120);
             }, 120);
         } catch (e) {
-            const msg =
-                e instanceof Error ? e.message : 'Falha ao concluir';
+            const msg = e instanceof Error ? e.message : 'Falha ao concluir';
             try {
                 window.dispatchEvent(
                     new CustomEvent('systemMessage', {
@@ -673,7 +537,7 @@ export function PendingActionsModal({
         } finally {
             setBusy(null);
             setClosing(false);
-            debugLog('PendingActions: doFinalizeWithoutRecord finally');
+            debugLog('PendingActions: doDoneWithoutRecord finally');
         }
     }
 
@@ -748,7 +612,9 @@ export function PendingActionsModal({
                         }}
                         role='status'
                     >
-                        Aviso: esta consulta ja possui cobranca ou anotacao marcada como paga. Se cancelar, revise depois a cobranca para manter o registro consistente.
+                        Aviso: esta consulta ja possui cobranca ou anotacao
+                        marcada como paga. Se cancelar, revise depois a cobranca
+                        para manter o registro consistente.
                     </div>
                 )}
 
@@ -795,58 +661,44 @@ export function PendingActionsModal({
                             Concluir Consulta
                         </p>
                         <button
-                            onClick={doFinalize}
-                            disabled={finalizeDisabled}
+                            onClick={doDone}
+                            disabled={doneDisabled}
                             className={`ui-btn ${
-                                finalizeTimeLock
+                                doneDisabled
                                     ? 'ui-btn--disabled'
                                     : 'ui-btn--secondary'
                             }`}
                             style={{
                                 ...actionBtnBaseStyle,
-                                ...(finalizeDisabled
+                                ...(doneDisabled
                                     ? actionBtnDisabledStyle
                                     : actionBtnSecondaryStyle),
                                 width: '100%',
                             }}
-                            title={
-                                finalizeTimeLock
-                                    ? 'Aguardando início para permitir avançar'
-                                    : 'Registrar dados financeiros e concluir'
-                            }
+                            title={'Registrar dados financeiros e concluir'}
                         >
-                            {busy === 'finalize'
-                                ? 'Abrindo…'
-                                : finalizeTimeLock
-                                  ? 'Aguardando início'
-                                  : 'Com Registro'}
+                            {busy === 'done' ? 'Abrindo…' : 'Com Registro'}
                         </button>
                         <button
-                            onClick={doFinalizeWithoutRecord}
-                            disabled={finalizeDisabled}
+                            onClick={doDoneWithoutRecord}
+                            disabled={doneDisabled}
                             className={`ui-btn ${
-                                finalizeTimeLock
+                                doneDisabled
                                     ? 'ui-btn--disabled'
                                     : 'ui-btn--secondary'
                             }`}
                             style={{
                                 ...actionBtnBaseStyle,
-                                ...(finalizeDisabled
+                                ...(doneDisabled
                                     ? actionBtnDisabledStyle
                                     : actionBtnSecondaryStyle),
                                 width: '100%',
                             }}
-                            title={
-                                finalizeTimeLock
-                                    ? 'Aguardando início para permitir avançar'
-                                    : 'Concluir sem registrar dados financeiros'
-                            }
+                            title={'Concluir sem registrar dados financeiros'}
                         >
-                            {busy === 'finalize-no-record'
+                            {busy === 'done-no-record'
                                 ? 'Concluindo…'
-                                : finalizeTimeLock
-                                  ? 'Aguardando início'
-                                  : 'Sem Registro'}
+                                : 'Sem Registro'}
                         </button>
                     </div>
 

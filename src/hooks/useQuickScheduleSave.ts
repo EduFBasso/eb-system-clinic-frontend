@@ -53,10 +53,7 @@ export function useQuickScheduleSave({
     const clearError = React.useCallback(() => setError(null), []);
 
     const emitSystemMessage = React.useCallback(
-        (
-            text: string,
-            type: 'success' | 'error' | 'info' | 'warning',
-        ) => {
+        (text: string, type: 'success' | 'error' | 'info' | 'warning') => {
             try {
                 window.dispatchEvent(
                     new CustomEvent('systemMessage', {
@@ -132,9 +129,7 @@ export function useQuickScheduleSave({
 
         const visitTitles: Record<string, string> = {
             consulta: 'Consulta',
-            avaliacao: 'Avaliação',
             retorno: 'Retorno',
-            procedimento: 'Serviço',
             outro: 'Outro',
         };
         const title = visitTitles[String(visitType)] || 'Consulta';
@@ -245,8 +240,7 @@ export function useQuickScheduleSave({
                     // If backend indicates pending, open resolver
                     if (/pendente/i.test(text)) {
                         try {
-                            const token2 =
-                                getAccessToken();
+                            const token2 = getAccessToken();
                             const headers2: Record<string, string> = {};
                             if (token2)
                                 headers2['Authorization'] = `Bearer ${token2}`;

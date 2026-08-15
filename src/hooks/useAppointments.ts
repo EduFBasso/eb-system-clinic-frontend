@@ -10,12 +10,12 @@ export interface Appointment {
     professional_name?: string;
     client_name?: string;
     title: string;
-    visit_type: 'avaliacao' | 'retorno' | 'procedimento' | 'outro' | 'consulta';
+    visit_type: 'consulta' | 'retorno' | 'outro';
     start_at: string;
     end_at: string;
     notes?: string;
     location?: string;
-    status: 'scheduled' | 'pending' | 'done' | 'canceled' | 'ongoing';
+    status: 'scheduled' | 'pending' | 'done' | 'canceled';
 }
 
 function dayRangeISO(d: Date) {

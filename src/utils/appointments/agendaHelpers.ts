@@ -6,12 +6,7 @@ import type { ClientBasic } from '../../types/ClientBasic';
 import type { EnrichedAppointment } from './status';
 
 /** Order for sorting appointments by status within the same time slot. */
-export const STATUS_ORDER = [
-    'ongoing',
-    'scheduled',
-    'done',
-    'canceled',
-] as const;
+export const STATUS_ORDER = ['scheduled', 'done', 'canceled'] as const;
 
 export interface ClientLike {
     id: number;
@@ -42,19 +37,17 @@ export function splitName(full?: string): { first: string; last: string } {
  * Builds a minimal ClientBasic from an enriched appointment.
  * Used to open QuickScheduleModal pre-filled with the client.
  */
-export function makeClientBasic(
-    a: {
-        id: number;
-        status: 'scheduled' | 'pending' | 'done' | 'canceled' | 'ongoing';
-        start_at: string;
-        end_at: string;
-        client?: ClientLike | number;
-        client_name?: string;
-        title?: string;
-        visit_type?: string;
-        notes?: string | null;
-    },
-): ClientBasic {
+export function makeClientBasic(a: {
+    id: number;
+    status: 'scheduled' | 'pending' | 'done' | 'canceled';
+    start_at: string;
+    end_at: string;
+    client?: ClientLike | number;
+    client_name?: string;
+    title?: string;
+    visit_type?: string;
+    notes?: string | null;
+}): ClientBasic {
     const c = a.client as ClientLike | number | undefined;
     const displayName = (isClientLike(c) && c.name) || a.client_name || '';
     const { first, last } = splitName(displayName);
@@ -82,15 +75,14 @@ export function makeClientBasic(
  * Canonical filter predicate for a status filter key.
  * Used by DesktopAgendaPage and DailyAgendaModal so both behave identically.
  *
- * 'active'  → scheduled future (not past, not ongoing)
+ * 'active'  → scheduled future (not past)
  * 'past'    → scheduled but past end_at
- * 'ongoing' → currently in progress
  * 'done'    → finalized
  * 'canceled'→ canceled
  * 'all'     → everything
  */
 export function matchesStatusFilter(
-    filter: 'all' | 'active' | 'past' | 'done' | 'canceled' | 'ongoing',
+    filter: 'all' | 'active' | 'past' | 'done' | 'canceled',
     a: EnrichedAppointment,
 ): boolean {
     const status = a.status;
@@ -98,15 +90,15 @@ export function matchesStatusFilter(
         case 'all':
             return true;
         case 'active':
-            return status === 'scheduled' && !a._isPast && !a._isOngoing;
+            return status === 'scheduled' && !a._isPast;
         case 'past':
-            return status === 'pending' || (status === 'scheduled' && a._isPast);
+            return (
+                status === 'pending' || (status === 'scheduled' && a._isPast)
+            );
         case 'done':
             return status === 'done';
         case 'canceled':
             return status === 'canceled';
-        case 'ongoing':
-            return a._isOngoing || status === 'ongoing';
         default:
             return true;
     }

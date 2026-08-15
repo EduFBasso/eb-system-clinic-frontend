@@ -156,7 +156,6 @@ export function usePendingActionsListeners(): UsePendingActionsListenersReturn {
                 if (
                     data.status &&
                     data.status !== 'scheduled' &&
-                    data.status !== 'ongoing' &&
                     data.status !== 'pending'
                 ) {
                     try {

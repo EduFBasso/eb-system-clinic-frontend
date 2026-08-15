@@ -1,5 +1,4 @@
 import React from 'react';
-import type { PendingReturnContext } from '../../types/agendaFlow';
 import ClientCardRow from './ClientCardRow';
 import type {
     AppointmentCardProps,
@@ -26,8 +25,6 @@ export interface ClientDayListProps<T extends SharedAppointmentLike> {
     onResolvePending?: (a: T) => void;
     onEdit?: (a: T) => void;
     onCancel?: (a: T) => void;
-    onFinalize?: (a: T) => Promise<void> | void;
-    finalizeRequestContext?: PendingReturnContext;
     onDetails?: (a: T) => void;
 
     // Styling
@@ -55,8 +52,6 @@ export default function ClientDayList<T extends SharedAppointmentLike>(
         onResolvePending,
         onEdit,
         onCancel,
-        onFinalize,
-        finalizeRequestContext,
         onDetails,
         containerStyle,
         rowContainerStyle,
@@ -100,8 +95,6 @@ export default function ClientDayList<T extends SharedAppointmentLike>(
                         onResolvePending={onResolvePending}
                         onEdit={onEdit}
                         onCancel={onCancel}
-                        onFinalize={onFinalize}
-                        finalizeRequestContext={finalizeRequestContext}
                         onDetails={onDetails}
                         size={cardSize}
                         {...(extra as Partial<AppointmentCardProps<T>>)}

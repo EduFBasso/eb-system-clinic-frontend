@@ -2,7 +2,6 @@ import React from 'react';
 import type { Appointment } from './useAppointments';
 
 interface Params {
-    isOngoing: boolean;
     isPending: boolean;
     futureAppointmentsCount: number; // only futures (exclui o próximo atual)
     isScheduled: boolean;
@@ -22,7 +21,6 @@ export interface CreateActionResult {
 }
 
 export function useClientCreateAction({
-    isOngoing,
     isPending,
     futureAppointmentsCount,
     isScheduled,
@@ -38,32 +36,15 @@ export function useClientCreateAction({
 
     const title = isPending
         ? 'Resolver pendência deste cliente'
-        : isOngoing
-        ? 'Em andamento: finalize para criar um novo.'
         : limitReached
-        ? `Limite de ${dynLimit} compromissos (atual: ${totalScheduled})`
-        : baseTitle;
+          ? `Limite de ${dynLimit} compromissos (atual: ${totalScheduled})`
+          : baseTitle;
 
-    const disabled = isOngoing || limitReached;
+    const disabled = limitReached;
 
     const onClick = React.useCallback(
         (e: React.MouseEvent | React.KeyboardEvent) => {
             e.stopPropagation();
-            if (isOngoing) {
-                try {
-                    window.dispatchEvent(
-                        new CustomEvent('systemMessage', {
-                            detail: {
-                                text: 'Finalize o atendimento em andamento antes de criar outro.',
-                                type: 'warning',
-                            },
-                        }),
-                    );
-                } catch {
-                    /* noop */
-                }
-                return;
-            }
             if (isPending) {
                 openPendingActions();
                 return;
@@ -91,7 +72,6 @@ export function useClientCreateAction({
             })();
         },
         [
-            isOngoing,
             isPending,
             limitReached,
             dynLimit,

@@ -16,7 +16,6 @@ import { FaArrowLeft, FaArrowRight } from 'react-icons/fa';
 import FloatingDatePicker from '../FloatingDatePicker';
 import { cancelAppointment } from '../../services/appointments';
 import { dispatchers } from '../../events/dispatchers';
-import { useAgendaFinalizeAction } from '../../hooks/useAgendaFinalizeAction';
 import type { PendingReturnContext } from '../../types/agendaFlow';
 import QuickScheduleModal from '../QuickScheduleModal/QuickScheduleModal';
 import { makeClientBasic } from '../../utils/appointments/agendaHelpers';
@@ -34,7 +33,7 @@ function parseISODateLocal(iso: string) {
     return new Date(y, (m || 1) - 1, d || 1, 0, 0, 0, 0);
 }
 
-type StatusFilter = 'all' | 'active' | 'ongoing' | 'past' | 'done' | 'canceled';
+type StatusFilter = 'all' | 'active' | 'past' | 'done' | 'canceled';
 
 function groupByDay(items: Appointment[]) {
     const out: Record<string, Appointment[]> = {};
@@ -100,9 +99,6 @@ export function MonthlyAgendaModal({
         setQsEdit(null);
         setQsClient(null);
     }, []);
-    const { handleFinalize } = useAgendaFinalizeAction(() => {
-        setReloadKey(x => x + 1);
-    });
 
     const filteredItems = React.useMemo(() => {
         return enrichList(items, effectiveNowRef).filter(a => {
@@ -425,10 +421,8 @@ export function MonthlyAgendaModal({
                                                             : undefined
                                                     }
                                                     onCancel={
-                                                        (derivedStatus ===
-                                                            'scheduled' ||
-                                                            derivedStatus ===
-                                                                'ongoing') &&
+                                                        derivedStatus ===
+                                                            'scheduled' &&
                                                         !isPending
                                                             ? async appt => {
                                                                   try {
@@ -479,13 +473,6 @@ export function MonthlyAgendaModal({
                                                               }
                                                             : undefined
                                                     }
-                                                    onFinalize={
-                                                        derivedStatus ===
-                                                        'ongoing'
-                                                            ? handleFinalize
-                                                            : undefined
-                                                    }
-                                                    finalizeRequestContext={buildReturnContext()}
                                                     cardContainerStyle={{
                                                         // Evita que o stripe + conteúdo comprimam o closed pill
                                                         minWidth: 0,
