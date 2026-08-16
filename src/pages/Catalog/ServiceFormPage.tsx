@@ -7,14 +7,16 @@ import FormPage from '../../components/FormKit/FormPage';
 import FormSection from '../../components/FormKit/FormSection';
 import FormActions from '../../components/FormKit/FormActions';
 import TextAreaField from '../../components/FormKit/TextAreaField';
-import { getCatalogFlashScope, queueFlashMessage } from '../../utils/flashMessage';
+import {
+    getCatalogFlashScope,
+    queueFlashMessage,
+} from '../../utils/flashMessage';
 
 type Service = {
     id: number;
     name: string;
     description?: string;
     base_price: number;
-    duration_minutes: number;
     is_active?: boolean;
 };
 
@@ -42,7 +44,6 @@ export default function ServiceFormPage() {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [basePriceStr, setBasePriceStr] = useState<string>('');
-    const [duration, setDuration] = useState<number>(30);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -64,7 +65,6 @@ export default function ServiceFormPage() {
                 setBasePriceStr(
                     format2DecimalsBR(Number(data.base_price || 0)),
                 );
-                setDuration(Number(data.duration_minutes || 30));
             } catch (err) {
                 const msg = err instanceof ApiError ? err.message : String(err);
                 setError(msg || 'Erro ao carregar serviço');
@@ -90,7 +90,6 @@ export default function ServiceFormPage() {
                 name: name.trim(),
                 description: description.trim() || undefined,
                 base_price: parseBRToNumber(basePriceStr) || 0,
-                duration_minutes: Number(duration) || 30,
                 is_active: true,
             };
             if (id) {
@@ -144,51 +143,31 @@ export default function ServiceFormPage() {
                     placeholder='Ex.: Podologia clínica'
                 />
                 <TextAreaField
-                    label='Descrição (opcional)'
+                    label='Descrição'
                     value={description}
                     onChange={e => setDescription(e.target.value)}
-                    placeholder='Detalhes do serviço'
+                    placeholder='Descreva o serviço'
                     rows={3}
                 />
-                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                    <div style={{ flex: 1, minWidth: 180 }}>
-                        <InputField
-                            label='Preço base (R$)'
-                            type='text'
-                            inputMode='decimal'
-                            value={basePriceStr}
-                            onChange={e => {
-                                const v = (e.target as HTMLInputElement).value;
-                                const cleaned = v.replace(/[^0-9.,]/g, '');
-                                setBasePriceStr(cleaned);
-                            }}
-                            onFocus={e => e.target.select()}
-                            onBlur={e => {
-                                const n = parseBRToNumber(
-                                    (e.target as HTMLInputElement).value,
-                                );
-                                setBasePriceStr(format2DecimalsBR(n));
-                            }}
-                            placeholder='0,00'
-                        />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 180 }}>
-                        <InputField
-                            label='Duração (min)'
-                            type='number'
-                            value={duration}
-                            onChange={e =>
-                                setDuration(
-                                    Number(
-                                        (e.target as HTMLInputElement).value,
-                                    ),
-                                )
-                            }
-                            onFocus={e => e.target.select()}
-                            min={5}
-                        />
-                    </div>
-                </div>
+                <InputField
+                    label='Preço base (R$)'
+                    type='text'
+                    inputMode='decimal'
+                    value={basePriceStr}
+                    onChange={e => {
+                        const v = (e.target as HTMLInputElement).value;
+                        const cleaned = v.replace(/[^0-9.,]/g, '');
+                        setBasePriceStr(cleaned);
+                    }}
+                    onFocus={e => e.target.select()}
+                    onBlur={e => {
+                        const n = parseBRToNumber(
+                            (e.target as HTMLInputElement).value,
+                        );
+                        setBasePriceStr(format2DecimalsBR(n));
+                    }}
+                    placeholder='0,00'
+                />
                 {error && (
                     <div style={{ color: 'crimson', fontSize: 13 }}>
                         {error}

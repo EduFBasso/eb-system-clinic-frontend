@@ -10,10 +10,8 @@ type Product = {
     id: number;
     name: string;
     type: 'PRODUCT' | 'MEDICATION';
+    description?: string;
     price: number;
-    cost: number;
-    track_inventory: boolean;
-    quantity_on_hand: number;
 };
 
 function format2DecimalsBR(value: number): string {
@@ -47,13 +45,12 @@ export default function ProductListPage() {
     );
 
     const openProductForm = useMemo(
-        () =>
-            (productId?: number) => {
-                const path = productId
-                    ? `/catalog/products/${productId}`
-                    : '/catalog/products/new';
-                navigate(path, { state: { returnTo } });
-            },
+        () => (productId?: number) => {
+            const path = productId
+                ? `/catalog/products/${productId}`
+                : '/catalog/products/new';
+            navigate(path, { state: { returnTo } });
+        },
         [navigate, returnTo],
     );
 
@@ -157,110 +154,82 @@ export default function ProductListPage() {
                         + Novo
                     </button>
                 </div>
-                <div
-                    style={{
-                        overflowX: 'auto',
-                        WebkitOverflowScrolling: 'touch',
-                    }}
-                >
-                    <table
-                        style={{ width: '100%', borderCollapse: 'collapse' }}
-                    >
-                        <thead>
-                            <tr>
-                                <th
-                                    style={{
-                                        textAlign: 'left',
-                                        padding: 8,
-                                        width: 44,
-                                    }}
-                                />
-                                <th style={{ textAlign: 'left', padding: 8 }}>
-                                    Nome
-                                </th>
-                                <th
-                                    style={{
-                                        textAlign: 'left',
-                                        padding: 8,
-                                        minWidth: 120,
-                                    }}
-                                >
-                                    Tipo
-                                </th>
-                                <th
-                                    style={{
-                                        textAlign: 'left',
-                                        padding: 8,
-                                        minWidth: 140,
-                                    }}
-                                >
-                                    Preço (R$)
-                                </th>
-                                <th
-                                    style={{
-                                        textAlign: 'left',
-                                        padding: 8,
-                                        minWidth: 140,
-                                    }}
-                                >
-                                    Custo (R$)
-                                </th>
-                                <th
-                                    style={{
-                                        textAlign: 'left',
-                                        padding: 8,
-                                        minWidth: 120,
-                                    }}
-                                >
-                                    Estoque (un)
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {items.map(p => (
-                                <tr
-                                    key={p.id}
-                                    style={{
-                                        borderTop:
-                                            '1px solid var(--border-subtle)',
-                                    }}
-                                >
-                                    <td style={{ padding: 8 }}>
-                                        <button
-                                            aria-label='Editar'
-                                            title='Editar'
-                                            onClick={() => openProductForm(p.id)}
-                                            style={{
-                                                background: 'transparent',
-                                                border: 'none',
-                                                cursor: 'pointer',
-                                                fontSize: 18,
-                                            }}
-                                        >
-                                            ✏️
-                                        </button>
-                                    </td>
-                                    <td style={{ padding: 8, minWidth: 220 }}>
-                                        {p.name}
-                                    </td>
-                                    <td style={{ padding: 8 }}>
-                                        {p.type === 'MEDICATION'
+                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5'>
+                    {items.map(product => (
+                        <article
+                            key={product.id}
+                            className='flex w-full flex-col rounded-xl border p-4 shadow-sm'
+                            style={{
+                                background: 'var(--color-bg-section)',
+                                borderColor: 'var(--color-border)',
+                                borderBottom: '2px solid var(--color-border)',
+                                minHeight: 156,
+                                marginBottom: 4,
+                                paddingBottom: 18,
+                            }}
+                        >
+                            <div
+                                className='flex min-w-0 items-start justify-between gap-3'
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'flex-start',
+                                }}
+                            >
+                                <div className='min-w-0 flex-1 pr-1'>
+                                    <h2
+                                        className='break-words font-bold'
+                                        style={{
+                                            color: 'var(--color-success-dark)',
+                                            margin: 0,
+                                        }}
+                                    >
+                                        {product.name}
+                                    </h2>
+                                    <span
+                                        className='mt-1 inline-block text-xs'
+                                        style={{
+                                            color: 'var(--color-text-muted)',
+                                        }}
+                                    >
+                                        {product.type === 'MEDICATION'
                                             ? 'Medicamento'
                                             : 'Produto'}
-                                    </td>
-                                    <td style={{ padding: 8 }}>
-                                        {format2DecimalsBR(p.price)}
-                                    </td>
-                                    <td style={{ padding: 8 }}>
-                                        {format2DecimalsBR(p.cost)}
-                                    </td>
-                                    <td style={{ padding: 8 }}>
-                                        {Number(p.quantity_on_hand || 0)}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                    </span>
+                                </div>
+                                <button
+                                    aria-label={`Editar ${product.name}`}
+                                    title='Editar produto'
+                                    onClick={() => openProductForm(product.id)}
+                                    className='flex h-11 w-11 shrink-0 items-center justify-center rounded-md border'
+                                    style={{
+                                        background: 'transparent',
+                                        borderColor: 'var(--color-border)',
+                                        cursor: 'pointer',
+                                        fontSize: 17,
+                                    }}
+                                >
+                                    ✏️
+                                </button>
+                            </div>
+                            <p
+                                className='mt-3 flex-1 text-sm'
+                                style={{ color: 'var(--color-text-light)' }}
+                            >
+                                {String(product.description || '').trim() ||
+                                    'Sem descrição.'}
+                            </p>
+                            <div
+                                className='mt-4 self-start text-sm font-bold'
+                                style={{
+                                    color: 'var(--color-success-dark)',
+                                    marginTop: 16,
+                                }}
+                            >
+                                R$ {format2DecimalsBR(product.price)}
+                            </div>
+                        </article>
+                    ))}
                 </div>
             </FormSection>
         </FormPage>

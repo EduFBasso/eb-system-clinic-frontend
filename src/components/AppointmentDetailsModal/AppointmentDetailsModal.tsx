@@ -8,7 +8,6 @@ import { API_BASE } from '../../config/api';
 import { apiFetch } from '../../utils/apiFetch';
 import type { PendingReturnContext } from '../../types/agendaFlow';
 
-
 type ChargeItem = {
     id: number;
     item_type: 'service' | 'product' | 'custom';
@@ -28,6 +27,10 @@ type Charge = {
     paid_at?: string | null;
     notes?: string;
     items: ChargeItem[];
+};
+
+type LocalPayment = {
+    paidAt: string;
 };
 
 function formatBRL(val: number): string {
@@ -104,9 +107,17 @@ export function AppointmentDetailsModal({
 
     // Charges for this appointment
     const [charges, setCharges] = React.useState<Charge[]>([]);
+    const [localPayments, setLocalPayments] = React.useState<
+        Record<number, LocalPayment>
+    >({});
+    const [hoveredPaymentId, setHoveredPaymentId] = React.useState<
+        number | null
+    >(null);
     React.useEffect(() => {
         if (!open || !appt) {
             setCharges([]);
+            setLocalPayments({});
+            setHoveredPaymentId(null);
             return;
         }
         apiFetch(`${API_BASE}/agenda/charges/?appointment=${appt.id}`)
@@ -153,9 +164,85 @@ export function AppointmentDetailsModal({
         [charges],
     );
 
+    const confirmPayment = React.useCallback(
+        (item: ChargeItem) => {
+            if (item.paid || localPayments[item.id]) return;
+            if (!window.confirm('Confirmar o pagamento deste item?')) return;
+            setLocalPayments(previous => ({
+                ...previous,
+                [item.id]: { paidAt: new Date().toISOString() },
+            }));
+        },
+        [localPayments],
+    );
+
+    const renderPaymentBadge = React.useCallback(
+        (item: ChargeItem) => {
+            const localPayment = localPayments[item.id];
+            const isPaid = item.paid || !!localPayment;
+            const paidAt = localPayment?.paidAt || item.paid_at;
+            const tooltipText = paidAt
+                ? `Pago em: ${new Date(paidAt).toLocaleDateString('pt-BR')} às ${new Date(paidAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+                : 'Pago';
+
+            return (
+                <span style={{ position: 'relative', display: 'inline-flex' }}>
+                    <button
+                        type='button'
+                        onClick={() => confirmPayment(item)}
+                        onMouseEnter={() => setHoveredPaymentId(item.id)}
+                        onMouseLeave={() => setHoveredPaymentId(null)}
+                        title={isPaid ? tooltipText : 'Confirmar pagamento'}
+                        style={{
+                            display: 'inline-block',
+                            padding: '3px 10px',
+                            borderRadius: 20,
+                            fontSize: 13,
+                            fontWeight: 700,
+                            background: isPaid
+                                ? 'var(--color-success, #22c55e)'
+                                : 'var(--color-warning-bg, #fff7e6)',
+                            color: isPaid
+                                ? '#fff'
+                                : 'var(--color-warning-dark, #9a6700)',
+                            border: isPaid
+                                ? 'none'
+                                : '1px solid var(--color-warning-dark, #d1d5db)',
+                            cursor: isPaid ? 'default' : 'pointer',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        {isPaid ? 'Pago' : 'Pendente'}
+                    </button>
+                    {isPaid && hoveredPaymentId === item.id && (
+                        <span
+                            role='tooltip'
+                            style={{
+                                position: 'absolute',
+                                zIndex: 5,
+                                right: 0,
+                                bottom: 'calc(100% + 6px)',
+                                padding: '6px 8px',
+                                borderRadius: 6,
+                                background: '#1f2937',
+                                color: '#fff',
+                                fontSize: 12,
+                                whiteSpace: 'nowrap',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+                                pointerEvents: 'none',
+                            }}
+                        >
+                            {tooltipText}
+                        </span>
+                    )}
+                </span>
+            );
+        },
+        [confirmPayment, hoveredPaymentId, localPayments],
+    );
+
     const chargeTotal = React.useMemo(
-        () =>
-            chargeRows.reduce((sum, row) => sum + row.qty * row.unit, 0),
+        () => chargeRows.reduce((sum, row) => sum + row.qty * row.unit, 0),
         [chargeRows],
     );
 
@@ -254,25 +341,25 @@ export function AppointmentDetailsModal({
                         }}
                     >
                         <div
-                                aria-hidden
-                                style={{
-                                    width: 56,
-                                    height: 56,
-                                    borderRadius: '999px',
-                                    background: 'var(--color-success-dark)',
-                                    color: '#fff',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontWeight: 900,
-                                    letterSpacing: 1,
-                                    userSelect: 'none',
-                                    border: '1px solid var(--color-border)',
-                                }}
-                                title={clientName}
-                            >
-                                {initials}
-                            </div>
+                            aria-hidden
+                            style={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '999px',
+                                background: 'var(--color-success-dark)',
+                                color: '#fff',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 900,
+                                letterSpacing: 1,
+                                userSelect: 'none',
+                                border: '1px solid var(--color-border)',
+                            }}
+                            title={clientName}
+                        >
+                            {initials}
+                        </div>
                         <div style={{ minWidth: 0 }}>
                             <div
                                 style={{
@@ -294,9 +381,7 @@ export function AppointmentDetailsModal({
 
                     <div style={{ display: 'grid', gap: 6 }}>
                         <div>
-                            <span
-                                style={{ fontWeight: 700, color: '#374151' }}
-                            >
+                            <span style={{ fontWeight: 700, color: '#374151' }}>
                                 Tipo:{' '}
                             </span>
                             <span style={{ color: '#111827' }}>
@@ -340,7 +425,12 @@ export function AppointmentDetailsModal({
                                         }}
                                     >
                                         {chargeRows.map(
-                                            ({ chargeStatus, item, qty, unit }) => (
+                                            ({
+                                                chargeStatus,
+                                                item,
+                                                qty,
+                                                unit,
+                                            }) => (
                                                 <div
                                                     key={item.id}
                                                     style={{
@@ -348,7 +438,8 @@ export function AppointmentDetailsModal({
                                                         borderRadius: 12,
                                                         padding: '10px 12px',
                                                         background:
-                                                            chargeStatus === 'paid'
+                                                            chargeStatus ===
+                                                            'paid'
                                                                 ? 'var(--color-success-bg, #f0faf4)'
                                                                 : 'var(--color-bg)',
                                                         display: 'grid',
@@ -358,8 +449,10 @@ export function AppointmentDetailsModal({
                                                     <div
                                                         style={{
                                                             display: 'flex',
-                                                            justifyContent: 'space-between',
-                                                            alignItems: 'flex-start',
+                                                            justifyContent:
+                                                                'space-between',
+                                                            alignItems:
+                                                                'flex-start',
                                                             gap: 8,
                                                         }}
                                                     >
@@ -374,30 +467,9 @@ export function AppointmentDetailsModal({
                                                         >
                                                             {item.description}
                                                         </div>
-                                                        <span
-                                                            style={{
-                                                                display: 'inline-block',
-                                                                padding: '3px 10px',
-                                                                borderRadius: 20,
-                                                                fontSize: 13,
-                                                                fontWeight: 700,
-                                                                background: item.paid
-                                                                    ? 'var(--color-success, #22c55e)'
-                                                                    : 'var(--color-warning-bg, #fff7e6)',
-                                                                color: item.paid
-                                                                    ? '#fff'
-                                                                    : 'var(--color-warning-dark, #9a6700)',
-                                                                border: item.paid
-                                                                    ? 'none'
-                                                                    : '1px solid var(--color-warning-dark, #d1d5db)',
-                                                                whiteSpace: 'nowrap',
-                                                                flexShrink: 0,
-                                                            }}
-                                                        >
-                                                            {item.paid
-                                                                ? 'Pago'
-                                                                : 'Pendente'}
-                                                        </span>
+                                                        {renderPaymentBadge(
+                                                            item,
+                                                        )}
                                                     </div>
                                                     <div
                                                         style={{
@@ -450,7 +522,10 @@ export function AppointmentDetailsModal({
                                                                     fontWeight: 600,
                                                                 }}
                                                             >
-                                                                R$ {formatBRL(unit)}
+                                                                R${' '}
+                                                                {formatBRL(
+                                                                    unit,
+                                                                )}
                                                             </div>
                                                         </div>
                                                         <div>
@@ -471,7 +546,10 @@ export function AppointmentDetailsModal({
                                                                     fontWeight: 700,
                                                                 }}
                                                             >
-                                                                R$ {formatBRL(qty * unit)}
+                                                                R${' '}
+                                                                {formatBRL(
+                                                                    qty * unit,
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -525,177 +603,198 @@ export function AppointmentDetailsModal({
                                                 fontSize: 16,
                                             }}
                                         >
-                                        <thead>
-                                            <tr
-                                                style={{
-                                                    borderBottom:
-                                                        '1px solid var(--color-border)',
-                                                }}
-                                            >
-                                                <th
-                                                    style={{
-                                                        textAlign: 'left',
-                                                        padding: '6px 8px',
-                                                        fontWeight: 700,
-                                                        color: '#4b5563',
-                                                        fontSize: 16,
-                                                    }}
-                                                >
-                                                    Item
-                                                </th>
-                                                <th
-                                                    style={{
-                                                        textAlign: 'center',
-                                                        padding: '6px 8px',
-                                                        fontWeight: 700,
-                                                        color: '#4b5563',
-                                                        whiteSpace: 'nowrap',
-                                                        fontSize: 16,
-                                                    }}
-                                                >
-                                                    Qtd
-                                                </th>
-                                                <th
-                                                    style={{
-                                                        textAlign: 'right',
-                                                        padding: '6px 8px',
-                                                        fontWeight: 700,
-                                                        color: '#4b5563',
-                                                        whiteSpace: 'nowrap',
-                                                        fontSize: 16,
-                                                    }}
-                                                >
-                                                    Unit.
-                                                </th>
-                                                <th
-                                                    style={{
-                                                        textAlign: 'right',
-                                                        padding: '6px 8px',
-                                                        fontWeight: 700,
-                                                        color: '#4b5563',
-                                                        whiteSpace: 'nowrap',
-                                                        fontSize: 16,
-                                                    }}
-                                                >
-                                                    Valor
-                                                </th>
-                                                <th
-                                                    style={{
-                                                        textAlign: 'center',
-                                                        padding: '6px 8px',
-                                                        fontWeight: 700,
-                                                        color: '#4b5563',
-                                                        whiteSpace: 'nowrap',
-                                                        fontSize: 16,
-                                                    }}
-                                                >
-                                                    Status
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {chargeRows.map(({ chargeStatus, item, qty, unit }) => (
+                                            <thead>
                                                 <tr
-                                                    key={item.id}
                                                     style={{
                                                         borderBottom:
                                                             '1px solid var(--color-border)',
-                                                        background:
-                                                            chargeStatus ===
-                                                            'paid'
-                                                                ? 'var(--color-success-bg, #f0faf4)'
-                                                                : undefined,
                                                     }}
                                                 >
-                                                    <td
+                                                    <th
                                                         style={{
-                                                            padding: '7px 8px',
-                                                            color: '#111827',
+                                                            textAlign: 'left',
+                                                            padding: '6px 8px',
+                                                            fontWeight: 700,
+                                                            color: '#4b5563',
                                                             fontSize: 16,
                                                         }}
                                                     >
-                                                        {item.description}
-                                                    </td>
-                                                    <td
+                                                        Item
+                                                    </th>
+                                                    <th
                                                         style={{
-                                                            padding: '7px 8px',
                                                             textAlign: 'center',
-                                                            color: '#374151',
+                                                            padding: '6px 8px',
+                                                            fontWeight: 700,
+                                                            color: '#4b5563',
+                                                            whiteSpace:
+                                                                'nowrap',
                                                             fontSize: 16,
                                                         }}
                                                     >
-                                                        {qty % 1 === 0 ? qty : qty.toFixed(2)}
-                                                    </td>
-                                                    <td
+                                                        Qtd
+                                                    </th>
+                                                    <th
                                                         style={{
-                                                            padding: '7px 8px',
                                                             textAlign: 'right',
-                                                            color: '#374151',
-                                                            whiteSpace: 'nowrap',
+                                                            padding: '6px 8px',
+                                                            fontWeight: 700,
+                                                            color: '#4b5563',
+                                                            whiteSpace:
+                                                                'nowrap',
                                                             fontSize: 16,
                                                         }}
                                                     >
-                                                        R$ {formatBRL(unit)}
-                                                    </td>
-                                                    <td
+                                                        Unit.
+                                                    </th>
+                                                    <th
                                                         style={{
-                                                            padding: '7px 8px',
                                                             textAlign: 'right',
-                                                            fontWeight: 600,
-                                                            whiteSpace: 'nowrap',
+                                                            padding: '6px 8px',
+                                                            fontWeight: 700,
+                                                            color: '#4b5563',
+                                                            whiteSpace:
+                                                                'nowrap',
                                                             fontSize: 16,
                                                         }}
                                                     >
-                                                        R$ {formatBRL(qty * unit)}
-                                                    </td>
-                                                    <td
+                                                        Valor
+                                                    </th>
+                                                    <th
                                                         style={{
-                                                            padding: '7px 8px',
                                                             textAlign: 'center',
-                                                            whiteSpace: 'nowrap',
+                                                            padding: '6px 8px',
+                                                            fontWeight: 700,
+                                                            color: '#4b5563',
+                                                            whiteSpace:
+                                                                'nowrap',
+                                                            fontSize: 16,
                                                         }}
                                                     >
-                                                        <span
+                                                        Status
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {chargeRows.map(
+                                                    ({
+                                                        chargeStatus,
+                                                        item,
+                                                        qty,
+                                                        unit,
+                                                    }) => (
+                                                        <tr
+                                                            key={item.id}
                                                             style={{
-                                                                display: 'inline-block',
-                                                                padding: '3px 10px',
-                                                                borderRadius: 20,
-                                                                fontSize: 13,
-                                                                fontWeight: 700,
-                                                                background: item.paid
-                                                                    ? 'var(--color-success, #22c55e)'
-                                                                    : 'var(--color-warning-bg, #fff7e6)',
-                                                                color: item.paid
-                                                                    ? '#fff'
-                                                                    : 'var(--color-warning-dark, #9a6700)',
-                                                                border: item.paid
-                                                                    ? 'none'
-                                                                    : '1px solid var(--color-warning-dark, #d1d5db)',
+                                                                borderBottom:
+                                                                    '1px solid var(--color-border)',
+                                                                background:
+                                                                    chargeStatus ===
+                                                                    'paid'
+                                                                        ? 'var(--color-success-bg, #f0faf4)'
+                                                                        : undefined,
                                                             }}
                                                         >
-                                                            {item.paid ? 'Pago' : 'Pendente'}
-                                                        </span>
+                                                            <td
+                                                                style={{
+                                                                    padding:
+                                                                        '7px 8px',
+                                                                    color: '#111827',
+                                                                    fontSize: 16,
+                                                                }}
+                                                            >
+                                                                {
+                                                                    item.description
+                                                                }
+                                                            </td>
+                                                            <td
+                                                                style={{
+                                                                    padding:
+                                                                        '7px 8px',
+                                                                    textAlign:
+                                                                        'center',
+                                                                    color: '#374151',
+                                                                    fontSize: 16,
+                                                                }}
+                                                            >
+                                                                {qty % 1 === 0
+                                                                    ? qty
+                                                                    : qty.toFixed(
+                                                                          2,
+                                                                      )}
+                                                            </td>
+                                                            <td
+                                                                style={{
+                                                                    padding:
+                                                                        '7px 8px',
+                                                                    textAlign:
+                                                                        'right',
+                                                                    color: '#374151',
+                                                                    whiteSpace:
+                                                                        'nowrap',
+                                                                    fontSize: 16,
+                                                                }}
+                                                            >
+                                                                R${' '}
+                                                                {formatBRL(
+                                                                    unit,
+                                                                )}
+                                                            </td>
+                                                            <td
+                                                                style={{
+                                                                    padding:
+                                                                        '7px 8px',
+                                                                    textAlign:
+                                                                        'right',
+                                                                    fontWeight: 600,
+                                                                    whiteSpace:
+                                                                        'nowrap',
+                                                                    fontSize: 16,
+                                                                }}
+                                                            >
+                                                                R${' '}
+                                                                {formatBRL(
+                                                                    qty * unit,
+                                                                )}
+                                                            </td>
+                                                            <td
+                                                                style={{
+                                                                    padding:
+                                                                        '7px 8px',
+                                                                    textAlign:
+                                                                        'center',
+                                                                    whiteSpace:
+                                                                        'nowrap',
+                                                                }}
+                                                            >
+                                                                {renderPaymentBadge(
+                                                                    item,
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ),
+                                                )}
+                                            </tbody>
+                                            <tfoot>
+                                                <tr>
+                                                    <td colSpan={3} />
+                                                    <td
+                                                        style={{
+                                                            padding:
+                                                                '9px 8px 3px',
+                                                            textAlign: 'right',
+                                                            fontWeight: 800,
+                                                            fontSize: 20,
+                                                            whiteSpace:
+                                                                'nowrap',
+                                                        }}
+                                                    >
+                                                        Total: R${' '}
+                                                        {formatBRL(chargeTotal)}
                                                     </td>
+                                                    <td />
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                        <tfoot>
-                                            <tr>
-                                                <td colSpan={3} />
-                                                <td
-                                                    style={{
-                                                        padding: '9px 8px 3px',
-                                                        textAlign: 'right',
-                                                        fontWeight: 800,
-                                                        fontSize: 20,
-                                                        whiteSpace: 'nowrap',
-                                                    }}
-                                                >
-                                                    Total: R$ {formatBRL(chargeTotal)}
-                                                </td>
-                                                <td />
-                                            </tr>
-                                        </tfoot>
+                                            </tfoot>
                                         </table>
                                     </div>
                                 )}

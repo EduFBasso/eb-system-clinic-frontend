@@ -105,10 +105,16 @@ export default function ConsultaPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const { addItem, removeItem, updateQty, togglePaid, updatePaidAt, total } =
-        useConsultaItems({ selectedItems, setSelectedItems });
+    const { addItem, removeItem, updateQty, total } = useConsultaItems({
+        selectedItems,
+        setSelectedItems,
+    });
 
-    const { saving, error: saveError, handleRegister } = useConsultaRegister({
+    const {
+        saving,
+        error: saveError,
+        handleRegister,
+    } = useConsultaRegister({
         apptState,
         selectedItems,
         notes,
@@ -300,8 +306,6 @@ export default function ConsultaPage() {
                     total={total}
                     onRemove={removeItem}
                     onUpdateQty={updateQty}
-                    onTogglePaid={togglePaid}
-                    onUpdatePaidAt={updatePaidAt}
                 />
 
                 {/* Observações */}

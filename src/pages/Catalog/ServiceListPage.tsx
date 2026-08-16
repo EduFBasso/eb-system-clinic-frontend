@@ -11,7 +11,6 @@ type Service = {
     name: string;
     description?: string;
     base_price: number;
-    duration_minutes: number;
 };
 
 function format2DecimalsBR(value: number): string {
@@ -45,13 +44,12 @@ export default function ServiceListPage() {
     );
 
     const openServiceForm = useMemo(
-        () =>
-            (serviceId?: number) => {
-                const path = serviceId
-                    ? `/catalog/services/${serviceId}`
-                    : '/catalog/services/new';
-                navigate(path, { state: { returnTo } });
-            },
+        () => (serviceId?: number) => {
+            const path = serviceId
+                ? `/catalog/services/${serviceId}`
+                : '/catalog/services/new';
+            navigate(path, { state: { returnTo } });
+        },
         [navigate, returnTo],
     );
 
@@ -153,142 +151,81 @@ export default function ServiceListPage() {
                         + Novo
                     </button>
                 </div>
-                <div
-                    style={{
-                        background: 'var(--color-bg-section)',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: 12,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                        padding: '6px 8px',
-                    }}
-                >
-                    <div
-                        style={{
-                            overflowX: 'auto',
-                            WebkitOverflowScrolling: 'touch',
-                        }}
-                    >
-                        <table
+                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5'>
+                    {items.map(service => (
+                        <article
+                            key={service.id}
+                            className='flex flex-col w-full rounded-xl border p-4 shadow-sm'
                             style={{
-                                width: '100%',
-                                borderCollapse: 'collapse',
+                                background: 'var(--color-bg-section)',
+                                borderColor: 'var(--color-border)',
+                                borderBottom: '2px solid var(--color-border)',
+                                minHeight: 156,
+                                marginBottom: 4,
+                                paddingBottom: 18,
                             }}
                         >
-                            <thead>
-                                <tr>
-                                    <th
-                                        style={{
-                                            textAlign: 'left',
-                                            padding: 8,
-                                            width: 44,
-                                        }}
-                                    />
-                                    <th
-                                        style={{
-                                            textAlign: 'left',
-                                            padding: 8,
-                                        }}
-                                    >
-                                        Nome
-                                    </th>
-                                    <th
-                                        style={{
-                                            textAlign: 'left',
-                                            padding: 8,
-                                            minWidth: 220,
-                                        }}
-                                    >
-                                        Descrição (opcional)
-                                    </th>
-                                    <th
-                                        style={{
-                                            textAlign: 'left',
-                                            padding: 8,
-                                            minWidth: 140,
-                                        }}
-                                    >
-                                        Preço base (R$)
-                                    </th>
-                                    <th
-                                        style={{
-                                            textAlign: 'left',
-                                            padding: 8,
-                                            minWidth: 120,
-                                        }}
-                                    >
-                                        Duração (min)
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {items.map(s => (
-                                    <tr
-                                        key={s.id}
-                                        style={{
-                                            borderTop:
-                                                '1px solid var(--border-subtle)',
-                                        }}
-                                    >
-                                        <td style={{ padding: 8 }}>
-                                            <button
-                                                aria-label='Editar'
-                                                title='Editar'
-                                                onClick={() => openServiceForm(s.id)}
-                                                style={{
-                                                    background: 'transparent',
-                                                    border: 'none',
-                                                    cursor: 'pointer',
-                                                    fontSize: 18,
-                                                }}
-                                            >
-                                                ✏️
-                                            </button>
-                                        </td>
-                                        <td
-                                            style={{
-                                                padding: 8,
-                                                minWidth: 220,
-                                            }}
-                                        >
-                                            {s.name}
-                                        </td>
-                                        <td
-                                            style={{
-                                                padding: 8,
-                                                minWidth: 220,
-                                            }}
-                                        >
-                                            {String(s.description || '').trim()}
-                                        </td>
-                                        <td
-                                            style={{
-                                                padding: 8,
-                                                minWidth: 140,
-                                            }}
-                                        >
-                                            {format2DecimalsBR(
-                                                Number(s.base_price || 0),
-                                            )}
-                                        </td>
-                                        <td
-                                            style={{
-                                                padding: 8,
-                                                minWidth: 120,
-                                            }}
-                                        >
-                                            {Number(s.duration_minutes || 0)}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        {!loading && items.length === 0 && (
-                            <div style={{ padding: 12, color: '#666' }}>
-                                Nenhum serviço cadastrado.
+                            <div
+                                className='flex min-w-0 items-start justify-between gap-3'
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'flex-start',
+                                }}
+                            >
+                                <h2
+                                    className='min-w-0 flex-1 break-words pr-1 font-bold'
+                                    style={{
+                                        color: 'var(--color-success-dark)',
+                                        margin: 0,
+                                    }}
+                                >
+                                    {service.name}
+                                </h2>
+                                <button
+                                    aria-label={`Editar ${service.name}`}
+                                    title='Editar serviço'
+                                    onClick={() => openServiceForm(service.id)}
+                                    className='flex h-11 w-11 shrink-0 items-center justify-center rounded-md border'
+                                    style={{
+                                        background: 'transparent',
+                                        borderColor: 'var(--color-border)',
+                                        cursor: 'pointer',
+                                        fontSize: 17,
+                                    }}
+                                >
+                                    ✏️
+                                </button>
                             </div>
-                        )}
-                    </div>
+                            <p
+                                className='mt-2 flex-1 text-sm'
+                                style={{
+                                    color: 'var(--color-text-light)',
+                                }}
+                            >
+                                {String(service.description || '').trim() ||
+                                    'Sem descrição.'}
+                            </p>
+                            <div
+                                className='mt-4 self-start text-sm font-bold'
+                                style={{
+                                    color: 'var(--color-success-dark)',
+                                    marginTop: 16,
+                                }}
+                            >
+                                R${' '}
+                                {format2DecimalsBR(
+                                    Number(service.base_price || 0),
+                                )}
+                            </div>
+                        </article>
+                    ))}
                 </div>
+                {!loading && items.length === 0 && (
+                    <div style={{ padding: 12, color: '#666' }}>
+                        Nenhum serviço cadastrado.
+                    </div>
+                )}
                 {loading && <div style={{ padding: 12 }}>Carregando…</div>}
                 {error && (
                     <div style={{ padding: 12, color: 'crimson' }}>{error}</div>
