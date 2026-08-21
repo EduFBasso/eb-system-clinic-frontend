@@ -10,6 +10,10 @@ import { apiFetch } from '../../utils/apiFetch';
 import type { PendingReturnContext } from '../../types/agendaFlow';
 import { step, debugLog, isStepEnabled } from '../../debug/stepper';
 import { useResolveAppointment } from '../../hooks/useResolveAppointment';
+import {
+    hasOdontoCapability,
+    readLoggedProfessionalCapabilities,
+} from '../../utils/tenantCapabilities';
 
 interface PendingActionsModalProps {
     open: boolean;
@@ -76,6 +80,12 @@ export function PendingActionsModal({
     const [closing, setClosing] = React.useState(false);
     const [errorText, setErrorText] = React.useState<string | null>(null);
     const [hasPaidCharge, setHasPaidCharge] = React.useState(false);
+    const [isOdontoTenant, setIsOdontoTenant] = React.useState(false);
+    React.useEffect(() => {
+        setIsOdontoTenant(
+            open && hasOdontoCapability(readLoggedProfessionalCapabilities()),
+        );
+    }, [open]);
     React.useEffect(() => {
         if (!open || !appt) {
             setHasPaidCharge(false);
@@ -465,7 +475,6 @@ export function PendingActionsModal({
         if (busy) return;
         setBusy('done-no-record');
         setErrorText(null);
-        const capturedStatus = appt?.status ?? 'scheduled';
         try {
             const id = apptId;
             // Conclui direto (pending → done) sem criar Charge
@@ -660,25 +669,27 @@ export function PendingActionsModal({
                         >
                             Concluir Consulta
                         </p>
-                        <button
-                            onClick={doDone}
-                            disabled={doneDisabled}
-                            className={`ui-btn ${
-                                doneDisabled
-                                    ? 'ui-btn--disabled'
-                                    : 'ui-btn--secondary'
-                            }`}
-                            style={{
-                                ...actionBtnBaseStyle,
-                                ...(doneDisabled
-                                    ? actionBtnDisabledStyle
-                                    : actionBtnSecondaryStyle),
-                                width: '100%',
-                            }}
-                            title={'Registrar dados financeiros e concluir'}
-                        >
-                            {busy === 'done' ? 'Abrindo…' : 'Com Registro'}
-                        </button>
+                        {!isOdontoTenant && (
+                            <button
+                                onClick={doDone}
+                                disabled={doneDisabled}
+                                className={`ui-btn ${
+                                    doneDisabled
+                                        ? 'ui-btn--disabled'
+                                        : 'ui-btn--secondary'
+                                }`}
+                                style={{
+                                    ...actionBtnBaseStyle,
+                                    ...(doneDisabled
+                                        ? actionBtnDisabledStyle
+                                        : actionBtnSecondaryStyle),
+                                    width: '100%',
+                                }}
+                                title={'Registrar dados financeiros e concluir'}
+                            >
+                                {busy === 'done' ? 'Abrindo…' : 'Com Registro'}
+                            </button>
+                        )}
                         <button
                             onClick={doDoneWithoutRecord}
                             disabled={doneDisabled}

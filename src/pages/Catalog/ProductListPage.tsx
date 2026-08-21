@@ -5,6 +5,7 @@ import FormPage from '../../components/FormKit/FormPage';
 import FormSection from '../../components/FormKit/FormSection';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { consumeFlashMessage } from '../../utils/flashMessage';
+import formStyles from '../../styles/pages/Client.module.css';
 
 type Product = {
     id: number;
@@ -19,6 +20,12 @@ function format2DecimalsBR(value: number): string {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     });
+}
+
+function visibleDescription(description?: string): string {
+    const value = String(description || '').trim();
+    if (!value.startsWith('odonto_scope:')) return value;
+    return value.replace(/^odonto_scope:(?:tooth|arch|all)\s*/i, '').trim();
 }
 
 export default function ProductListPage() {
@@ -154,18 +161,13 @@ export default function ProductListPage() {
                         + Novo
                     </button>
                 </div>
-                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5'>
+                <div className={formStyles.catalogGrid}>
                     {items.map(product => (
                         <article
                             key={product.id}
-                            className='flex w-full flex-col rounded-xl border p-4 shadow-sm'
+                            className={`${formStyles.catalogCard} flex w-full flex-col`}
                             style={{
-                                background: 'var(--color-bg-section)',
-                                borderColor: 'var(--color-border)',
-                                borderBottom: '2px solid var(--color-border)',
                                 minHeight: 156,
-                                marginBottom: 4,
-                                paddingBottom: 18,
                             }}
                         >
                             <div
@@ -216,7 +218,7 @@ export default function ProductListPage() {
                                 className='mt-3 flex-1 text-sm'
                                 style={{ color: 'var(--color-text-light)' }}
                             >
-                                {String(product.description || '').trim() ||
+                                {visibleDescription(product.description) ||
                                     'Sem descrição.'}
                             </p>
                             <div

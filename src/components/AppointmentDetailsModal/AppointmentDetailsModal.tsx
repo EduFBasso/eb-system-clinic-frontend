@@ -7,6 +7,10 @@ import StickyModalHeader from '../shared/StickyModalHeader';
 import { API_BASE } from '../../config/api';
 import { apiFetch } from '../../utils/apiFetch';
 import type { PendingReturnContext } from '../../types/agendaFlow';
+import {
+    hasOdontoCapability,
+    readLoggedProfessionalCapabilities,
+} from '../../utils/tenantCapabilities';
 
 type ChargeItem = {
     id: number;
@@ -113,6 +117,10 @@ export function AppointmentDetailsModal({
     const [hoveredPaymentId, setHoveredPaymentId] = React.useState<
         number | null
     >(null);
+    const isOdontoTenant = React.useMemo(
+        () => hasOdontoCapability(readLoggedProfessionalCapabilities()),
+        [open],
+    );
     React.useEffect(() => {
         if (!open || !appt) {
             setCharges([]);
@@ -812,15 +820,19 @@ export function AppointmentDetailsModal({
                         gap: 8,
                     }}
                 >
-                    <button
-                        onClick={openConsultaNotebook}
-                        className='ui-btn ui-btn--theme'
-                        style={{
-                            flex: isCompactViewport ? '1 1 180px' : undefined,
-                        }}
-                    >
-                        {charges.length > 0 ? 'Editar' : 'Anotar cobrança'}
-                    </button>
+                    {!isOdontoTenant && (
+                        <button
+                            onClick={openConsultaNotebook}
+                            className='ui-btn ui-btn--theme'
+                            style={{
+                                flex: isCompactViewport
+                                    ? '1 1 180px'
+                                    : undefined,
+                            }}
+                        >
+                            {charges.length > 0 ? 'Editar' : 'Anotar cobrança'}
+                        </button>
+                    )}
                     <button
                         onClick={onClose}
                         className='ui-btn ui-btn--neutral'

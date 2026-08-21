@@ -6,14 +6,21 @@
 //     localStorage e envia PATCH /register/professionals/me/ de forma assíncrona.
 //   - Todos os dispositivos do mesmo profissional ficam sincronizados no próximo login.
 
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { API_BASE } from '../config/api';
+import React, {
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useState,
+} from 'react';
+import { apiFetch } from '../utils/apiFetch';
 import { getAccessToken } from '../utils/auth/session';
 
 export type AppTheme = 'blue' | 'green' | 'pink';
 
 const VALID_THEMES: AppTheme[] = ['blue', 'green', 'pink'];
 const DEFAULT_THEME: AppTheme = 'blue';
+const PROFESSIONAL_THEMES_KEY = 'professionalThemes';
 
 const THEME_META_COLOR: Record<AppTheme, string> = {
     blue: '#004aad',
@@ -43,8 +50,18 @@ function readThemeFromStorage(): AppTheme {
     try {
         const raw = localStorage.getItem('loggedProfessional');
         if (!raw) return DEFAULT_THEME;
-        const prof = JSON.parse(raw) as { ui_theme?: string };
-        if (prof.ui_theme && (VALID_THEMES as string[]).includes(prof.ui_theme)) {
+        const prof = JSON.parse(raw) as { id?: number; ui_theme?: string };
+        const savedThemes = JSON.parse(
+            localStorage.getItem(PROFESSIONAL_THEMES_KEY) || '{}',
+        ) as Record<string, string>;
+        const savedTheme = prof.id ? savedThemes[String(prof.id)] : undefined;
+        if (savedTheme && (VALID_THEMES as string[]).includes(savedTheme)) {
+            return savedTheme as AppTheme;
+        }
+        if (
+            prof.ui_theme &&
+            (VALID_THEMES as string[]).includes(prof.ui_theme)
+        ) {
             return prof.ui_theme as AppTheme;
         }
     } catch {
@@ -59,27 +76,36 @@ function patchStoredTheme(theme: AppTheme) {
         const raw = localStorage.getItem('loggedProfessional');
         if (!raw) return;
         const prof = JSON.parse(raw) as Record<string, unknown>;
+        const savedThemes = JSON.parse(
+            localStorage.getItem(PROFESSIONAL_THEMES_KEY) || '{}',
+        ) as Record<string, string>;
         prof.ui_theme = theme;
+        if (prof.id != null) savedThemes[String(prof.id)] = theme;
         localStorage.setItem('loggedProfessional', JSON.stringify(prof));
+        localStorage.setItem(
+            PROFESSIONAL_THEMES_KEY,
+            JSON.stringify(savedThemes),
+        );
     } catch {
         /* noop */
     }
 }
 
 /** Envia PATCH /register/professionals/me/ { ui_theme } de forma silenciosa. */
-function persistThemeToBackend(theme: AppTheme) {
+async function persistThemeToBackend(theme: AppTheme) {
     const token = getAccessToken();
     if (!token) return;
-    fetch(`${API_BASE}/register/professionals/me/`, {
-        method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ ui_theme: theme }),
-    }).catch(() => {
+    try {
+        const updated = await apiFetch('/register/professionals/me/', {
+            method: 'PATCH',
+            body: { ui_theme: theme },
+        });
+        if (updated && typeof updated === 'object') {
+            localStorage.setItem('loggedProfessional', JSON.stringify(updated));
+        }
+    } catch {
         // Silencioso: falha de rede não deve bloquear a UI
-    });
+    }
 }
 
 // ─── Context ─────────────────────────────────────────────────────────────────
@@ -121,7 +147,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setThemeState(newTheme);
         applyThemeToDom(newTheme);
         patchStoredTheme(newTheme);
-        persistThemeToBackend(newTheme);
+        void persistThemeToBackend(newTheme);
     }, []);
 
     return (

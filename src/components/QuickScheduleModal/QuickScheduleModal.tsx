@@ -135,7 +135,26 @@ export default function QuickScheduleModal({
         number | null
     >(currentEdit?.id ?? null);
     const [showPicker, setShowPicker] = React.useState(false);
+    const [visitTypeOpen, setVisitTypeOpen] = React.useState(false);
     const listRef = React.useRef<HTMLDivElement | null>(null);
+    const visitTypeRef = React.useRef<HTMLLabelElement | null>(null);
+
+    React.useEffect(() => {
+        function closeVisitTypeOnOutsideClick(event: PointerEvent) {
+            if (
+                visitTypeRef.current &&
+                !visitTypeRef.current.contains(event.target as Node)
+            ) {
+                setVisitTypeOpen(false);
+            }
+        }
+        document.addEventListener('pointerdown', closeVisitTypeOnOutsideClick);
+        return () =>
+            document.removeEventListener(
+                'pointerdown',
+                closeVisitTypeOnOutsideClick,
+            );
+    }, []);
 
     // Day range for list
     const dayStart = React.useMemo(() => {
@@ -563,20 +582,59 @@ export default function QuickScheduleModal({
                             )}`}
                             stepMinutes={slotInterval}
                         />
-                        <label className={qsStyles.visitTypeField}>
+                        <label
+                            ref={visitTypeRef}
+                            className={qsStyles.visitTypeField}
+                        >
                             <span className={qsStyles.fieldLabel}>Tipo</span>
-                            <select
-                                className={qsStyles.visitTypeSelect}
-                                value={visitType}
-                                onChange={e => {
-                                    clearError();
-                                    setVisitType(e.target.value as VisitType);
-                                }}
+                            <button
+                                type='button'
+                                className={qsStyles.visitTypeTrigger}
+                                aria-haspopup='listbox'
+                                aria-expanded={visitTypeOpen}
+                                aria-controls='visit-type-options'
+                                onClick={() => setVisitTypeOpen(open => !open)}
                             >
-                                <option value='consulta'>Consulta</option>
-                                <option value='retorno'>Retorno</option>
-                                <option value='outro'>Outro</option>
-                            </select>
+                                {visitType === 'consulta'
+                                    ? 'Consulta'
+                                    : visitType === 'retorno'
+                                      ? 'Retorno'
+                                      : 'Outro'}
+                            </button>
+                            {visitTypeOpen && (
+                                <div
+                                    id='visit-type-options'
+                                    className={qsStyles.visitTypeMenu}
+                                    role='listbox'
+                                >
+                                    {(
+                                        [
+                                            ['consulta', 'Consulta'],
+                                            ['retorno', 'Retorno'],
+                                            ['outro', 'Outro'],
+                                        ] as const
+                                    ).map(([value, text]) => (
+                                        <button
+                                            type='button'
+                                            key={value}
+                                            role='option'
+                                            aria-selected={visitType === value}
+                                            className={`${qsStyles.visitTypeOption} ${
+                                                visitType === value
+                                                    ? qsStyles.visitTypeOptionSelected
+                                                    : ''
+                                            }`}
+                                            onClick={() => {
+                                                clearError();
+                                                setVisitType(value);
+                                                setVisitTypeOpen(false);
+                                            }}
+                                        >
+                                            {text}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </label>
                     </div>
 

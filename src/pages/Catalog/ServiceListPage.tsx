@@ -5,6 +5,7 @@ import FormPage from '../../components/FormKit/FormPage';
 import FormSection from '../../components/FormKit/FormSection';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { consumeFlashMessage } from '../../utils/flashMessage';
+import formStyles from '../../styles/pages/Client.module.css';
 
 type Service = {
     id: number;
@@ -18,6 +19,12 @@ function format2DecimalsBR(value: number): string {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     });
+}
+
+function visibleDescription(description?: string): string {
+    const value = String(description || '').trim();
+    if (!value.startsWith('odonto_scope:')) return value;
+    return value.replace(/^odonto_scope:(?:tooth|arch|all)\s*/i, '').trim();
 }
 
 export default function ServiceListPage() {
@@ -151,18 +158,13 @@ export default function ServiceListPage() {
                         + Novo
                     </button>
                 </div>
-                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5'>
+                <div className={formStyles.catalogGrid}>
                     {items.map(service => (
                         <article
                             key={service.id}
-                            className='flex flex-col w-full rounded-xl border p-4 shadow-sm'
+                            className={`${formStyles.catalogCard} flex w-full flex-col`}
                             style={{
-                                background: 'var(--color-bg-section)',
-                                borderColor: 'var(--color-border)',
-                                borderBottom: '2px solid var(--color-border)',
                                 minHeight: 156,
-                                marginBottom: 4,
-                                paddingBottom: 18,
                             }}
                         >
                             <div
@@ -203,7 +205,7 @@ export default function ServiceListPage() {
                                     color: 'var(--color-text-light)',
                                 }}
                             >
-                                {String(service.description || '').trim() ||
+                                {visibleDescription(service.description) ||
                                     'Sem descrição.'}
                             </p>
                             <div

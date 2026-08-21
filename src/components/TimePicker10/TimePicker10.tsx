@@ -1,36 +1,38 @@
 import React from 'react';
+import styles from './TimePicker10.module.css';
 
 interface TimePicker10Props {
     label?: string;
-    value: string; // formato HH:MM
-    onChange: (v: string) => void;
-    minHour?: number; // limite inferior (default 6)
-    maxHour?: number; // limite superior (default 21)
+    value: string;
+    onChange: (value: string) => void;
+    minHour?: number;
+    maxHour?: number;
     disabled?: boolean;
     style?: React.CSSProperties;
-    // Novo: passo dos minutos (5,10,15,20,30) e limites precisos HH:MM
-    // Allow 1-minute granularity when needed (flex mode)
     stepMinutes?: 1 | 5 | 10 | 15 | 20 | 30;
-    minHM?: string; // 'HH:MM' mínimo permitido (prioritário sobre minHour)
-    maxHM?: string; // 'HH:MM' máximo permitido (prioritário sobre maxHour)
+    minHM?: string;
+    maxHM?: string;
 }
 
-// Garante HH:MM
 function normalizeHour(
-    v: string,
-    minH: number,
-    maxH: number,
+    value: string,
+    minHour: number,
+    maxHour: number,
 ): [string, string] {
-    if (!/^\d{2}:\d{2}$/.test(v)) return [String(minH).padStart(2, '0'), '00'];
-    const [hStr, mStr] = v.split(':');
-    let h = parseInt(hStr, 10);
-    if (Number.isNaN(h)) h = minH;
-    h = Math.min(maxH, Math.max(minH, h));
-    const rawM = Math.min(59, Math.max(0, parseInt(mStr, 10)));
-    return [String(h).padStart(2, '0'), String(rawM).padStart(2, '0')];
+    if (!/^\d{2}:\d{2}$/.test(value)) {
+        return [String(minHour).padStart(2, '0'), '00'];
+    }
+    const [hourValue, minuteValue] = value.split(':');
+    const parsedHour = Number(hourValue);
+    const parsedMinute = Number(minuteValue);
+    const hour = Number.isNaN(parsedHour)
+        ? minHour
+        : Math.min(maxHour, Math.max(minHour, parsedHour));
+    const minute = Number.isNaN(parsedMinute)
+        ? 0
+        : Math.min(59, Math.max(0, parsedMinute));
+    return [String(hour).padStart(2, '0'), String(minute).padStart(2, '0')];
 }
-
-// hoursOptions será gerado dinamicamente com base em minHour/maxHour
 
 export const TimePicker10: React.FC<TimePicker10Props> = ({
     label,
@@ -45,28 +47,31 @@ export const TimePicker10: React.FC<TimePicker10Props> = ({
     maxHM,
 }) => {
     if (minHour > maxHour) {
-        // garante coerência
-        [minHour, maxHour] = [6, 21];
+        minHour = 6;
+        maxHour = 21;
     }
-    // Deriva limites de HH:MM se fornecidos
+
     let minH = minHour;
     let minM = 0;
     let maxH = maxHour;
     let maxM = 59;
     if (minHM && /^\d{2}:\d{2}$/.test(minHM)) {
-        const [h, m] = minHM.split(':').map(n => parseInt(n, 10));
-        if (!Number.isNaN(h)) minH = h;
-        if (!Number.isNaN(m)) minM = Math.min(59, Math.max(0, m));
+        const [hourValue, minuteValue] = minHM.split(':').map(Number);
+        if (!Number.isNaN(hourValue)) minH = hourValue;
+        if (!Number.isNaN(minuteValue))
+            minM = Math.min(59, Math.max(0, minuteValue));
     }
     if (maxHM && /^\d{2}:\d{2}$/.test(maxHM)) {
-        const [h, m] = maxHM.split(':').map(n => parseInt(n, 10));
-        if (!Number.isNaN(h)) maxH = h;
-        if (!Number.isNaN(m)) maxM = Math.min(59, Math.max(0, m));
+        const [hourValue, minuteValue] = maxHM.split(':').map(Number);
+        if (!Number.isNaN(hourValue)) maxH = hourValue;
+        if (!Number.isNaN(minuteValue))
+            maxM = Math.min(59, Math.max(0, minuteValue));
     }
+
     const hoursOptions = React.useMemo(
         () =>
-            Array.from({ length: maxH - minH + 1 }, (_, i) =>
-                String(minH + i).padStart(2, '0'),
+            Array.from({ length: maxH - minH + 1 }, (_, index) =>
+                String(minH + index).padStart(2, '0'),
             ),
         [minH, maxH],
     );
@@ -74,45 +79,96 @@ export const TimePicker10: React.FC<TimePicker10Props> = ({
         () => normalizeHour(value, minH, maxH),
         [value, minH, maxH],
     );
-    // Gera opções de minuto com step configurável
-    const baseMinutes = React.useMemo(() => {
-        const opts: string[] = [];
-        // If stepMinutes is 1, show full 0-59 range
-        const step = !stepMinutes || stepMinutes < 1 ? 1 : stepMinutes;
-        for (let m = 0; m < 60; m += step) {
-            opts.push(String(m).padStart(2, '0'));
-        }
-        return opts;
-    }, [stepMinutes]);
     const minute = minuteRaw.padStart(2, '0');
     const minuteOptions = React.useMemo(() => {
-        let opts = baseMinutes;
-        // Aplica limites por HH:MM quando estiver na borda
+        const step = Math.max(1, stepMinutes || 1);
+        let options = Array.from({ length: Math.ceil(60 / step) }, (_, index) =>
+            String(index * step).padStart(2, '0'),
+        ).filter(option => Number(option) < 60);
         if (hour === String(minH).padStart(2, '0')) {
-            opts = opts.filter(m => parseInt(m, 10) >= minM);
+            options = options.filter(option => Number(option) >= minM);
         }
         if (hour === String(maxH).padStart(2, '0')) {
-            opts = opts.filter(m => parseInt(m, 10) <= maxM);
+            options = options.filter(option => Number(option) <= maxM);
         }
-        // Inclui minuto atual mesmo que fora da grade (para exibir/permitir manter)
-        if (!opts.includes(minute))
-            opts = [minute, ...opts].filter((v, i, a) => a.indexOf(v) === i);
-        return opts;
-    }, [baseMinutes, hour, minH, maxH, minM, maxM, minute]);
+        if (!options.includes(minute)) options = [minute, ...options];
+        return options;
+    }, [hour, maxH, maxM, minH, minM, minute, stepMinutes]);
 
-    function handleHourChange(e: React.ChangeEvent<HTMLSelectElement>) {
-        onChange(`${e.target.value}:${minute}`);
+    const [openPart, setOpenPart] = React.useState<'hour' | 'minute' | null>(
+        null,
+    );
+    const pickerRef = React.useRef<HTMLLabelElement | null>(null);
+
+    React.useEffect(() => {
+        function closeOnOutsideClick(event: PointerEvent) {
+            if (
+                pickerRef.current &&
+                !pickerRef.current.contains(event.target as Node)
+            ) {
+                setOpenPart(null);
+            }
+        }
+        document.addEventListener('pointerdown', closeOnOutsideClick);
+        return () =>
+            document.removeEventListener('pointerdown', closeOnOutsideClick);
+    }, []);
+
+    function selectValue(part: 'hour' | 'minute', nextValue: string) {
+        onChange(
+            part === 'hour' ? `${nextValue}:${minute}` : `${hour}:${nextValue}`,
+        );
+        setOpenPart(null);
     }
-    function handleMinuteChange(e: React.ChangeEvent<HTMLSelectElement>) {
-        onChange(`${hour}:${e.target.value}`);
-    }
-    // Prevent bubbling that could interfere with sibling dropdowns (e.g., visit type)
-    function stop(e: React.SyntheticEvent) {
-        e.stopPropagation();
+
+    function renderPicker(
+        part: 'hour' | 'minute',
+        currentValue: string,
+        options: string[],
+    ) {
+        const menuId = `${part}-options`;
+        return (
+            <div className={styles.picker}>
+                <button
+                    type='button'
+                    className={styles.trigger}
+                    aria-haspopup='listbox'
+                    aria-expanded={openPart === part}
+                    aria-controls={menuId}
+                    disabled={disabled}
+                    onClick={() => setOpenPart(openPart === part ? null : part)}
+                >
+                    {currentValue}
+                </button>
+                {openPart === part && (
+                    <div id={menuId} className={styles.menu} role='listbox'>
+                        {options.map(option => (
+                            <button
+                                type='button'
+                                key={option}
+                                role='option'
+                                aria-selected={option === currentValue}
+                                className={`${styles.option} ${
+                                    option === currentValue
+                                        ? styles.optionSelected
+                                        : ''
+                                }`}
+                                onClick={() => selectValue(part, option)}
+                            >
+                                {option}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
     }
 
     return (
-        <label style={{ display: 'flex', flexDirection: 'column', ...style }}>
+        <label
+            ref={pickerRef}
+            style={{ display: 'flex', flexDirection: 'column', ...style }}
+        >
             {label && (
                 <span
                     style={{ fontSize: 12, color: 'var(--color-text-muted)' }}
@@ -121,37 +177,9 @@ export const TimePicker10: React.FC<TimePicker10Props> = ({
                 </span>
             )}
             <div style={{ display: 'flex', gap: 4 }}>
-                <select
-                    value={hour}
-                    onChange={handleHourChange}
-                    onMouseDown={stop}
-                    onClick={stop}
-                    onKeyDown={stop}
-                    disabled={disabled}
-                    style={{ padding: '6px 8px' }}
-                >
-                    {hoursOptions.map(h => (
-                        <option key={h} value={h}>
-                            {h}
-                        </option>
-                    ))}
-                </select>
+                {renderPicker('hour', hour, hoursOptions)}
                 <span style={{ alignSelf: 'center', fontWeight: 600 }}>:</span>
-                <select
-                    value={minute}
-                    onChange={handleMinuteChange}
-                    onMouseDown={stop}
-                    onClick={stop}
-                    onKeyDown={stop}
-                    disabled={disabled}
-                    style={{ padding: '6px 8px' }}
-                >
-                    {minuteOptions.map(m => (
-                        <option key={m} value={m}>
-                            {m}
-                        </option>
-                    ))}
-                </select>
+                {renderPicker('minute', minute, minuteOptions)}
             </div>
         </label>
     );

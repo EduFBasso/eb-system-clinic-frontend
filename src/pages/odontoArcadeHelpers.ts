@@ -1,60 +1,91 @@
 // Types and pure helpers shared by OdontoArcadePage and its sub-components.
 // Keep this file free of React imports and side-effects.
 
-import { parseAmount, formatBRLCurrency, toInputAmount } from '../utils/currency';
+import {
+    parseAmount,
+    formatBRLCurrency,
+    toInputAmount,
+} from '../utils/currency';
 import { getNow } from '../utils/now';
+import { hasOdontoCapability } from '../utils/tenantCapabilities';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type ArcadeListItem = {
+export type PlanListItem = {
     id: number;
-    status: 'pending' | 'completed';
-    updated_at?: string;
-    pending_procedures?: number;
-    completed_procedures?: number;
-};
-
-export type ToothItem = {
-    id: number;
-    sequence: number;
-    international_number: number;
-};
-
-export type ProcedureItem = {
-    id: number;
-    tooth: number | null;
-    parent_procedure: number | null;
-    is_product: boolean;
-    status: 'pending' | 'completed' | 'canceled';
-    name: string;
-    code?: string;
-    faces_raw?: string | null;
-    patient_amount?: number | string | null;
-    paid_amount?: number | string | null;
-    paid_at?: string | null;
-    started_at?: string | null;
-    completed_at?: string | null;
+    name?: string;
+    status: 'pending' | 'completed' | 'archived' | 'cancelled';
     notes?: string;
+    is_printed?: boolean;
+    printed_at?: string;
+    created_at?: string;
+    updated_at?: string;
+    pending_items?: number;
+    completed_items?: number;
+};
+
+/** Local (non-persisted) payment condition state for the plan workspace. */
+export type PaymentCondition = 'avista' | 'aprazo';
+
+/** Represents a tooth slot in the visual grid using FDI notation. */
+export type ToothItem = {
+    /** FDI international number — used as unique identifier throughout the UI. */
+    international_number: number;
+    sequence: number;
+};
+
+export type DentalContext = {
+    scope: 'tooth' | 'arch' | 'full';
+    tooth_number: number | null;
+    tooth_surface: string;
+    arcade_arch: 'superior' | 'inferior' | null;
+    observations?: string;
+};
+
+export type TreatmentItem = {
+    id: number;
+    plan: number;
+    kind: 'service' | 'product';
+    service: number | null;
+    service_name?: string | null;
+    product: number | null;
+    custom_name: string;
+    status: 'pending' | 'completed' | 'canceled';
+    patient_price: number | string | null;
+    started_at: string | null;
+    completed_at: string | null;
+    notes: string;
     is_active: boolean;
+    external_item_id: number | null;
+    parent_item: number | null;
+    dental_context: DentalContext | null;
+    created_at?: string;
 };
 
-export type EditProductItem = {
-    id?: number;
+export type ServiceFlowType = 'tooth' | 'arch' | 'other';
+
+/** Item from the core Service catalog used for autocomplete and auto-fill. */
+export type CatalogServiceItem = {
+    id: number;
     name: string;
-    value: string;
-    saveNameToList: boolean;
-    saveValueToList: boolean;
-    showDropdown: boolean;
+    base_price: number | string | null;
+    description?: string;
+    default_notes?: string;
+    /**
+     * Odonto context stored in Service.description as "odonto_scope:tooth|arch|all".
+     * Undefined = no tag → show in all contexts.
+     */
+    odonto_scope?: 'tooth' | 'arch' | 'all';
 };
-
-export type ProcedureFormKind = 'tooth' | 'general';
-
-export type ServiceFlowType = 'tooth' | 'arcade' | 'other';
 
 export type ServiceRow = {
-    toothId: number | null;
-    phase: string;
+    toothNumber: number | null;
+    toothSurface: string;
+    scope: ServiceFlowType;
+    arcadeArch: 'superior' | 'inferior' | 'AMBAS' | null;
     treatment: string;
+    /** ID of the linked Service from the core catalog, or null for custom entry. */
+    serviceId: number | null;
     value: string;
     notes: string;
 };
@@ -65,43 +96,54 @@ export type ProductRow = {
     notes: string;
 };
 
-export type ProductCatalogItem = {
+/** Item from the core Product catalog. */
+export type CatalogProductItem = {
+    id?: number;
     name: string;
-    last_value: string | null;
+    price: number | string | null;
 };
 
-export type ProcedureGroup = {
+export type ItemGroup = {
     key: string;
     label: string;
-    procedures: ProcedureItem[];
+    items: TreatmentItem[];
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const INTERNATIONAL_NUMBERS = [
-    18, 17, 16, 15, 14, 13, 12, 11,
-    21, 22, 23, 24, 25, 26, 27, 28,
-    48, 47, 46, 45, 44, 43, 42, 41,
-    31, 32, 33, 34, 35, 36, 37, 38,
+    18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28, 48, 47, 46,
+    45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38,
 ];
 
-export const PHASE_OPTIONS: Array<{ value: string; label: string }> = [
+/** Static ordered teeth grid (FDI notation) — shared by the workspace and service modal. */
+export const ORDERED_TEETH: ToothItem[] = INTERNATIONAL_NUMBERS.map(
+    (fdi, index) => ({
+        international_number: fdi,
+        sequence: index + 1,
+    }),
+);
+
+/** FDI face codes aligned with backend DentalProcedureContext.ToothSurface. */
+export const SURFACE_OPTIONS: Array<{ value: string; label: string }> = [
     { value: '', label: 'Opcional' },
     { value: 'O', label: 'Oclusal' },
     { value: 'V', label: 'Vestibular' },
-    { value: 'P', label: 'Palatino' },
+    { value: 'L', label: 'Lingual / Palatino' },
     { value: 'M', label: 'Mesial' },
     { value: 'D', label: 'Distal' },
-    { value: 'MO', label: 'Mesio-oclusal' },
-    { value: 'DO', label: 'Disto-oclusal' },
-    { value: 'VO', label: 'Vestibulo-oclusal' },
-    { value: 'PO', label: 'Palatino-oclusal' },
-    { value: 'MDO', label: 'Mesio-disto-oclusal' },
+    { value: 'I', label: 'Incisal' },
+    { value: 'M,O', label: 'Mesio-oclusal' },
+    { value: 'D,O', label: 'Disto-oclusal' },
+    { value: 'V,O', label: 'Vestibulo-oclusal' },
+    { value: 'L,O', label: 'Palatino-oclusal' },
+    { value: 'M,D,O', label: 'Mesio-disto-oclusal' },
 ];
 
-export const ARCADE_OPTIONS: Array<{ value: string; label: string }> = [
-    { value: 'SUPERIOR', label: 'Superior' },
-    { value: 'INFERIOR', label: 'Inferior' },
+/** Maps to arcade_arch field values. 'AMBAS' creates two items in the service flow. */
+export const ARCH_OPTIONS: Array<{ value: string; label: string }> = [
+    { value: 'superior', label: 'Superior' },
+    { value: 'inferior', label: 'Inferior' },
     { value: 'AMBAS', label: 'Superior e Inferior' },
 ];
 
@@ -123,7 +165,11 @@ export function hasOdontoAccess(): boolean {
     try {
         const stored = localStorage.getItem('loggedProfessional');
         if (!stored) return false;
-        const professional = JSON.parse(stored) as { specialty?: string };
+        const professional = JSON.parse(stored) as {
+            specialty?: string;
+            capabilities?: unknown;
+        };
+        if (hasOdontoCapability(professional.capabilities)) return true;
         const specialty = (professional.specialty || '')
             .toString()
             .trim()
@@ -169,18 +215,41 @@ export function formatMoney(value?: number | string | null): string {
     return formatBRLCurrency(numeric);
 }
 
-export function eventDateISO(proc: ProcedureItem): string | null {
-    return proc.completed_at || proc.started_at || null;
+export function eventDateISO(item: TreatmentItem): string | null {
+    return item.completed_at ?? item.started_at ?? null;
 }
 
-export function isProcedureCompleted(proc: ProcedureItem): boolean {
-    return proc.status === 'completed' || !!proc.completed_at;
+export function isItemCompleted(item: TreatmentItem): boolean {
+    return item.status === 'completed' || !!item.completed_at;
+}
+
+/** Sums patient_price of leaf items (services without children + all products) — used for plan total. */
+export function computePlanTotal(items: TreatmentItem[]): number {
+    const containerIds = new Set(
+        items.map(i => i.parent_item).filter((id): id is number => id != null),
+    );
+    return items
+        .filter(i => i.is_active && !containerIds.has(i.id))
+        .reduce((acc, i) => acc + Number(i.patient_price ?? 0), 0);
 }
 
 /** Returns today in YYYY-MM-DD using local timezone (avoids UTC-shift at night). */
 export function todayISODate(): string {
     const d = getNow();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Fallback label for a plan when name is empty. */
+export function planDisplayName(plan: PlanListItem): string {
+    if (plan.name?.trim()) return plan.name.trim();
+    if (plan.created_at)
+        return `Plano de Tratamento — ${formatDate(plan.created_at.slice(0, 10))}`;
+    return `Plano #${plan.id}`;
+}
+
+/** Default name suggestion for the creation modal. */
+export function defaultPlanName(): string {
+    return `Plano de Tratamento — ${formatDate(todayISODate())}`;
 }
 
 export function normalizeMoneyInput(value: string): string {

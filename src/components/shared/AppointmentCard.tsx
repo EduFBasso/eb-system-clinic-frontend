@@ -10,6 +10,7 @@ import {
     statusStripeColor,
     statusBackgroundColor,
 } from '../../utils/appointments/status';
+import { hasOdontoAccess } from '../../pages/odontoArcadeHelpers';
 
 export interface SharedAppointmentLike {
     id: number;
@@ -239,6 +240,19 @@ function AppointmentCardViewInner<T extends SharedAppointmentLike>({
                     }
                     // Novo: para concluídos, o clique do cartão abre detalhes (ícone removido)
                     if (onDetails && status === 'done') {
+                        const clientId =
+                            typeof appt.client === 'number'
+                                ? appt.client
+                                : appt.client?.id;
+                        if (hasOdontoAccess() && clientId) {
+                            window.history.pushState(
+                                {},
+                                '',
+                                `/odonto/arcada/${clientId}`,
+                            );
+                            window.dispatchEvent(new PopStateEvent('popstate'));
+                            return;
+                        }
                         onDetails(appt);
                         return;
                     }

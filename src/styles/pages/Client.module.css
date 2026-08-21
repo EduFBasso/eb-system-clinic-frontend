@@ -41,6 +41,31 @@
     padding-bottom: 90px; /* espaço para barra fixa de ações no desktop */
 }
 
+.catalogGrid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    gap: 20px;
+    align-items: stretch;
+}
+
+.catalogCard {
+    min-width: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: color-mix(in oklab, var(--color-border) 50%, white);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+    .catalogGrid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+}
+
 /* Colunas principais do formulário lado a lado no desktop */
 .leftPanel,
 .rightPanel {

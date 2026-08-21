@@ -4,18 +4,20 @@ import styles from './OdontoToothGrid.module.css';
 
 interface OdontoToothGridProps {
     orderedTeeth: ToothItem[];
-    selectedToothId: number | null;
+    /** FDI number of the currently selected tooth, or null for none. */
+    selectedToothNumber: number | null;
     suppressDateHighlights: boolean;
-    activeDateToothIds: Set<number>;
-    onToothClick?: (toothId: number) => void;
+    /** Set of FDI numbers that have at least one active treatment. */
+    activeDateToothNumbers: Set<number>;
+    onToothClick?: (toothNumber: number) => void;
     readOnly?: boolean;
 }
 
 export const OdontoToothGrid = React.memo(function OdontoToothGrid({
     orderedTeeth,
-    selectedToothId,
+    selectedToothNumber,
     suppressDateHighlights,
-    activeDateToothIds,
+    activeDateToothNumbers,
     onToothClick,
     readOnly = false,
 }: OdontoToothGridProps) {
@@ -51,30 +53,35 @@ export const OdontoToothGrid = React.memo(function OdontoToothGrid({
                 const x = 20 + col * 90;
                 const lowerOffset = row >= 2 ? 32 : 0;
                 const y = 40 + row * 82 + lowerOffset;
-                const selected = selectedToothId === tooth.id;
+                const fdi = tooth.international_number;
+                const selected = selectedToothNumber === fdi;
                 const inDateEvent =
-                    !suppressDateHighlights && activeDateToothIds.has(tooth.id);
-                const interactive = !readOnly && typeof onToothClick === 'function';
+                    !suppressDateHighlights && activeDateToothNumbers.has(fdi);
+                const interactive =
+                    !readOnly && typeof onToothClick === 'function';
 
                 return (
                     <g
-                        key={tooth.id}
+                        key={fdi}
                         className={`${styles.toothGroup} ${
                             interactive ? '' : styles.toothGroupStatic
                         }`}
                         onClick={
                             interactive
                                 ? () => {
-                                      onToothClick(tooth.id);
+                                      onToothClick(fdi);
                                   }
                                 : undefined
                         }
                         onKeyDown={
                             interactive
                                 ? event => {
-                                      if (event.key === 'Enter' || event.key === ' ') {
+                                      if (
+                                          event.key === 'Enter' ||
+                                          event.key === ' '
+                                      ) {
                                           event.preventDefault();
-                                          onToothClick(tooth.id);
+                                          onToothClick(fdi);
                                       }
                                   }
                                 : undefined
@@ -82,7 +89,7 @@ export const OdontoToothGrid = React.memo(function OdontoToothGrid({
                         role={interactive ? 'button' : undefined}
                         tabIndex={interactive ? 0 : undefined}
                         aria-pressed={interactive ? selected : undefined}
-                        aria-label={`Dente ${tooth.international_number}`}
+                        aria-label={`Dente ${fdi}`}
                     >
                         <rect
                             x={x}
@@ -102,10 +109,12 @@ export const OdontoToothGrid = React.memo(function OdontoToothGrid({
                             x={x + 36}
                             y={y + 31}
                             className={`${styles.toothNumber} ${
-                                selected || inDateEvent ? styles.toothNumberActive : ''
+                                selected || inDateEvent
+                                    ? styles.toothNumberActive
+                                    : ''
                             }`}
                         >
-                            {tooth.international_number}
+                            {fdi}
                         </text>
                     </g>
                 );

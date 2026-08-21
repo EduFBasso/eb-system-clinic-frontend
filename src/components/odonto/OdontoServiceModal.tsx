@@ -1,13 +1,35 @@
 import React from 'react';
 import { OdontoToothGrid } from '../OdontoToothGrid/OdontoToothGrid';
-import type { ServiceFlowType, ServiceRow, ToothItem } from '../../pages/odontoArcadeHelpers';
+import type {
+    CatalogServiceItem,
+    ServiceFlowType,
+    ServiceRow,
+    ToothItem,
+} from '../../pages/odontoArcadeHelpers';
 import {
-    ARCADE_OPTIONS,
-    PHASE_OPTIONS,
+    ARCH_OPTIONS,
+    SURFACE_OPTIONS,
     normalizeMoneyInput,
     normalizeSearchText,
 } from '../../pages/odontoArcadeHelpers';
+import { toInputAmount } from '../../utils/currency';
 import styles from '../../styles/pages/OdontoArcadeSimplifiedPage.module.css';
+
+// Names that indicate a non-tooth-specific (global/facial) procedure.
+const GLOBAL_PROCEDURE_KEYWORDS = [
+    'botox',
+    'preenchimento',
+    'harmonizacao',
+    'harmonização',
+    'facial',
+    'laser',
+    'filler',
+    'bichectomia',
+];
+
+function parseBRPrice(value: string): number {
+    return parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0;
+}
 
 type Props = {
     open: boolean;
@@ -15,45 +37,69 @@ type Props = {
     flowType: ServiceFlowType;
     serviceRows: ServiceRow[];
     orderedTeeth: ToothItem[];
-    toothById: Map<number, ToothItem>;
-    procedureNames: string[];
+    serviceCatalog: CatalogServiceItem[];
     savingSuggestionIndex: number | null;
     onClose: () => void;
     onSave: () => void;
     onFlowTypeChange: (type: ServiceFlowType) => void;
     onUpdateRow: (index: number, patch: Partial<ServiceRow>) => void;
-    onToggleToothRow: (toothId: number) => void;
+    /** Toggles the service row for a given FDI tooth number. */
+    onToggleToothRow: (toothNumber: number) => void;
     onAddItem: () => void;
+    /** Called when the user checks the "add to catalog" checkbox for a row. */
     onSaveSuggestion: (index: number) => void;
+    /** Called when the user clicks the delete icon on a catalog suggestion. */
+    onDeleteFromCatalog: (serviceId: number) => void;
 };
 
-function filteredProcedureNames(procedureNames: string[], searchRaw: string): string[] {
-    const sorted = [...procedureNames].sort((a, b) =>
-        a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }),
+function filterCatalog(
+    catalog: CatalogServiceItem[],
+    searchRaw: string,
+    scope: ServiceFlowType,
+): CatalogServiceItem[] {
+    let items = [...catalog];
+
+    if (scope === 'tooth') {
+        // Hide arch-tagged or global/facial items for tooth context.
+        items = items.filter(item => {
+            if (item.odonto_scope === 'arch') return false;
+            const norm = normalizeSearchText(item.name);
+            return !GLOBAL_PROCEDURE_KEYWORDS.some(kw => norm.includes(kw));
+        });
+    } else if (scope === 'arch') {
+        // Hide tooth-tagged items for arch context.
+        items = items.filter(item => item.odonto_scope !== 'tooth');
+    }
+    // scope === 'other': show everything
+
+    items.sort((a, b) =>
+        a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }),
     );
     const search = normalizeSearchText(searchRaw);
-    if (!search) return sorted.slice(0, 24);
+    if (!search) return items.slice(0, 24);
 
-    return sorted
-        .filter(name => normalizeSearchText(name).includes(search))
+    return items
+        .filter(item => normalizeSearchText(item.name).includes(search))
         .sort((a, b) => {
-            const aN = normalizeSearchText(a);
-            const bN = normalizeSearchText(b);
+            const aN = normalizeSearchText(a.name);
+            const bN = normalizeSearchText(b.name);
             const aStarts = aN.startsWith(search) ? 0 : 1;
             const bStarts = bN.startsWith(search) ? 0 : 1;
             if (aStarts !== bStarts) return aStarts - bStarts;
-            const aIndex = aN.indexOf(search);
-            const bIndex = bN.indexOf(search);
-            if (aIndex !== bIndex) return aIndex - bIndex;
-            return a.localeCompare(b, 'pt-BR', { sensitivity: 'base' });
+            return a.name.localeCompare(b.name, 'pt-BR', {
+                sensitivity: 'base',
+            });
         })
         .slice(0, 24);
 }
 
-function treatmentExistsInSuggestions(procedureNames: string[], treatmentRaw: string): boolean {
+function treatmentExistsInCatalog(
+    catalog: CatalogServiceItem[],
+    treatmentRaw: string,
+): boolean {
     const normalized = treatmentRaw.trim().toLowerCase();
     if (!normalized) return false;
-    return procedureNames.some(name => name.trim().toLowerCase() === normalized);
+    return catalog.some(item => item.name.trim().toLowerCase() === normalized);
 }
 
 export default function OdontoServiceModal({
@@ -62,8 +108,7 @@ export default function OdontoServiceModal({
     flowType,
     serviceRows,
     orderedTeeth,
-    toothById,
-    procedureNames,
+    serviceCatalog,
     savingSuggestionIndex,
     onClose,
     onSave,
@@ -72,13 +117,18 @@ export default function OdontoServiceModal({
     onToggleToothRow,
     onAddItem,
     onSaveSuggestion,
+    onDeleteFromCatalog,
 }: Props) {
-    const [openDropdownIndex, setOpenDropdownIndex] = React.useState<number | null>(null);
+    const [openDropdownIndex, setOpenDropdownIndex] = React.useState<
+        number | null
+    >(null);
 
     if (!open) return null;
 
-    const selectedToothIds = new Set(
-        serviceRows.map(row => row.toothId).filter((id): id is number => id != null),
+    const selectedToothNumbers = new Set(
+        serviceRows
+            .filter(row => row.scope === 'tooth' && row.toothNumber != null)
+            .map(row => row.toothNumber as number),
     );
 
     return (
@@ -92,29 +142,35 @@ export default function OdontoServiceModal({
                 role='dialog'
                 onClick={event => event.stopPropagation()}
             >
-                <h3 className={styles.sectionTitle}>Novo servico</h3>
+                <h3 className={styles.sectionTitle}>Novo tratamento</h3>
 
                 <div className={styles.typeTabs}>
-                    {(['tooth', 'arcade', 'other'] as ServiceFlowType[]).map(type => (
-                        <button
-                            key={type}
-                            type='button'
-                            onClick={() => onFlowTypeChange(type)}
-                            className={`${styles.tabBtn} ${flowType === type ? styles.tabActive : ''}`}
-                            disabled={saving}
-                        >
-                            {type === 'tooth' ? 'Por dente' : type === 'arcade' ? 'Arcada' : 'Outros'}
-                        </button>
-                    ))}
+                    {(['tooth', 'arch', 'other'] as ServiceFlowType[]).map(
+                        type => (
+                            <button
+                                key={type}
+                                type='button'
+                                onClick={() => onFlowTypeChange(type)}
+                                className={`${styles.tabBtn} ${flowType === type ? styles.tabActive : ''}`}
+                                disabled={saving}
+                            >
+                                {type === 'tooth'
+                                    ? 'Por dente'
+                                    : type === 'arch'
+                                      ? 'Arcada'
+                                      : 'Outros'}
+                            </button>
+                        ),
+                    )}
                 </div>
 
                 {flowType === 'tooth' && (
                     <div className={styles.modalToothSelector}>
                         <OdontoToothGrid
                             orderedTeeth={orderedTeeth}
-                            selectedToothId={null}
+                            selectedToothNumber={null}
                             suppressDateHighlights={false}
-                            activeDateToothIds={selectedToothIds}
+                            activeDateToothNumbers={selectedToothNumbers}
                             onToothClick={onToggleToothRow}
                         />
                     </div>
@@ -122,50 +178,121 @@ export default function OdontoServiceModal({
 
                 {flowType === 'tooth' && serviceRows.length === 0 && (
                     <p className={styles.textMuted}>
-                        Toque nos dentes do mapa para adicionar os containers do servico.
+                        Toque nos dentes do mapa para adicionar itens de
+                        tratamento.
                     </p>
                 )}
 
                 <div className={styles.modalRows}>
                     {serviceRows.map((row, index) => {
-                        const suggestions = filteredProcedureNames(procedureNames, row.treatment);
-                        const showSave =
-                            !treatmentExistsInSuggestions(procedureNames, row.treatment) &&
-                            row.treatment.trim();
+                        const suggestions = filterCatalog(
+                            serviceCatalog,
+                            row.treatment,
+                            row.scope,
+                        );
+                        const catalogItem = serviceCatalog.find(
+                            s =>
+                                s.name.toLowerCase() ===
+                                row.treatment.trim().toLowerCase(),
+                        );
+                        const canAddToCatalog =
+                            !catalogItem && Boolean(row.treatment.trim());
+                        // Show the checkbox also when the user changes the price of a catalog service.
+                        const priceChangedFromCatalog =
+                            Boolean(catalogItem) &&
+                            Boolean(row.serviceId) &&
+                            Boolean(row.value.trim()) &&
+                            Math.abs(
+                                parseBRPrice(row.value) -
+                                    Number(catalogItem?.base_price ?? 0),
+                            ) > 0.001;
+                        const notesChangedFromCatalog =
+                            Boolean(catalogItem) &&
+                            Boolean(row.serviceId) &&
+                            row.notes.trim() !==
+                                (catalogItem?.default_notes ?? '').trim();
+                        const showCatalogCheckbox =
+                            canAddToCatalog ||
+                            priceChangedFromCatalog ||
+                            notesChangedFromCatalog;
+                        const isSavingThis = savingSuggestionIndex === index;
+                        const checkboxLabel =
+                            priceChangedFromCatalog && notesChangedFromCatalog
+                                ? `Atualizar preço e observações de "${row.treatment.trim()}" no catálogo`
+                                : priceChangedFromCatalog
+                                  ? `Atualizar preço de "${row.treatment.trim()}" no catálogo`
+                                  : notesChangedFromCatalog
+                                    ? `Atualizar observações de "${row.treatment.trim()}" no catálogo`
+                                    : `Adicionar "${row.treatment.trim()}" ao catálogo geral`;
 
                         return (
                             <div key={index} className={styles.modalRow}>
                                 <div className={styles.modalRowHeader}>
                                     <strong>
-                                        {row.toothId != null
-                                            ? `Dente ${toothById.get(row.toothId)?.international_number ?? row.toothId}`
+                                        {row.scope === 'tooth' &&
+                                        row.toothNumber != null
+                                            ? `Dente ${row.toothNumber}`
                                             : `Item ${index + 1}`}
                                     </strong>
-                                    {(flowType === 'tooth' || flowType === 'arcade') && (
-                                        <label className={styles.phaseInlineLabel}>
-                                            {flowType === 'arcade' ? 'Arcada' : 'Faces (opcional)'}
+                                    {row.scope === 'tooth' && (
+                                        <label
+                                            className={styles.phaseInlineLabel}
+                                        >
+                                            Faces (opcional)
                                             <select
                                                 className={`${styles.input} ${styles.phaseSelect}`}
-                                                value={row.phase}
+                                                value={row.toothSurface}
                                                 onChange={event =>
-                                                    onUpdateRow(index, { phase: event.target.value })
+                                                    onUpdateRow(index, {
+                                                        toothSurface:
+                                                            event.target.value,
+                                                    })
                                                 }
                                                 disabled={saving}
                                             >
-                                                {(flowType === 'arcade' ? ARCADE_OPTIONS : PHASE_OPTIONS).map(
-                                                    option => (
-                                                        <option
-                                                            key={option.value || 'empty'}
-                                                            value={option.value}
-                                                        >
-                                                            {flowType === 'arcade'
-                                                                ? option.label
-                                                                : option.value
-                                                                  ? `${option.value} - ${option.label}`
-                                                                  : option.label}
-                                                        </option>
-                                                    ),
-                                                )}
+                                                {SURFACE_OPTIONS.map(opt => (
+                                                    <option
+                                                        key={
+                                                            opt.value || 'empty'
+                                                        }
+                                                        value={opt.value}
+                                                    >
+                                                        {opt.value
+                                                            ? `${opt.value} – ${opt.label}`
+                                                            : opt.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </label>
+                                    )}
+                                    {row.scope === 'arch' && (
+                                        <label
+                                            className={styles.phaseInlineLabel}
+                                        >
+                                            Arcada
+                                            <select
+                                                className={`${styles.input} ${styles.phaseSelect}`}
+                                                value={row.arcadeArch ?? ''}
+                                                onChange={event =>
+                                                    onUpdateRow(index, {
+                                                        arcadeArch: event.target
+                                                            .value as
+                                                            | 'superior'
+                                                            | 'inferior'
+                                                            | 'AMBAS'
+                                                            | null,
+                                                    })
+                                                }
+                                                disabled={saving}
+                                            >
+                                                {ARCH_OPTIONS.map(opt => (
+                                                    <option
+                                                        key={opt.value}
+                                                        value={opt.value}
+                                                    >
+                                                        {opt.label}
+                                                    </option>
+                                                ))}
                                             </select>
                                         </label>
                                     )}
@@ -174,66 +301,144 @@ export default function OdontoServiceModal({
                                 <div className={styles.formGrid}>
                                     <label className={styles.label}>
                                         Tratamento
-                                        <div className={styles.autocompleteWrap}>
+                                        <div
+                                            className={styles.autocompleteWrap}
+                                        >
                                             <input
                                                 className={styles.input}
                                                 value={row.treatment}
-                                                onFocus={() => setOpenDropdownIndex(index)}
+                                                onFocus={() =>
+                                                    setOpenDropdownIndex(index)
+                                                }
                                                 onBlur={() =>
                                                     window.setTimeout(() => {
-                                                        setOpenDropdownIndex(current =>
-                                                            current === index ? null : current,
+                                                        setOpenDropdownIndex(
+                                                            current =>
+                                                                current ===
+                                                                index
+                                                                    ? null
+                                                                    : current,
                                                         );
                                                     }, 160)
                                                 }
                                                 onChange={event => {
-                                                    onUpdateRow(index, { treatment: event.target.value });
+                                                    // Typing breaks the catalog link; resets serviceId.
+                                                    onUpdateRow(index, {
+                                                        treatment:
+                                                            event.target.value,
+                                                        serviceId: null,
+                                                    });
                                                     setOpenDropdownIndex(index);
                                                 }}
                                                 disabled={saving}
                                                 autoComplete='off'
-                                                placeholder='Ex.: Restauracao em resina'
+                                                placeholder='Ex.: Restauração em resina'
                                             />
-                                            {openDropdownIndex === index && (
-                                                <div className={styles.autocompleteList}>
-                                                    {suggestions.length === 0 ? (
-                                                        <div className={styles.autocompleteEmpty}>
-                                                            Nenhuma sugestao encontrada.
-                                                        </div>
-                                                    ) : (
-                                                        suggestions.map(name => (
-                                                            <button
-                                                                key={name}
-                                                                type='button'
-                                                                className={styles.autocompleteItem}
-                                                                onMouseDown={event =>
-                                                                    event.preventDefault()
-                                                                }
-                                                                onClick={() => {
-                                                                    onUpdateRow(index, { treatment: name });
-                                                                    setOpenDropdownIndex(null);
-                                                                }}
-                                                            >
-                                                                {name}
-                                                            </button>
-                                                        ))
-                                                    )}
-                                                </div>
-                                            )}
+                                            {openDropdownIndex === index &&
+                                                suggestions.length > 0 && (
+                                                    <div
+                                                        className={
+                                                            styles.autocompleteList
+                                                        }
+                                                    >
+                                                        {suggestions.map(
+                                                            item => (
+                                                                <div
+                                                                    key={
+                                                                        item.id
+                                                                    }
+                                                                    className={
+                                                                        styles.autocompleteRow
+                                                                    }
+                                                                >
+                                                                    <button
+                                                                        type='button'
+                                                                        className={
+                                                                            styles.autocompleteItem
+                                                                        }
+                                                                        onMouseDown={event =>
+                                                                            event.preventDefault()
+                                                                        }
+                                                                        onClick={() => {
+                                                                            onUpdateRow(
+                                                                                index,
+                                                                                {
+                                                                                    treatment:
+                                                                                        item.name,
+                                                                                    serviceId:
+                                                                                        item.id,
+                                                                                    ...(item.base_price !=
+                                                                                        null &&
+                                                                                        !row.value.trim() && {
+                                                                                            value: toInputAmount(
+                                                                                                item.base_price,
+                                                                                            ),
+                                                                                        }),
+                                                                                    ...(!row.notes.trim() &&
+                                                                                        item.default_notes && {
+                                                                                            notes: item.default_notes,
+                                                                                        }),
+                                                                                },
+                                                                            );
+                                                                            setOpenDropdownIndex(
+                                                                                null,
+                                                                            );
+                                                                        }}
+                                                                    >
+                                                                        {
+                                                                            item.name
+                                                                        }
+                                                                        {item.base_price !=
+                                                                            null &&
+                                                                            Number(
+                                                                                item.base_price,
+                                                                            ) >
+                                                                                0 && (
+                                                                                <span
+                                                                                    className={
+                                                                                        styles.autocompleteHint
+                                                                                    }
+                                                                                >
+                                                                                    {' '}
+                                                                                    R${' '}
+                                                                                    {toInputAmount(
+                                                                                        item.base_price,
+                                                                                    )}
+                                                                                </span>
+                                                                            )}
+                                                                    </button>
+                                                                    <button
+                                                                        type='button'
+                                                                        className={
+                                                                            styles.autocompleteDeleteBtn
+                                                                        }
+                                                                        onMouseDown={event =>
+                                                                            event.preventDefault()
+                                                                        }
+                                                                        onClick={() =>
+                                                                            onDeleteFromCatalog(
+                                                                                item.id,
+                                                                            )
+                                                                        }
+                                                                        aria-label={`Remover ${item.name} do catálogo`}
+                                                                        title='Remover do catálogo'
+                                                                    >
+                                                                        <svg
+                                                                            viewBox='0 0 24 24'
+                                                                            aria-hidden='true'
+                                                                        >
+                                                                            <path
+                                                                                d='M8.5 3.8A1.8 1.8 0 0 0 6.7 5.6V7H4.4a1 1 0 1 0 0 2h.7l.8 10.3a2.6 2.6 0 0 0 2.6 2.4h7a2.6 2.6 0 0 0 2.6-2.4L18.9 9h.7a1 1 0 1 0 0-2h-2.3V5.6a1.8 1.8 0 0 0-1.8-1.8h-7zm.2 3.2V5.8h6.6V7H8.7zm1.2 4.1a1 1 0 0 1 1 1v5.3a1 1 0 1 1-2 0v-5.3a1 1 0 0 1 1-1zm4.2 0a1 1 0 0 1 1 1v5.3a1 1 0 1 1-2 0v-5.3a1 1 0 0 1 1-1z'
+                                                                                fill='currentColor'
+                                                                            />
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                            ),
+                                                        )}
+                                                    </div>
+                                                )}
                                         </div>
-                                        {showSave && (
-                                            <button
-                                                type='button'
-                                                className={styles.saveSuggestionBtn}
-                                                onMouseDown={event => event.preventDefault()}
-                                                onClick={() => onSaveSuggestion(index)}
-                                                disabled={saving || savingSuggestionIndex === index}
-                                            >
-                                                {savingSuggestionIndex === index
-                                                    ? 'Salvando...'
-                                                    : `✓ Salvar "${row.treatment.trim()}" na lista`}
-                                            </button>
-                                        )}
                                     </label>
 
                                     <label className={styles.label}>
@@ -244,11 +449,15 @@ export default function OdontoServiceModal({
                                             value={row.value}
                                             placeholder='0,00'
                                             onChange={event =>
-                                                onUpdateRow(index, { value: event.target.value })
+                                                onUpdateRow(index, {
+                                                    value: event.target.value,
+                                                })
                                             }
                                             onBlur={event =>
                                                 onUpdateRow(index, {
-                                                    value: normalizeMoneyInput(event.target.value),
+                                                    value: normalizeMoneyInput(
+                                                        event.target.value,
+                                                    ),
                                                 })
                                             }
                                             disabled={saving}
@@ -262,11 +471,69 @@ export default function OdontoServiceModal({
                                             rows={3}
                                             value={row.notes}
                                             onChange={event =>
-                                                onUpdateRow(index, { notes: event.target.value })
+                                                onUpdateRow(index, {
+                                                    notes: event.target.value,
+                                                })
                                             }
                                             disabled={saving}
                                         />
                                     </label>
+
+                                    {showCatalogCheckbox && (
+                                        <label
+                                            className={`${styles.labelWide} ${styles.catalogCheckboxLabel}`}
+                                        >
+                                            <span
+                                                className={
+                                                    styles.catalogCheckboxBox
+                                                }
+                                            >
+                                                <input
+                                                    type='checkbox'
+                                                    className={
+                                                        styles.catalogCheckboxInput
+                                                    }
+                                                    checked={isSavingThis}
+                                                    disabled={
+                                                        saving || isSavingThis
+                                                    }
+                                                    onChange={() =>
+                                                        onSaveSuggestion(index)
+                                                    }
+                                                />
+                                                <span
+                                                    className={
+                                                        styles.catalogCheckboxMark
+                                                    }
+                                                    aria-hidden='true'
+                                                >
+                                                    {isSavingThis && (
+                                                        <svg
+                                                            viewBox='0 0 12 10'
+                                                            fill='none'
+                                                        >
+                                                            <polyline
+                                                                points='1.5,5.5 4.5,8.5 10.5,1.5'
+                                                                stroke='currentColor'
+                                                                strokeWidth='2'
+                                                                strokeLinecap='round'
+                                                                strokeLinejoin='round'
+                                                            />
+                                                        </svg>
+                                                    )}
+                                                </span>
+                                            </span>
+                                            <span
+                                                className={
+                                                    styles.catalogCheckboxText
+                                                }
+                                            >
+                                                {isSavingThis
+                                                    ? 'Salvando...'
+                                                    : checkboxLabel}
+                                            </span>
+                                        </label>
+                                    )}
                                 </div>
                             </div>
                         );
@@ -298,7 +565,7 @@ export default function OdontoServiceModal({
                         onClick={onSave}
                         disabled={saving}
                     >
-                        {saving ? 'Salvando...' : 'Salvar'}
+                        {saving ? 'Salvando...' : 'Salvar tratamento'}
                     </button>
                 </div>
             </div>

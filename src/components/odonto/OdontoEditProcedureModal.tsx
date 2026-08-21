@@ -1,10 +1,10 @@
 import React from 'react';
-import type { ProcedureItem } from '../../pages/odontoArcadeHelpers';
+import type { TreatmentItem } from '../../pages/odontoArcadeHelpers';
 import { normalizeMoneyInput } from '../../pages/odontoArcadeHelpers';
 import styles from '../../styles/pages/OdontoArcadeSimplifiedPage.module.css';
 
 type Props = {
-    procedure: ProcedureItem | null;
+    item: TreatmentItem | null;
     name: string;
     value: string;
     notes: string;
@@ -17,7 +17,7 @@ type Props = {
 };
 
 export default function OdontoEditProcedureModal({
-    procedure,
+    item,
     name,
     value,
     notes,
@@ -28,7 +28,7 @@ export default function OdontoEditProcedureModal({
     onClose,
     onSave,
 }: Props) {
-    if (!procedure) return null;
+    if (!item) return null;
 
     return (
         <div
@@ -59,8 +59,14 @@ export default function OdontoEditProcedureModal({
                             className={styles.input}
                             inputMode='decimal'
                             value={value}
-                            onChange={event => onValueChange(event.target.value)}
-                            onBlur={event => onValueChange(normalizeMoneyInput(event.target.value))}
+                            onChange={event =>
+                                onValueChange(event.target.value)
+                            }
+                            onBlur={event =>
+                                onValueChange(
+                                    normalizeMoneyInput(event.target.value),
+                                )
+                            }
                             disabled={saving}
                         />
                     </label>
@@ -70,7 +76,9 @@ export default function OdontoEditProcedureModal({
                             className={styles.textarea}
                             rows={3}
                             value={notes}
-                            onChange={event => onNotesChange(event.target.value)}
+                            onChange={event =>
+                                onNotesChange(event.target.value)
+                            }
                             disabled={saving}
                         />
                     </label>

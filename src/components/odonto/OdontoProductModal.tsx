@@ -1,6 +1,12 @@
 import React from 'react';
-import type { ProductCatalogItem, ProductRow } from '../../pages/odontoArcadeHelpers';
-import { normalizeMoneyInput, normalizeSearchText } from '../../pages/odontoArcadeHelpers';
+import type {
+    CatalogProductItem,
+    ProductRow,
+} from '../../pages/odontoArcadeHelpers';
+import {
+    normalizeMoneyInput,
+    normalizeSearchText,
+} from '../../pages/odontoArcadeHelpers';
 import { toInputAmount } from '../../utils/currency';
 import styles from '../../styles/pages/OdontoArcadeSimplifiedPage.module.css';
 
@@ -8,7 +14,7 @@ type Props = {
     open: boolean;
     saving: boolean;
     productRows: ProductRow[];
-    productCatalog: ProductCatalogItem[];
+    productCatalog: CatalogProductItem[];
     savingSuggestionIndex: number | null;
     onClose: () => void;
     onSave: () => void;
@@ -16,7 +22,10 @@ type Props = {
     onSaveSuggestion: (index: number) => void;
 };
 
-function filteredCatalog(catalog: ProductCatalogItem[], searchRaw: string): ProductCatalogItem[] {
+function filteredCatalog(
+    catalog: CatalogProductItem[],
+    searchRaw: string,
+): CatalogProductItem[] {
     const sorted = [...catalog].sort((a, b) =>
         a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }),
     );
@@ -34,12 +43,17 @@ function filteredCatalog(catalog: ProductCatalogItem[], searchRaw: string): Prod
             const aIndex = aN.indexOf(search);
             const bIndex = bN.indexOf(search);
             if (aIndex !== bIndex) return aIndex - bIndex;
-            return a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' });
+            return a.name.localeCompare(b.name, 'pt-BR', {
+                sensitivity: 'base',
+            });
         })
         .slice(0, 24);
 }
 
-function catalogExistsByName(catalog: ProductCatalogItem[], nameRaw: string): boolean {
+function catalogExistsByName(
+    catalog: CatalogProductItem[],
+    nameRaw: string,
+): boolean {
     const normalized = nameRaw.trim().toLowerCase();
     if (!normalized) return false;
     return catalog.some(item => item.name.trim().toLowerCase() === normalized);
@@ -56,16 +70,26 @@ export default function OdontoProductModal({
     onRowsChange,
     onSaveSuggestion,
 }: Props) {
-    const [openDropdownIndex, setOpenDropdownIndex] = React.useState<number | null>(null);
+    const [openDropdownIndex, setOpenDropdownIndex] = React.useState<
+        number | null
+    >(null);
 
     if (!open) return null;
 
     function updateRow(index: number, patch: Partial<ProductRow>) {
-        onRowsChange(productRows.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+        onRowsChange(
+            productRows.map((item, i) =>
+                i === index ? { ...item, ...patch } : item,
+            ),
+        );
     }
 
     return (
-        <div className={styles.modalOverlay} role='presentation' onClick={onClose}>
+        <div
+            className={styles.modalOverlay}
+            role='presentation'
+            onClick={onClose}
+        >
             <div
                 className={styles.modalCard}
                 role='dialog'
@@ -75,9 +99,13 @@ export default function OdontoProductModal({
 
                 <div className={styles.modalRows}>
                     {productRows.map((row, index) => {
-                        const suggestions = filteredCatalog(productCatalog, row.name);
+                        const suggestions = filteredCatalog(
+                            productCatalog,
+                            row.name,
+                        );
                         const showSave =
-                            !catalogExistsByName(productCatalog, row.name) && row.name.trim();
+                            !catalogExistsByName(productCatalog, row.name) &&
+                            row.name.trim();
 
                         return (
                             <div key={index} className={styles.modalRow}>
@@ -87,9 +115,15 @@ export default function OdontoProductModal({
                                         type='button'
                                         className={styles.iconBtnDanger}
                                         onClick={() =>
-                                            onRowsChange(productRows.filter((_, i) => i !== index))
+                                            onRowsChange(
+                                                productRows.filter(
+                                                    (_, i) => i !== index,
+                                                ),
+                                            )
                                         }
-                                        disabled={saving || productRows.length === 1}
+                                        disabled={
+                                            saving || productRows.length === 1
+                                        }
                                     >
                                         Remover
                                     </button>
@@ -98,20 +132,31 @@ export default function OdontoProductModal({
                                 <div className={styles.formGrid}>
                                     <label className={styles.label}>
                                         Nome
-                                        <div className={styles.autocompleteWrap}>
+                                        <div
+                                            className={styles.autocompleteWrap}
+                                        >
                                             <input
                                                 className={styles.input}
                                                 value={row.name}
-                                                onFocus={() => setOpenDropdownIndex(index)}
+                                                onFocus={() =>
+                                                    setOpenDropdownIndex(index)
+                                                }
                                                 onBlur={() =>
                                                     window.setTimeout(() => {
-                                                        setOpenDropdownIndex(current =>
-                                                            current === index ? null : current,
+                                                        setOpenDropdownIndex(
+                                                            current =>
+                                                                current ===
+                                                                index
+                                                                    ? null
+                                                                    : current,
                                                         );
                                                     }, 160)
                                                 }
                                                 onChange={event => {
-                                                    updateRow(index, { name: event.target.value });
+                                                    updateRow(index, {
+                                                        name: event.target
+                                                            .value,
+                                                    });
                                                     setOpenDropdownIndex(index);
                                                 }}
                                                 disabled={saving}
@@ -119,46 +164,71 @@ export default function OdontoProductModal({
                                                 placeholder='Ex.: Botox'
                                             />
                                             {openDropdownIndex === index && (
-                                                <div className={styles.autocompleteList}>
-                                                    {suggestions.length === 0 ? (
-                                                        <div className={styles.autocompleteEmpty}>
-                                                            Nenhum produto encontrado.
+                                                <div
+                                                    className={
+                                                        styles.autocompleteList
+                                                    }
+                                                >
+                                                    {suggestions.length ===
+                                                    0 ? (
+                                                        <div
+                                                            className={
+                                                                styles.autocompleteEmpty
+                                                            }
+                                                        >
+                                                            Nenhum produto
+                                                            encontrado.
                                                         </div>
                                                     ) : (
-                                                        suggestions.map(item => (
-                                                            <button
-                                                                key={item.name}
-                                                                type='button'
-                                                                className={styles.autocompleteItem}
-                                                                onMouseDown={event =>
-                                                                    event.preventDefault()
-                                                                }
-                                                                onClick={() => {
-                                                                    updateRow(index, {
-                                                                        name: item.name,
-                                                                        ...(item.last_value != null && {
-                                                                            value: toInputAmount(
-                                                                                item.last_value,
-                                                                            ),
-                                                                        }),
-                                                                    });
-                                                                    setOpenDropdownIndex(null);
-                                                                }}
-                                                            >
-                                                                {item.name}
-                                                                {item.last_value != null && (
-                                                                    <span
-                                                                        className={
-                                                                            styles.autocompleteHint
-                                                                        }
-                                                                    >
-                                                                        {' '}
-                                                                        R${' '}
-                                                                        {toInputAmount(item.last_value)}
-                                                                    </span>
-                                                                )}
-                                                            </button>
-                                                        ))
+                                                        suggestions.map(
+                                                            item => (
+                                                                <button
+                                                                    key={
+                                                                        item.name
+                                                                    }
+                                                                    type='button'
+                                                                    className={
+                                                                        styles.autocompleteItem
+                                                                    }
+                                                                    onMouseDown={event =>
+                                                                        event.preventDefault()
+                                                                    }
+                                                                    onClick={() => {
+                                                                        updateRow(
+                                                                            index,
+                                                                            {
+                                                                                name: item.name,
+                                                                                ...(item.price !=
+                                                                                    null && {
+                                                                                    value: toInputAmount(
+                                                                                        item.price,
+                                                                                    ),
+                                                                                }),
+                                                                            },
+                                                                        );
+                                                                        setOpenDropdownIndex(
+                                                                            null,
+                                                                        );
+                                                                    }}
+                                                                >
+                                                                    {item.name}
+                                                                    {item.price !=
+                                                                        null && (
+                                                                        <span
+                                                                            className={
+                                                                                styles.autocompleteHint
+                                                                            }
+                                                                        >
+                                                                            {' '}
+                                                                            R${' '}
+                                                                            {toInputAmount(
+                                                                                item.price,
+                                                                            )}
+                                                                        </span>
+                                                                    )}
+                                                                </button>
+                                                            ),
+                                                        )
                                                     )}
                                                 </div>
                                             )}
@@ -166,10 +236,20 @@ export default function OdontoProductModal({
                                         {showSave && (
                                             <button
                                                 type='button'
-                                                className={styles.saveSuggestionBtn}
-                                                onMouseDown={event => event.preventDefault()}
-                                                onClick={() => onSaveSuggestion(index)}
-                                                disabled={saving || savingSuggestionIndex === index}
+                                                className={
+                                                    styles.saveSuggestionBtn
+                                                }
+                                                onMouseDown={event =>
+                                                    event.preventDefault()
+                                                }
+                                                onClick={() =>
+                                                    onSaveSuggestion(index)
+                                                }
+                                                disabled={
+                                                    saving ||
+                                                    savingSuggestionIndex ===
+                                                        index
+                                                }
                                             >
                                                 {savingSuggestionIndex === index
                                                     ? 'Salvando...'
@@ -186,11 +266,15 @@ export default function OdontoProductModal({
                                             value={row.value}
                                             placeholder='0,00'
                                             onChange={event =>
-                                                updateRow(index, { value: event.target.value })
+                                                updateRow(index, {
+                                                    value: event.target.value,
+                                                })
                                             }
                                             onBlur={event =>
                                                 updateRow(index, {
-                                                    value: normalizeMoneyInput(event.target.value),
+                                                    value: normalizeMoneyInput(
+                                                        event.target.value,
+                                                    ),
                                                 })
                                             }
                                             disabled={saving}
@@ -204,7 +288,9 @@ export default function OdontoProductModal({
                                             rows={3}
                                             value={row.notes}
                                             onChange={event =>
-                                                updateRow(index, { notes: event.target.value })
+                                                updateRow(index, {
+                                                    notes: event.target.value,
+                                                })
                                             }
                                             disabled={saving}
                                         />
@@ -220,7 +306,10 @@ export default function OdontoProductModal({
                         type='button'
                         className={styles.btn}
                         onClick={() =>
-                            onRowsChange([...productRows, { name: '', value: '', notes: '' }])
+                            onRowsChange([
+                                ...productRows,
+                                { name: '', value: '', notes: '' },
+                            ])
                         }
                         disabled={saving}
                     >

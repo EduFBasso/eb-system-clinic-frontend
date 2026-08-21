@@ -1,0 +1,166 @@
+/* hidden on screen — visible only @media print */
+.printSheet {
+    display: none;
+}
+
+@media print {
+    @page {
+        size: A4;
+        margin: 0;
+    }
+
+    .printSheet {
+        display: flex !important;
+        flex-direction: column;
+        font-family: 'Poppins', sans-serif !important;
+        font-size: 12pt;
+        color: #111;
+        width: 100%;
+        min-height: 277mm;
+        box-sizing: border-box;
+        padding: 0;
+        margin: 0;
+    }
+
+    .printSheet * {
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    /* A) Header */
+    .printHeader {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8pt;
+    }
+
+    .profName {
+        font-size: 14pt;
+        font-weight: bold;
+        margin: 0 0 2pt;
+        color: var(--color-primary, #004aad);
+    }
+
+    .profDetail {
+        font-size: 10pt;
+        margin: 0;
+        color: #444;
+    }
+
+    .profAddress {
+        font-size: 9pt;
+        margin: 3pt 0 0;
+        color: #555;
+    }
+
+    .printHeaderRight {
+        text-align: right;
+    }
+
+    .printDivider {
+        border: none;
+        border-top: 1px solid #ccc;
+        padding: 8px 0;
+        margin: 8pt 0;
+    }
+
+    /* B) Title */
+    .printTitle {
+        font-size: 16pt;
+        font-weight: bold;
+        letter-spacing: 0.04em;
+        text-align: center;
+        margin: 10pt 0;
+    }
+
+    .printMeta p {
+        margin: 0 0 2pt;
+        font-size: 11pt;
+    }
+
+    .printMeta {
+        margin-bottom: 24px;
+    }
+
+    /* C/D) Sections */
+    .printSection {
+        margin-top: 20px;
+    }
+
+    .printSubtitle {
+        font-size: 12pt;
+        font-weight: bold;
+        margin: 20px 0 4pt;
+        border-bottom: 1px solid #ccc;
+        padding: 8px 0;
+    }
+
+    .printEmpty {
+        font-size: 10pt;
+        color: #777;
+        font-style: italic;
+        margin: 2pt 0;
+    }
+
+    .printTable {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11pt;
+    }
+
+    .printTable td {
+        padding: 8px 0;
+        border-bottom: 0.5px solid #e5e5e5;
+        vertical-align: top;
+    }
+
+    .colValue {
+        width: 90pt;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* E) Payment conditions */
+    .printTotalRow {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12pt;
+        margin: 6pt 0 4pt;
+    }
+
+    .printPaymentLine {
+        margin: 0;
+        font-size: 11pt;
+    }
+
+    .printNotesText {
+        margin: 2pt 0;
+        font-size: 11pt;
+        white-space: pre-wrap;
+    }
+
+    .clinicalNotes {
+        margin-top: 20px;
+    }
+
+    .clinicalNotes .printSubtitle {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .observationLines {
+        display: block;
+        margin-top: 8pt;
+    }
+
+    .observationLines div {
+        border-bottom: 0.5px solid #ccc;
+    }
+
+    /* F) Footer */
+    .printFooter {
+        margin-top: auto;
+        padding-top: 16pt;
+    }
+
+}
