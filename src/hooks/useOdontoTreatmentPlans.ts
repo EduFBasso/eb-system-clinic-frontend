@@ -28,6 +28,10 @@ export function useOdontoTreatmentPlans(
     const [savingCreatePlan, setSavingCreatePlan] = React.useState(false);
     const [markingPrinted, setMarkingPrinted] = React.useState(false);
     const [showArchivedPlans, setShowArchivedPlans] = React.useState(false);
+    const [deleteConfirmation, setDeleteConfirmation] = React.useState<{
+        planId: number;
+        hasTreatmentHistory: boolean;
+    } | null>(null);
 
     // Payment condition — local UI state, not persisted per plan yet.
     const [paymentCondition, setPaymentCondition] =
@@ -205,14 +209,17 @@ export function useOdontoTreatmentPlans(
         const hasTreatmentHistory =
             (planToDelete?.pending_items ?? 0) > 0 ||
             (planToDelete?.completed_items ?? 0) > 0;
-        if (
-            !window.confirm(
-                hasTreatmentHistory
-                    ? 'Remover este plano? Como ele possui tratamentos, será arquivado para preservar o histórico.'
-                    : 'Remover este plano definitivamente? Esta ação não poderá ser desfeita.',
-            )
-        )
-            return;
+        setDeleteConfirmation({ planId, hasTreatmentHistory });
+    }
+
+    function cancelDeletePlan() {
+        setDeleteConfirmation(null);
+    }
+
+    async function confirmDeletePlan() {
+        if (!deleteConfirmation) return;
+        const { planId, hasTreatmentHistory } = deleteConfirmation;
+        setDeleteConfirmation(null);
         try {
             await apiFetch(`/clinic/treatment/plans/${planId}/`, {
                 method: 'DELETE',
@@ -350,6 +357,9 @@ export function useOdontoTreatmentPlans(
         createPlan,
         selectPlan,
         deletePlan,
+        deleteConfirmation,
+        cancelDeletePlan,
+        confirmDeletePlan,
         savePlanNotes,
         markPrinted,
         backToPlanList,

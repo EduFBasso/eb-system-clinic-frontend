@@ -55,7 +55,13 @@ export default function OdontoPlanCreateModal({
         try {
             const profilePayload = {
                 ...profile,
-                phone: profile.phone?.replace(/\D/g, '') ?? '',
+                phone: (() => {
+                    const digits = profile.phone?.replace(/\D/g, '') ?? '';
+                    if (!digits) return '';
+                    return digits.startsWith('55')
+                        ? `+${digits}`
+                        : `+55${digits}`;
+                })(),
             };
             const updated = (await apiFetch('/register/professionals/me/', {
                 method: 'PATCH',

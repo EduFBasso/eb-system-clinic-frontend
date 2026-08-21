@@ -2,7 +2,7 @@
     border: 1px solid var(--color-border);
     border-left: 3px solid var(--color-primary);
     border-radius: 10px;
-    background: #ffffff;
+    background: color-mix(in oklab, var(--color-primary) 8%, var(--card-bg, var(--color-bg-section)));
     padding: 14px 16px 10px;
     display: flex;
     flex-direction: column;
@@ -53,8 +53,8 @@
 }
 
 .statusPending {
-    background: color-mix(in oklab, var(--color-primary) 12%, var(--color-bg-section));
-    color: var(--color-primary);
+    background: var(--color-primary);
+    color: var(--color-primary-contrast, #fff);
 }
 
 .statusCompleted {

@@ -1,7 +1,7 @@
 // frontend/src/components/ClientCard.tsx
 import React from 'react';
 import styles from './ClientCard.module.css';
-import { FaEye, FaWhatsapp, FaTooth } from 'react-icons/fa';
+import { FaEye, FaWhatsapp, FaTooth, FaShoePrints } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useClientCreateAction } from '../../hooks/useClientCreateAction';
 import { API_BASE } from '../../config/api';
@@ -123,7 +123,7 @@ function ClientCardBase({
             ? parsed.age
             : calcAge(parsed.year, parsed.month, parsed.day);
     }, [client.date_of_birth]);
-    const canAccessOdontoArcade = React.useMemo(() => {
+    const canAccessTreatmentPlan = React.useMemo(() => {
         try {
             const stored = localStorage.getItem('loggedProfessional');
             if (!stored) return false;
@@ -135,8 +135,23 @@ function ClientCardBase({
             return (
                 specialty.includes('odonto') ||
                 specialty.includes('dent') ||
-                specialty.includes('ortodont')
+                specialty.includes('ortodont') ||
+                specialty.includes('podolog')
             );
+        } catch {
+            return false;
+        }
+    }, []);
+    const isPodology = React.useMemo(() => {
+        try {
+            const stored = localStorage.getItem('loggedProfessional');
+            const specialty = stored
+                ? String(
+                      (JSON.parse(stored) as { specialty?: string })
+                          .specialty || '',
+                  )
+                : '';
+            return specialty.toLowerCase().includes('podolog');
         } catch {
             return false;
         }
@@ -459,16 +474,24 @@ function ClientCardBase({
                     </span>
                 </div>
                 <div className={styles.nameActions}>
-                    {canAccessOdontoArcade && (
+                    {canAccessTreatmentPlan && (
                         <button
                             className={styles.iconButton}
-                            title='Abrir prontuario odontologico'
+                            title={
+                                isPodology
+                                    ? 'Abrir plano de tratamento'
+                                    : 'Abrir prontuario odontologico'
+                            }
                             onClick={e => {
                                 e.stopPropagation();
-                                navigate(`/odonto/arcada/${client.id}`);
+                                navigate(`/treatment/plans/${client.id}`);
                             }}
                         >
-                            <FaTooth color={iconColor} />
+                            {isPodology ? (
+                                <FaShoePrints color={iconColor} />
+                            ) : (
+                                <FaTooth color={iconColor} />
+                            )}
                         </button>
                     )}
                     <button
