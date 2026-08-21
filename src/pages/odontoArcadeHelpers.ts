@@ -7,7 +7,6 @@ import {
     toInputAmount,
 } from '../utils/currency';
 import { getNow } from '../utils/now';
-import { hasOdontoCapability } from '../utils/tenantCapabilities';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -159,29 +158,6 @@ export function asList<T>(payload: unknown): T[] {
         return (payload as { results: T[] }).results;
     }
     return [];
-}
-
-export function hasOdontoAccess(): boolean {
-    try {
-        const stored = localStorage.getItem('loggedProfessional');
-        if (!stored) return false;
-        const professional = JSON.parse(stored) as {
-            specialty?: string;
-            capabilities?: unknown;
-        };
-        if (hasOdontoCapability(professional.capabilities)) return true;
-        const specialty = (professional.specialty || '')
-            .toString()
-            .trim()
-            .toLowerCase();
-        return (
-            specialty.includes('odonto') ||
-            specialty.includes('dent') ||
-            specialty.includes('ortodont')
-        );
-    } catch {
-        return false;
-    }
 }
 
 export function parseDateLocal(dateIso: string): Date | null {

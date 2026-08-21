@@ -20,6 +20,10 @@ interface UseConsultaRegisterResult {
     handleRegister: () => Promise<void>;
 }
 
+function normalizeSelectedItems(items: SelectedItem[]): SelectedItem[] {
+    return items.map(item => ({ ...item, quantity: 1 }));
+}
+
 export function useConsultaRegister({
     apptState,
     selectedItems,
@@ -35,14 +39,15 @@ export function useConsultaRegister({
         setSaving(true);
         setError(null);
         try {
-            if (selectedItems.length > 0) {
+            const itemsToSave = normalizeSelectedItems(selectedItems);
+            if (itemsToSave.length > 0) {
                 const payload: Record<string, unknown> = {
                     client: apptState.clientId,
                     appointment: apptState.appointmentId ?? null,
                     charge_type: 'charge',
                     title: `Atendimento${apptState.clientName ? ' — ' + apptState.clientName : ''}`,
                     notes: notes || undefined,
-                    items: selectedItems.map(i => ({
+                    items: itemsToSave.map(i => ({
                         item_type: i.kind === 'service' ? 'service' : 'product',
                         service: i.kind === 'service' ? i.id : null,
                         product: i.kind === 'product' ? i.id : null,
@@ -50,7 +55,8 @@ export function useConsultaRegister({
                         quantity: String(i.quantity),
                         unit_price: String(i.unit_price),
                         paid: i.paid,
-                        paid_at: i.paid && i.paidAt ? `${i.paidAt}T12:00:00Z` : null,
+                        paid_at:
+                            i.paid && i.paidAt ? `${i.paidAt}T12:00:00Z` : null,
                     })),
                 };
                 if (apptState.chargeId) {

@@ -221,7 +221,7 @@ export function useOdontoItemFlows(
                                 arcade_arch: null,
                             };
 
-                await apiFetch('/clinic/odonto/items/', {
+                await apiFetch('/clinic/treatment/items/', {
                     method: 'POST',
                     body: {
                         plan: plan.id,
@@ -293,7 +293,7 @@ export function useOdontoItemFlows(
         setSavingProductFlow(true);
         try {
             const dateToUse = todayISODate();
-            const parent = (await apiFetch('/clinic/odonto/items/', {
+            const parent = (await apiFetch('/clinic/treatment/items/', {
                 method: 'POST',
                 body: {
                     plan: plan.id,
@@ -306,7 +306,7 @@ export function useOdontoItemFlows(
             })) as { id: number };
             for (const row of valid) {
                 const amount = row.value.trim() ? parseAmount(row.value) : null;
-                await apiFetch('/clinic/odonto/items/', {
+                await apiFetch('/clinic/treatment/items/', {
                     method: 'POST',
                     body: {
                         plan: plan.id,
@@ -374,7 +374,7 @@ export function useOdontoItemFlows(
         }
         setSavingEditItem(true);
         try {
-            await apiFetch(`/clinic/odonto/items/${editingItem.id}/`, {
+            await apiFetch(`/clinic/treatment/items/${editingItem.id}/`, {
                 method: 'PATCH',
                 body: {
                     custom_name: name,
@@ -407,7 +407,7 @@ export function useOdontoItemFlows(
     async function deleteItem(itemId: number) {
         if (!window.confirm('Deseja apagar este item?')) return;
         try {
-            await apiFetch(`/clinic/odonto/items/${itemId}/`, {
+            await apiFetch(`/clinic/treatment/items/${itemId}/`, {
                 method: 'DELETE',
             });
             await refreshPlan();
@@ -425,7 +425,7 @@ export function useOdontoItemFlows(
 
     async function markItemCompleted(itemId: number) {
         try {
-            await apiFetch(`/clinic/odonto/items/${itemId}/`, {
+            await apiFetch(`/clinic/treatment/items/${itemId}/`, {
                 method: 'PATCH',
                 body: {
                     status: 'completed',

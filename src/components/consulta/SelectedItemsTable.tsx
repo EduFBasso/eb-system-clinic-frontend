@@ -6,14 +6,12 @@ interface SelectedItemsTableProps {
     items: SelectedItem[];
     total: number;
     onRemove: (key: string) => void;
-    onUpdateQty: (key: string, qty: number) => void;
 }
 
 export default function SelectedItemsTable({
     items,
     total,
     onRemove,
-    onUpdateQty,
 }: SelectedItemsTableProps) {
     if (items.length === 0) {
         return (
@@ -54,30 +52,6 @@ export default function SelectedItemsTable({
                             minWidth: 0,
                         }}
                     >
-                        <input
-                            aria-label={`Quantidade de ${item.name}`}
-                            type='number'
-                            min={1}
-                            value={item.quantity}
-                            onChange={e =>
-                                onUpdateQty(
-                                    item.key,
-                                    parseInt(e.target.value, 10) || 1,
-                                )
-                            }
-                            style={{
-                                width: 54,
-                                minWidth: 54,
-                                boxSizing: 'border-box',
-                                textAlign: 'center',
-                                border: '1px solid var(--color-border)',
-                                borderRadius: 6,
-                                padding: '8px 4px',
-                                fontSize: 16,
-                                background: 'var(--color-bg)',
-                                color: 'var(--color-text)',
-                            }}
-                        />
                         <div style={{ minWidth: 0, flex: 1 }}>
                             <div
                                 style={{
@@ -97,8 +71,7 @@ export default function SelectedItemsTable({
                                     fontSize: 13,
                                 }}
                             >
-                                Subtotal: R${' '}
-                                {formatBRL(item.unit_price * item.quantity)}
+                                Valor: R$ {formatBRL(item.unit_price)}
                             </div>
                         </div>
                         <button

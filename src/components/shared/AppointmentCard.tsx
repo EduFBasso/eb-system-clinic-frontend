@@ -10,7 +10,6 @@ import {
     statusStripeColor,
     statusBackgroundColor,
 } from '../../utils/appointments/status';
-import { hasOdontoAccess } from '../../pages/odontoArcadeHelpers';
 
 export interface SharedAppointmentLike {
     id: number;
@@ -244,11 +243,11 @@ function AppointmentCardViewInner<T extends SharedAppointmentLike>({
                             typeof appt.client === 'number'
                                 ? appt.client
                                 : appt.client?.id;
-                        if (hasOdontoAccess() && clientId) {
+                        if (clientId) {
                             window.history.pushState(
                                 {},
                                 '',
-                                `/odonto/arcada/${clientId}`,
+                                `/treatment/plans/${clientId}`,
                             );
                             window.dispatchEvent(new PopStateEvent('popstate'));
                             return;

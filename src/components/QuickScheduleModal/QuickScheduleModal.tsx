@@ -4,7 +4,6 @@ import { TimePicker10 } from '../TimePicker10/TimePicker10';
 import FloatingDatePicker from '../FloatingDatePicker';
 import QuickScheduleHeader from '../quickschedule/QuickScheduleHeader';
 import DateControlsHeader from '../shared/DateControlsHeader';
-import PendingBanner from '../quickschedule/PendingBanner';
 import QuickScheduleDayList, {
     type DayFilter,
 } from '../quickschedule/QuickScheduleDayList';
@@ -15,7 +14,6 @@ import type { QuickScheduleInitialDraft } from '../../types/agendaFlow';
 import { useAppointmentsRange } from '../../hooks/useAppointments';
 import { getNow } from '../../utils/now';
 import { getWorkTimesFromSnapshot } from '../../utils/agendaSettings';
-import { usePendingGuard } from '../../hooks/usePendingGuard';
 import { useQuickScheduleSave } from '../../hooks/useQuickScheduleSave';
 import { useAgendaSettings } from '../../hooks/useAgendaSettings';
 import { pad2, toMinutes, fromMinutes, weekdayLabel } from '../../utils/hmTime';
@@ -24,7 +22,6 @@ import { useAppointmentCancel } from '../../hooks/useAppointmentCancel';
 import qsStyles from './QuickScheduleModal.module.css';
 
 type VisitType = Appointment['visit_type'];
-type ClientMaybeNext = ClientBasic & { next_appointment_id?: number };
 
 function getAppointmentClientFullName(
     appointment: Appointment | null | undefined,
@@ -245,14 +242,6 @@ export default function QuickScheduleModal({
         startHM,
     ]);
 
-    const { found: pendingFound, refresh: refreshPendingGuard } =
-        usePendingGuard({
-            open,
-            isEdit: isEditing,
-            clientId: client.id,
-        });
-    const isPending = !!pendingFound;
-
     // --- Conflict flow state & derived values ---
     const {
         pendingConflictSelection,
@@ -283,13 +272,8 @@ export default function QuickScheduleModal({
         } catch {
             /* noop */
         }
-        try {
-            refreshPendingGuard();
-        } catch {
-            /* noop */
-        }
         onClose();
-    }, [onClose, refreshPendingGuard, resetConflictFlow]);
+    }, [onClose, resetConflictFlow]);
 
     const { saving, error, clearError, handleSave } = useQuickScheduleSave({
         selectedDate,
@@ -533,14 +517,6 @@ export default function QuickScheduleModal({
                             setShowPicker(true);
                         }}
                     />
-
-                    {!isEditing && isPending && pendingFound && (
-                        <PendingBanner
-                            pendingFound={pendingFound}
-                            client={client as ClientMaybeNext}
-                            onClose={handleImmediateClose}
-                        />
-                    )}
 
                     <div className={qsStyles.timeGrid}>
                         <TimePicker10

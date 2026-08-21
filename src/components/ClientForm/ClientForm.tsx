@@ -251,17 +251,20 @@ export function ClientForm({
         clientId: number,
         authToken: string,
     ): Promise<void> {
-        const response = await fetch(`${API_BASE}/clinic/odonto/anamnesis/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${authToken}`,
+        const response = await fetch(
+            `${API_BASE}/clinic/treatment/anamnesis/`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${authToken}`,
+                },
+                body: JSON.stringify({
+                    client_id: clientId,
+                    ...dentalAnamnesisValues,
+                }),
             },
-            body: JSON.stringify({
-                client_id: clientId,
-                ...dentalAnamnesisValues,
-            }),
-        });
+        );
         if (!response.ok) {
             let detail = 'Falha ao salvar anamnese odontológica.';
             try {

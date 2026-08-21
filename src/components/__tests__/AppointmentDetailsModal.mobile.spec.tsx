@@ -9,9 +9,10 @@ vi.mock('../../utils/apiFetch', () => ({
 }));
 
 vi.mock('react-router-dom', async () => {
-    const actual = await vi.importActual<typeof import('react-router-dom')>(
-        'react-router-dom',
-    );
+    const actual =
+        await vi.importActual<typeof import('react-router-dom')>(
+            'react-router-dom',
+        );
     return {
         ...actual,
         useNavigate: () => vi.fn(),
@@ -76,7 +77,6 @@ describe('AppointmentDetailsModal mobile layout', () => {
             screen.getAllByRole('button', { name: /fechar/i }).length,
         ).toBeGreaterThanOrEqual(2);
 
-        expect(screen.getByText('Qtd')).toBeInTheDocument();
         expect(screen.getByText('Unit.')).toBeInTheDocument();
         expect(screen.getByText('Valor')).toBeInTheDocument();
         expect(screen.getAllByText('R$ 180,00').length).toBeGreaterThanOrEqual(

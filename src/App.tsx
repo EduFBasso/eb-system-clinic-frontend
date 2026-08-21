@@ -131,6 +131,10 @@ function App() {
                         path='/odonto/arcada/:clientId'
                         element={<OdontoArcadeSimplifiedPage />}
                     />
+                    <Route
+                        path='/treatment/plans/:clientId'
+                        element={<OdontoArcadeSimplifiedPage />}
+                    />
                     {/* Full-page scheduler for mobile */}
                     {/** Rota /schedule removida para unificar experiência via modais */}
                     {/* Rota /agenda/settings removida */}

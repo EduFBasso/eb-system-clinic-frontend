@@ -10,14 +10,31 @@ import OdontoPlanWorkspace from '../components/odonto/OdontoPlanWorkspace';
 import { useOdontoTreatmentPlans } from '../hooks/useOdontoTreatmentPlans';
 import { useOdontoItemFlows } from '../hooks/useOdontoItemFlows';
 import { useOdontoCatalogs } from '../hooks/useOdontoCatalogs';
-import { hasOdontoAccess, ORDERED_TEETH } from './odontoArcadeHelpers';
+import { ORDERED_TEETH } from './odontoArcadeHelpers';
 import styles from '../styles/pages/OdontoArcadeSimplifiedPage.module.css';
 
 export default function OdontoArcadeSimplifiedPage() {
     const navigate = useNavigate();
     const { clientId } = useParams();
 
-    const canAccess = React.useMemo(() => hasOdontoAccess(), []);
+    const canAccess = true;
+    const areaTitle = React.useMemo(() => {
+        try {
+            const stored = localStorage.getItem('loggedProfessional');
+            const specialty = stored
+                ? String(
+                      (JSON.parse(stored) as { specialty?: string })
+                          .specialty || '',
+                  )
+                : '';
+            return specialty.toLowerCase().includes('odonto') ||
+                specialty.toLowerCase().includes('dent')
+                ? 'Plano odontológico'
+                : 'Plano de tratamento';
+        } catch {
+            return 'Plano de tratamento';
+        }
+    }, []);
     const numericClientId = React.useMemo(
         () => Number(clientId || 0),
         [clientId],
@@ -36,25 +53,6 @@ export default function OdontoArcadeSimplifiedPage() {
     const [professionalVersion, setProfessionalVersion] = React.useState(0);
     const [profileModalOpen, setProfileModalOpen] = React.useState(false);
 
-    if (!canAccess) {
-        return (
-            <div className={styles.page}>
-                <h1 className={styles.title}>Arcada odontologica</h1>
-                <p className={styles.text}>
-                    Este modulo esta disponivel apenas para profissionais da
-                    area odontologica.
-                </p>
-                <button
-                    type='button'
-                    onClick={() => navigate('/')}
-                    className={styles.btn}
-                >
-                    Voltar
-                </button>
-            </div>
-        );
-    }
-
     return (
         <>
             <div className={styles.page}>
@@ -62,9 +60,7 @@ export default function OdontoArcadeSimplifiedPage() {
                 <header className={styles.headerCard}>
                     <div className={styles.headerInfo}>
                         <div className={styles.headerTitleRow}>
-                            <h1 className={styles.title}>
-                                Arcada odontologica
-                            </h1>
+                            <h1 className={styles.title}>{areaTitle}</h1>
                             <button
                                 type='button'
                                 onClick={() => navigate('/')}

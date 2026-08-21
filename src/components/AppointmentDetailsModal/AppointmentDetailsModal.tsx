@@ -7,10 +7,6 @@ import StickyModalHeader from '../shared/StickyModalHeader';
 import { API_BASE } from '../../config/api';
 import { apiFetch } from '../../utils/apiFetch';
 import type { PendingReturnContext } from '../../types/agendaFlow';
-import {
-    hasOdontoCapability,
-    readLoggedProfessionalCapabilities,
-} from '../../utils/tenantCapabilities';
 
 type ChargeItem = {
     id: number;
@@ -22,6 +18,11 @@ type ChargeItem = {
     unit_price: string;
     paid: boolean;
     paid_at?: string | null;
+};
+
+type ChargeRow = {
+    item: ChargeItem;
+    unit: number;
 };
 
 type Charge = {
@@ -63,6 +64,12 @@ function fmtDateTimeRange(startISO: string, endISO: string) {
     const sh = formatTime(s, { mode: 'local' });
     const eh = formatTime(e, { mode: 'local' });
     return `${day}, ${sh} - ${eh}`;
+}
+
+function chargeItemKey(item: ChargeItem): string {
+    const kind = item.item_type === 'product' ? 'product' : 'service';
+    const name = item.description.trim().toLocaleLowerCase('pt-BR');
+    return `${kind}-${name}`;
 }
 
 export function AppointmentDetailsModal({
@@ -117,10 +124,6 @@ export function AppointmentDetailsModal({
     const [hoveredPaymentId, setHoveredPaymentId] = React.useState<
         number | null
     >(null);
-    const isOdontoTenant = React.useMemo(
-        () => hasOdontoCapability(readLoggedProfessionalCapabilities()),
-        [open],
-    );
     React.useEffect(() => {
         if (!open || !appt) {
             setCharges([]);
@@ -159,29 +162,78 @@ export function AppointmentDetailsModal({
               : undefined;
     }, [appt]);
 
-    const chargeRows = React.useMemo(
-        () =>
-            charges.flatMap(charge =>
-                charge.items.map(item => ({
-                    chargeStatus: charge.status,
-                    item,
-                    qty: parseFloat(item.quantity),
-                    unit: parseFloat(item.unit_price),
-                })),
-            ),
-        [charges],
-    );
+    const chargeRows = React.useMemo<ChargeRow[]>(() => {
+        const rows: ChargeRow[] = [];
+        charges.forEach(charge => {
+            charge.items.forEach(item => {
+                const quantity = Math.max(
+                    1,
+                    Math.round(parseFloat(item.quantity) || 1),
+                );
+                for (let index = 0; index < quantity; index += 1) {
+                    rows.push({
+                        item: { ...item, id: item.id * 1000 + index },
+                        unit: parseFloat(item.unit_price) || 0,
+                    });
+                }
+            });
+        });
+        return rows;
+    }, [charges]);
 
     const confirmPayment = React.useCallback(
-        (item: ChargeItem) => {
+        async (item: ChargeItem) => {
             if (item.paid || localPayments[item.id]) return;
             if (!window.confirm('Confirmar o pagamento deste item?')) return;
-            setLocalPayments(previous => ({
-                ...previous,
-                [item.id]: { paidAt: new Date().toISOString() },
-            }));
+            const paidAt = new Date().toISOString();
+            try {
+                const itemKey = chargeItemKey(item);
+                const affectedCharges = charges.filter(charge =>
+                    charge.items.some(
+                        chargeItem => chargeItemKey(chargeItem) === itemKey,
+                    ),
+                );
+                const updatedCharges = await Promise.all(
+                    affectedCharges.map(async charge => {
+                        const items = charge.items.map(chargeItem =>
+                            chargeItemKey(chargeItem) === itemKey
+                                ? {
+                                      ...chargeItem,
+                                      paid: true,
+                                      paid_at: paidAt,
+                                  }
+                                : chargeItem,
+                        );
+                        return (await apiFetch(
+                            `${API_BASE}/agenda/charges/${charge.id}/`,
+                            { method: 'PATCH', body: { items } },
+                        )) as Charge;
+                    }),
+                );
+                setCharges(previous =>
+                    previous.map(
+                        candidate =>
+                            updatedCharges.find(
+                                updated => updated.id === candidate.id,
+                            ) || candidate,
+                    ),
+                );
+                setLocalPayments(previous => ({
+                    ...previous,
+                    [item.id]: { paidAt },
+                }));
+            } catch {
+                window.dispatchEvent(
+                    new CustomEvent('systemMessage', {
+                        detail: {
+                            text: 'Não foi possível registrar o pagamento deste item.',
+                            type: 'error',
+                        },
+                    }),
+                );
+            }
         },
-        [localPayments],
+        [charges, localPayments],
     );
 
     const renderPaymentBadge = React.useCallback(
@@ -197,7 +249,7 @@ export function AppointmentDetailsModal({
                 <span style={{ position: 'relative', display: 'inline-flex' }}>
                     <button
                         type='button'
-                        onClick={() => confirmPayment(item)}
+                        onClick={() => void confirmPayment(item)}
                         onMouseEnter={() => setHoveredPaymentId(item.id)}
                         onMouseLeave={() => setHoveredPaymentId(null)}
                         title={isPaid ? tooltipText : 'Confirmar pagamento'}
@@ -250,55 +302,15 @@ export function AppointmentDetailsModal({
     );
 
     const chargeTotal = React.useMemo(
-        () => chargeRows.reduce((sum, row) => sum + row.qty * row.unit, 0),
+        () => chargeRows.reduce((sum, row) => sum + row.unit, 0),
         [chargeRows],
     );
 
-    const openConsultaNotebook = React.useCallback(() => {
+    const openTreatmentPlan = React.useCallback(() => {
         if (!appt) return;
-
-        const chargeItems = charges.flatMap(c =>
-            c.items.map(item => ({
-                key:
-                    item.item_type === 'service' && item.service
-                        ? `service-${item.service}`
-                        : item.item_type === 'product' && item.product
-                          ? `product-${item.product}`
-                          : `custom-${item.id}`,
-                kind: (item.item_type === 'product' ? 'product' : 'service') as
-                    | 'service'
-                    | 'product',
-                id:
-                    item.item_type === 'service'
-                        ? (item.service ?? item.id)
-                        : (item.product ?? item.id),
-                name: item.description,
-                unit_price: parseFloat(item.unit_price),
-                quantity: parseFloat(item.quantity),
-                paid: item.paid,
-                paidAt: item.paid
-                    ? item.paid_at
-                        ? item.paid_at.slice(0, 10)
-                        : new Date().toISOString().slice(0, 10)
-                    : undefined,
-            })),
-        );
-
         onClose();
-        navigate('/consulta', {
-            state: {
-                appointmentId: appt.id,
-                clientName,
-                clientId,
-                startAt: appt.start_at,
-                endAt: appt.end_at,
-                chargeId: charges[0]?.id,
-                chargeItems,
-                chargeNotes: charges[0]?.notes ?? '',
-                returnContext,
-            },
-        });
-    }, [appt, charges, clientId, clientName, navigate, onClose, returnContext]);
+        if (clientId) navigate(`/treatment/plans/${clientId}`);
+    }, [appt, clientId, navigate, onClose]);
 
     if (!appt) return null;
 
@@ -432,138 +444,96 @@ export function AppointmentDetailsModal({
                                             width: '100%',
                                         }}
                                     >
-                                        {chargeRows.map(
-                                            ({
-                                                chargeStatus,
-                                                item,
-                                                qty,
-                                                unit,
-                                            }) => (
+                                        {chargeRows.map(({ item, unit }) => (
+                                            <div
+                                                key={item.id}
+                                                style={{
+                                                    border: '1px solid var(--color-border)',
+                                                    borderRadius: 12,
+                                                    padding: '10px 12px',
+                                                    background: item.paid
+                                                        ? 'var(--color-success-bg, #f0faf4)'
+                                                        : 'var(--color-bg)',
+                                                    display: 'grid',
+                                                    gap: 8,
+                                                }}
+                                            >
                                                 <div
-                                                    key={item.id}
                                                     style={{
-                                                        border: '1px solid var(--color-border)',
-                                                        borderRadius: 12,
-                                                        padding: '10px 12px',
-                                                        background:
-                                                            chargeStatus ===
-                                                            'paid'
-                                                                ? 'var(--color-success-bg, #f0faf4)'
-                                                                : 'var(--color-bg)',
-                                                        display: 'grid',
+                                                        display: 'flex',
+                                                        justifyContent:
+                                                            'space-between',
+                                                        alignItems:
+                                                            'flex-start',
                                                         gap: 8,
                                                     }}
                                                 >
                                                     <div
                                                         style={{
-                                                            display: 'flex',
-                                                            justifyContent:
-                                                                'space-between',
-                                                            alignItems:
-                                                                'flex-start',
-                                                            gap: 8,
+                                                            fontSize: 17,
+                                                            fontWeight: 700,
+                                                            color: '#111827',
+                                                            lineHeight: 1.25,
+                                                            minWidth: 0,
                                                         }}
                                                     >
+                                                        {item.description}
+                                                    </div>
+                                                    {renderPaymentBadge(item)}
+                                                </div>
+                                                <div
+                                                    style={{
+                                                        display: 'grid',
+                                                        gridTemplateColumns:
+                                                            'repeat(2, minmax(0, 1fr))',
+                                                        gap: 8,
+                                                    }}
+                                                >
+                                                    <div>
                                                         <div
                                                             style={{
-                                                                fontSize: 17,
+                                                                fontSize: 12,
                                                                 fontWeight: 700,
-                                                                color: '#111827',
-                                                                lineHeight: 1.25,
-                                                                minWidth: 0,
+                                                                color: '#6b7280',
+                                                                textTransform:
+                                                                    'uppercase',
                                                             }}
                                                         >
-                                                            {item.description}
+                                                            Unit.
                                                         </div>
-                                                        {renderPaymentBadge(
-                                                            item,
-                                                        )}
+                                                        <div
+                                                            style={{
+                                                                fontSize: 16,
+                                                                fontWeight: 600,
+                                                            }}
+                                                        >
+                                                            R$ {formatBRL(unit)}
+                                                        </div>
                                                     </div>
-                                                    <div
-                                                        style={{
-                                                            display: 'grid',
-                                                            gridTemplateColumns:
-                                                                'repeat(3, minmax(0, 1fr))',
-                                                            gap: 8,
-                                                        }}
-                                                    >
-                                                        <div>
-                                                            <div
-                                                                style={{
-                                                                    fontSize: 12,
-                                                                    fontWeight: 700,
-                                                                    color: '#6b7280',
-                                                                    textTransform:
-                                                                        'uppercase',
-                                                                }}
-                                                            >
-                                                                Qtd
-                                                            </div>
-                                                            <div
-                                                                style={{
-                                                                    fontSize: 16,
-                                                                    fontWeight: 600,
-                                                                }}
-                                                            >
-                                                                {qty % 1 === 0
-                                                                    ? qty
-                                                                    : qty.toFixed(
-                                                                          2,
-                                                                      )}
-                                                            </div>
+                                                    <div>
+                                                        <div
+                                                            style={{
+                                                                fontSize: 12,
+                                                                fontWeight: 700,
+                                                                color: '#6b7280',
+                                                                textTransform:
+                                                                    'uppercase',
+                                                            }}
+                                                        >
+                                                            Valor
                                                         </div>
-                                                        <div>
-                                                            <div
-                                                                style={{
-                                                                    fontSize: 12,
-                                                                    fontWeight: 700,
-                                                                    color: '#6b7280',
-                                                                    textTransform:
-                                                                        'uppercase',
-                                                                }}
-                                                            >
-                                                                Unit.
-                                                            </div>
-                                                            <div
-                                                                style={{
-                                                                    fontSize: 16,
-                                                                    fontWeight: 600,
-                                                                }}
-                                                            >
-                                                                R${' '}
-                                                                {formatBRL(
-                                                                    unit,
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <div
-                                                                style={{
-                                                                    fontSize: 12,
-                                                                    fontWeight: 700,
-                                                                    color: '#6b7280',
-                                                                    textTransform:
-                                                                        'uppercase',
-                                                                }}
-                                                            >
-                                                                Valor
-                                                            </div>
-                                                            <div
-                                                                style={{
-                                                                    fontSize: 16,
-                                                                    fontWeight: 700,
-                                                                }}
-                                                            >
-                                                                R${' '}
-                                                                {formatBRL(
-                                                                    qty * unit,
-                                                                )}
-                                                            </div>
+                                                        <div
+                                                            style={{
+                                                                fontSize: 16,
+                                                                fontWeight: 700,
+                                                            }}
+                                                        >
+                                                            R$ {formatBRL(unit)}
                                                         </div>
                                                     </div>
                                                 </div>
-                                            ),
-                                        )}
+                                            </div>
+                                        ))}
                                         <div
                                             style={{
                                                 display: 'flex',
@@ -631,19 +601,6 @@ export function AppointmentDetailsModal({
                                                     </th>
                                                     <th
                                                         style={{
-                                                            textAlign: 'center',
-                                                            padding: '6px 8px',
-                                                            fontWeight: 700,
-                                                            color: '#4b5563',
-                                                            whiteSpace:
-                                                                'nowrap',
-                                                            fontSize: 16,
-                                                        }}
-                                                    >
-                                                        Qtd
-                                                    </th>
-                                                    <th
-                                                        style={{
                                                             textAlign: 'right',
                                                             padding: '6px 8px',
                                                             fontWeight: 700,
@@ -685,20 +642,14 @@ export function AppointmentDetailsModal({
                                             </thead>
                                             <tbody>
                                                 {chargeRows.map(
-                                                    ({
-                                                        chargeStatus,
-                                                        item,
-                                                        qty,
-                                                        unit,
-                                                    }) => (
+                                                    ({ item, unit }) => (
                                                         <tr
                                                             key={item.id}
                                                             style={{
                                                                 borderBottom:
                                                                     '1px solid var(--color-border)',
                                                                 background:
-                                                                    chargeStatus ===
-                                                                    'paid'
+                                                                    item.paid
                                                                         ? 'var(--color-success-bg, #f0faf4)'
                                                                         : undefined,
                                                             }}
@@ -714,22 +665,6 @@ export function AppointmentDetailsModal({
                                                                 {
                                                                     item.description
                                                                 }
-                                                            </td>
-                                                            <td
-                                                                style={{
-                                                                    padding:
-                                                                        '7px 8px',
-                                                                    textAlign:
-                                                                        'center',
-                                                                    color: '#374151',
-                                                                    fontSize: 16,
-                                                                }}
-                                                            >
-                                                                {qty % 1 === 0
-                                                                    ? qty
-                                                                    : qty.toFixed(
-                                                                          2,
-                                                                      )}
                                                             </td>
                                                             <td
                                                                 style={{
@@ -762,7 +697,7 @@ export function AppointmentDetailsModal({
                                                             >
                                                                 R${' '}
                                                                 {formatBRL(
-                                                                    qty * unit,
+                                                                    unit,
                                                                 )}
                                                             </td>
                                                             <td
@@ -785,7 +720,7 @@ export function AppointmentDetailsModal({
                                             </tbody>
                                             <tfoot>
                                                 <tr>
-                                                    <td colSpan={3} />
+                                                    <td colSpan={2} />
                                                     <td
                                                         style={{
                                                             padding:
@@ -820,19 +755,15 @@ export function AppointmentDetailsModal({
                         gap: 8,
                     }}
                 >
-                    {!isOdontoTenant && (
-                        <button
-                            onClick={openConsultaNotebook}
-                            className='ui-btn ui-btn--theme'
-                            style={{
-                                flex: isCompactViewport
-                                    ? '1 1 180px'
-                                    : undefined,
-                            }}
-                        >
-                            {charges.length > 0 ? 'Editar' : 'Anotar cobrança'}
-                        </button>
-                    )}
+                    <button
+                        onClick={openTreatmentPlan}
+                        className='ui-btn ui-btn--theme'
+                        style={{
+                            flex: isCompactViewport ? '1 1 180px' : undefined,
+                        }}
+                    >
+                        Abrir plano de tratamento
+                    </button>
                     <button
                         onClick={onClose}
                         className='ui-btn ui-btn--neutral'

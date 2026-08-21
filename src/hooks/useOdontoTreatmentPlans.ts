@@ -70,10 +70,10 @@ export function useOdontoTreatmentPlans(
         setError(null);
         try {
             const [plansRes, archivedPlansRes, clientRes] = await Promise.all([
-                apiFetch(`/clinic/odonto/plans/?client=${numericClientId}`),
+                apiFetch(`/clinic/treatment/plans/?client=${numericClientId}`),
                 showArchivedPlans
                     ? apiFetch(
-                          `/clinic/odonto/plans/?client=${numericClientId}&status=archived`,
+                          `/clinic/treatment/plans/?client=${numericClientId}&status=archived`,
                       )
                     : Promise.resolve([]),
                 apiFetch(`/register/clients/${numericClientId}/`).catch(
@@ -105,7 +105,7 @@ export function useOdontoTreatmentPlans(
                 if (refreshed) {
                     setPlan(refreshed);
                     const itemsRes = await apiFetch(
-                        `/clinic/odonto/items/?plan=${refreshed.id}`,
+                        `/clinic/treatment/items/?plan=${refreshed.id}`,
                     );
                     setItems(asList<TreatmentItem>(itemsRes));
                 } else {
@@ -140,7 +140,7 @@ export function useOdontoTreatmentPlans(
         if (!numericClientId || savingCreatePlan) return;
         setSavingCreatePlan(true);
         try {
-            const created = (await apiFetch('/clinic/odonto/plans/', {
+            const created = (await apiFetch('/clinic/treatment/plans/', {
                 method: 'POST',
                 body: {
                     client: numericClientId,
@@ -182,7 +182,9 @@ export function useOdontoTreatmentPlans(
         setItems([]);
         resetPaymentCondition();
         try {
-            const res = await apiFetch(`/clinic/odonto/items/?plan=${planId}`);
+            const res = await apiFetch(
+                `/clinic/treatment/items/?plan=${planId}`,
+            );
             setItems(asList<TreatmentItem>(res));
         } catch {
             emit('systemMessage', {
@@ -212,7 +214,7 @@ export function useOdontoTreatmentPlans(
         )
             return;
         try {
-            await apiFetch(`/clinic/odonto/plans/${planId}/`, {
+            await apiFetch(`/clinic/treatment/plans/${planId}/`, {
                 method: 'DELETE',
             });
             setAllPlans(prev => prev.filter(p => p.id !== planId));
@@ -241,7 +243,7 @@ export function useOdontoTreatmentPlans(
     async function savePlanNotes(value: string) {
         if (!plan) return;
         try {
-            await apiFetch(`/clinic/odonto/plans/${plan.id}/`, {
+            await apiFetch(`/clinic/treatment/plans/${plan.id}/`, {
                 method: 'PATCH',
                 body: { notes: value },
             });
@@ -262,7 +264,7 @@ export function useOdontoTreatmentPlans(
         setMarkingPrinted(true);
         try {
             const updated = (await apiFetch(
-                `/clinic/odonto/plans/${plan.id}/mark-printed/`,
+                `/clinic/treatment/plans/${plan.id}/mark-printed/`,
                 { method: 'POST' },
             )) as PlanListItem;
             setPlan(updated);

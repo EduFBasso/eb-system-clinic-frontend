@@ -49,7 +49,18 @@ export default function ConsultaPage() {
 
     // Sync items and notes from persisted appointment context (e.g. returning from catalog)
     useEffect(() => {
-        setSelectedItems(apptState.chargeItems ?? []);
+        const sourceItems = apptState.chargeItems ?? [];
+        const expandedItems = sourceItems.flatMap(item =>
+            Array.from(
+                { length: Math.max(1, Math.round(item.quantity || 1)) },
+                (_, index) => ({
+                    ...item,
+                    key: `${item.key}-${index}`,
+                    quantity: 1,
+                }),
+            ),
+        );
+        setSelectedItems(expandedItems);
         setNotes(apptState.chargeNotes ?? '');
     }, [apptState.chargeItems, apptState.chargeNotes]);
 
@@ -105,7 +116,7 @@ export default function ConsultaPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const { addItem, removeItem, updateQty, total } = useConsultaItems({
+    const { addItem, removeItem, total } = useConsultaItems({
         selectedItems,
         setSelectedItems,
     });
@@ -305,7 +316,6 @@ export default function ConsultaPage() {
                     items={selectedItems}
                     total={total}
                     onRemove={removeItem}
-                    onUpdateQty={updateQty}
                 />
 
                 {/* Observações */}

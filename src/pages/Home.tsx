@@ -17,7 +17,6 @@ import { WeeklyAgendaModal } from '../components/WeeklyAgendaModal/WeeklyAgendaM
 import { SystemMessageModal } from '../components/SystemMessageModal/SystemMessageModal';
 import { DailyAgendaModal } from '../components/DailyAgendaModal/DailyAgendaModal';
 import { AppointmentDetailsModal } from '../components/AppointmentDetailsModal/AppointmentDetailsModal';
-import { PendingActionsModal } from '../components/PendingActionsModal/PendingActionsModal';
 import { PageFlashMessage } from '../components/PageFlashMessage/PageFlashMessage';
 import type { Appointment } from '../hooks/useAppointments';
 import type { ClientData } from '../types/ClientData';
@@ -28,7 +27,6 @@ import { focusClientCard } from '../utils/focusClientCard';
 import { useAgendaModals, ensureClientBasic } from '../hooks/useAgendaModals';
 import type { QuickScheduleInitialDraft } from '../types/agendaFlow';
 import { API_BASE } from '../config/api';
-import { usePendingActionsListeners } from '../hooks/usePendingActionsListeners';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useHomeResumeFlows } from '../hooks/useHomeResumeFlows';
 import { unlockPageScroll } from '../utils/unlockPageScroll';
@@ -104,13 +102,6 @@ export default function Home() {
     // Live ping: keep a conservative refresh cadence while page is visible.
     // 60s is enough to keep agenda and pending data fresh.
     useAppointmentsLivePing({ enabled: true, pollIntervalMs: 60000 });
-    const {
-        pendingActionsOpen,
-        pendingAppt,
-        pendingReturnContext,
-        closePendingActions,
-    } = usePendingActionsListeners();
-
     // Seleciona o cliente via ?client=ID e abre modais conforme params (?new, ?edit, ?mode)
     useEffect(() => {
         (async () => {
@@ -324,20 +315,11 @@ export default function Home() {
             weeklyOpen ||
             dailyOpen ||
             detailsOpen ||
-            !!sysMsg ||
-            pendingActionsOpen;
+            !!sysMsg;
         if (!anyOpen) {
             unlockPageScroll();
         }
-    }, [
-        quickOpen,
-        monthlyOpen,
-        weeklyOpen,
-        dailyOpen,
-        detailsOpen,
-        sysMsg,
-        pendingActionsOpen,
-    ]);
+    }, [quickOpen, monthlyOpen, weeklyOpen, dailyOpen, detailsOpen, sysMsg]);
 
     return (
         <>
@@ -442,14 +424,6 @@ export default function Home() {
                             // remove os locks do Monthly que ainda está aberto.
                             setTimeout(() => setDetailsAppt(null), 500);
                         }}
-                    />
-                )}
-                {pendingActionsOpen && pendingAppt && (
-                    <PendingActionsModal
-                        open
-                        appt={pendingAppt}
-                        returnContext={pendingReturnContext}
-                        onClose={closePendingActions}
                     />
                 )}
                 <AppModal
