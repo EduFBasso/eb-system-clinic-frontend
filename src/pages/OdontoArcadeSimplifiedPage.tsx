@@ -10,7 +10,8 @@ import OdontoPlanWorkspace from '../components/odonto/OdontoPlanWorkspace';
 import { useOdontoTreatmentPlans } from '../hooks/useOdontoTreatmentPlans';
 import { useOdontoItemFlows } from '../hooks/useOdontoItemFlows';
 import { useOdontoCatalogs } from '../hooks/useOdontoCatalogs';
-import { ORDERED_TEETH } from './odontoArcadeHelpers';
+import { ORDERED_TEETH, planDisplayName } from './odontoArcadeHelpers';
+import { on } from '../events/bus';
 import styles from '../styles/pages/OdontoArcadeSimplifiedPage.module.css';
 
 export default function OdontoArcadeSimplifiedPage() {
@@ -18,23 +19,6 @@ export default function OdontoArcadeSimplifiedPage() {
     const { clientId } = useParams();
 
     const canAccess = true;
-    const areaTitle = React.useMemo(() => {
-        try {
-            const stored = localStorage.getItem('loggedProfessional');
-            const specialty = stored
-                ? String(
-                      (JSON.parse(stored) as { specialty?: string })
-                          .specialty || '',
-                  )
-                : '';
-            return specialty.toLowerCase().includes('odonto') ||
-                specialty.toLowerCase().includes('dent')
-                ? 'Plano odontológico'
-                : 'Plano de tratamento';
-        } catch {
-            return 'Plano de tratamento';
-        }
-    }, []);
     const numericClientId = React.useMemo(
         () => Number(clientId || 0),
         [clientId],
@@ -51,72 +35,60 @@ export default function OdontoArcadeSimplifiedPage() {
         itemFlows.productFlowOpen,
     );
     const [professionalVersion, setProfessionalVersion] = React.useState(0);
-    const [profileModalOpen, setProfileModalOpen] = React.useState(false);
+
+    React.useEffect(() => {
+        return on('treatmentSettingsUpdated', settings => {
+            if (typeof settings.showArchivedPlans === 'boolean') {
+                plans.setShowArchivedPlans(settings.showArchivedPlans);
+            }
+            if (typeof settings.lockAfterPrint === 'boolean') {
+                void plans.updateLockAfterPrint(settings.lockAfterPrint);
+            }
+        });
+    }, [plans.setShowArchivedPlans, plans.updateLockAfterPrint]);
 
     return (
         <>
             <div className={styles.page}>
                 {/* ── Page header ─────────────────────────────────────────── */}
-                <header className={styles.headerCard}>
+                <header
+                    className={
+                        plans.plan
+                            ? styles.planDetailPageHeader
+                            : styles.planListPageHeader
+                    }
+                >
                     <div className={styles.headerInfo}>
                         <div className={styles.headerTitleRow}>
-                            <h1 className={styles.title}>{areaTitle}</h1>
-                            <button
-                                type='button'
-                                onClick={() => navigate('/')}
-                                className={styles.closeBtn}
-                                aria-label='Voltar para clientes'
-                                title='Voltar para clientes'
+                            <h1
+                                className={
+                                    plans.plan
+                                        ? styles.planListPageTitle
+                                        : styles.planListPageTitle
+                                }
                             >
-                                X
-                            </button>
+                                {plans.plan
+                                    ? planDisplayName(plans.plan)
+                                    : 'Planos de Tratamento'}
+                            </h1>
+                            {!plans.plan && (
+                                <button
+                                    type='button'
+                                    onClick={() => navigate('/')}
+                                    className={styles.planListPageCloseBtn}
+                                    aria-label='Voltar para clientes'
+                                    title='Voltar para clientes'
+                                >
+                                    X
+                                </button>
+                            )}
                         </div>
-                        <p className={styles.subtitle}>
-                            {plans.clientName ?? `Cliente #${clientId}`}
-                        </p>
+                        {plans.plan && (
+                            <p className={styles.patientName}>
+                                {plans.clientName ?? `Cliente #${clientId}`}
+                            </p>
+                        )}
                     </div>
-
-                    {/* Workspace action buttons — visible only when a plan is active */}
-                    {plans.plan && (
-                        <div className={styles.headerActions}>
-                            <div className={styles.headerActionsBottomRow}>
-                                <button
-                                    type='button'
-                                    onClick={() => setProfileModalOpen(true)}
-                                    className={styles.btn}
-                                >
-                                    Dados da clínica
-                                </button>
-                                <button
-                                    type='button'
-                                    onClick={itemFlows.openServiceFlowModal}
-                                    className={styles.btnPrimary}
-                                    disabled={plans.isPlanLocked}
-                                >
-                                    Novo Tratamento
-                                </button>
-                                <button
-                                    type='button'
-                                    onClick={itemFlows.openProductFlowModal}
-                                    className={styles.btnPrimary}
-                                    disabled={plans.isPlanLocked}
-                                >
-                                    Novo Produto
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                    {!plans.plan && (
-                        <div className={styles.headerActions}>
-                            <button
-                                type='button'
-                                onClick={() => setProfileModalOpen(true)}
-                                className={styles.btn}
-                            >
-                                Dados da clínica
-                            </button>
-                        </div>
-                    )}
                 </header>
 
                 {plans.loading && <p className={styles.text}>Carregando...</p>}
@@ -128,36 +100,10 @@ export default function OdontoArcadeSimplifiedPage() {
                 {!plans.loading && !plans.error && !plans.plan && (
                     <OdontoPlanListView
                         allPlans={plans.allPlans}
-                        showArchivedPlans={plans.showArchivedPlans}
-                        onShowArchivedPlansChange={plans.setShowArchivedPlans}
                         onSelect={id => void plans.selectPlan(id)}
                         onDelete={id => void plans.deletePlan(id)}
                         onCreateClick={() => plans.setPlanModalOpen(true)}
                     />
-                )}
-
-                {!plans.loading && !plans.error && (
-                    <section className={styles.printLockPreference}>
-                        <label className={styles.printLockToggle}>
-                            <input
-                                type='checkbox'
-                                checked={plans.lockAfterPrint}
-                                onChange={event =>
-                                    void plans.updateLockAfterPrint(
-                                        event.target.checked,
-                                    )
-                                }
-                            />
-                            <span>
-                                <strong>Bloquear edição após imprimir?</strong>
-                                <small>
-                                    Quando ativo, a impressão trava este plano
-                                    contra novas alterações. Planos já travados
-                                    continuam protegidos.
-                                </small>
-                            </span>
-                        </label>
-                    </section>
                 )}
 
                 {/* ── B: Workspace (plan active) ───────────────────────────── */}
@@ -172,6 +118,8 @@ export default function OdontoArcadeSimplifiedPage() {
                         markingPrinted={plans.markingPrinted}
                         onBack={plans.backToPlanList}
                         onMarkPrinted={() => void plans.markPrinted()}
+                        onOpenService={itemFlows.openServiceFlowModal}
+                        onOpenProduct={itemFlows.openProductFlowModal}
                         onSaveNotes={value => void plans.savePlanNotes(value)}
                         paymentCondition={plans.paymentCondition}
                         onPaymentConditionChange={plans.setPaymentCondition}
@@ -197,17 +145,6 @@ export default function OdontoArcadeSimplifiedPage() {
                     saving={plans.savingCreatePlan}
                     onClose={() => plans.setPlanModalOpen(false)}
                     onSave={data => void plans.createPlan(data)}
-                    onProfileSaved={() =>
-                        setProfessionalVersion(version => version + 1)
-                    }
-                />
-
-                <OdontoPlanCreateModal
-                    open={profileModalOpen}
-                    saving={false}
-                    profileOnly
-                    onClose={() => setProfileModalOpen(false)}
-                    onSave={() => undefined}
                     onProfileSaved={() =>
                         setProfessionalVersion(version => version + 1)
                     }

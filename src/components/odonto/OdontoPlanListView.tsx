@@ -4,8 +4,6 @@ import styles from '../../styles/pages/OdontoArcadeSimplifiedPage.module.css';
 
 type Props = {
     allPlans: PlanListItem[];
-    showArchivedPlans: boolean;
-    onShowArchivedPlansChange: (show: boolean) => void;
     onSelect: (id: number) => void;
     onDelete: (id: number) => void;
     onCreateClick: () => void;
@@ -13,8 +11,6 @@ type Props = {
 
 export default function OdontoPlanListView({
     allPlans,
-    showArchivedPlans,
-    onShowArchivedPlansChange,
     onSelect,
     onDelete,
     onCreateClick,
@@ -22,13 +18,12 @@ export default function OdontoPlanListView({
     return (
         <>
             <div className={styles.planListHeader}>
-                <h2 className={styles.sectionTitle}>Planos de Tratamento</h2>
                 <button
                     type='button'
                     className={styles.btnPrimary}
                     onClick={onCreateClick}
                 >
-                    + Criar Novo Plano
+                    + Novo Plano
                 </button>
             </div>
 
@@ -50,23 +45,6 @@ export default function OdontoPlanListView({
                     ))}
                 </div>
             )}
-
-            <label className={styles.archivedPlansToggle}>
-                <input
-                    type='checkbox'
-                    checked={showArchivedPlans}
-                    onChange={event =>
-                        onShowArchivedPlansChange(event.target.checked)
-                    }
-                />
-                <span>
-                    <strong>Mostrar planos arquivados</strong>
-                    <small>
-                        Planos removidos com tratamentos ficam arquivados para
-                        preservar o histórico e permanecem ocultos por padrão.
-                    </small>
-                </span>
-            </label>
         </>
     );
 }

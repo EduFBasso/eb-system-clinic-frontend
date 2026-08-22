@@ -1,4 +1,3 @@
-import React from 'react';
 import type { TreatmentItem } from '../../pages/odontoArcadeHelpers';
 import { formatMoney } from '../../pages/odontoArcadeHelpers';
 import styles from '../../styles/pages/OdontoArcadeSimplifiedPage.module.css';
@@ -6,78 +5,11 @@ import styles from '../../styles/pages/OdontoArcadeSimplifiedPage.module.css';
 type Props = {
     item: TreatmentItem;
     childItems: TreatmentItem[];
-    isExpanded: boolean;
-    onToggleDetails: (itemId: number) => void;
     onEdit: (item: TreatmentItem) => void;
     onDelete: (itemId: number) => void;
-    onMarkCompleted: (itemId: number) => void;
     /** True when the parent plan is printed and locked against edits. */
     locked?: boolean;
 };
-
-function formatCompletionDate(value: string | null): string {
-    if (!value) return 'Pago';
-    const parsed = new Date(`${value}T00:00:00`);
-    if (Number.isNaN(parsed.getTime())) return `Pago em ${value}`;
-    return `Pago em ${parsed.toLocaleDateString('pt-BR')}`;
-}
-
-function PaymentBadge({
-    item,
-    onMarkCompleted,
-}: {
-    item: TreatmentItem;
-    onMarkCompleted: (itemId: number) => void;
-}) {
-    const isCompleted = item.status === 'completed';
-    const paymentDate = formatCompletionDate(item.completed_at);
-    return (
-        <span className={styles.paymentBadgeSlot}>
-            <button
-                type='button'
-                className={`${styles.paymentBadge} ${
-                    isCompleted
-                        ? styles.paymentBadgePaid
-                        : styles.paymentBadgePending
-                }`}
-                onClick={() => {
-                    if (!isCompleted) onMarkCompleted(item.id);
-                }}
-                disabled={isCompleted}
-                aria-label={isCompleted ? paymentDate : 'Marcar como pago'}
-            >
-                {formatMoney(item.patient_price)}
-            </button>
-        </span>
-    );
-}
-
-function EyeIcon() {
-    return (
-        <svg
-            viewBox='0 0 24 24'
-            aria-hidden='true'
-            className={styles.actionIcon}
-        >
-            <path
-                d='M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='1.8'
-                strokeLinecap='round'
-                strokeLinejoin='round'
-            />
-            <circle
-                cx='12'
-                cy='12'
-                r='3.2'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='1.8'
-            />
-        </svg>
-    );
-}
 
 function PencilIcon() {
     return (
@@ -111,15 +43,11 @@ function TrashIcon() {
 
 function ItemActions({
     item,
-    isExpanded,
-    onToggleDetails,
     onEdit,
     onDelete,
     locked,
 }: {
     item: TreatmentItem;
-    isExpanded: boolean;
-    onToggleDetails: (itemId: number) => void;
     onEdit: (p: TreatmentItem) => void;
     onDelete: (id: number) => void;
     locked?: boolean;
@@ -135,15 +63,6 @@ function ItemActions({
                 disabled={locked}
             >
                 <PencilIcon />
-            </button>
-            <button
-                type='button'
-                className={`${styles.iconActionBtn} ${styles.iconDetail}`}
-                onClick={() => onToggleDetails(item.id)}
-                aria-label={isExpanded ? 'Ocultar detalhes' : 'Ver detalhes'}
-                title={isExpanded ? 'Ocultar detalhes' : 'Ver detalhes'}
-            >
-                <EyeIcon />
             </button>
             {!locked && (
                 <button
@@ -163,133 +82,102 @@ function ItemActions({
 export default function OdontoProcedureCard({
     item,
     childItems,
-    isExpanded,
-    onToggleDetails,
     onEdit,
     onDelete,
-    onMarkCompleted,
     locked,
 }: Props) {
-    const [expandedChildId, setExpandedChildId] = React.useState<number | null>(
-        null,
-    );
     const isProductContainer = childItems.length > 0;
     const ctx = item.dental_context;
     const itemLabel = item.service_name || item.custom_name || 'Tratamento';
 
-    let cardTitle: string;
-    let cardSubtitle: string | null = null;
+    let anatomicalLabel: string | null = null;
 
-    if (isProductContainer) {
-        cardTitle = 'Produtos usados';
-    } else if (ctx?.scope === 'tooth' && ctx.tooth_number) {
-        cardTitle = itemLabel;
-        cardSubtitle = `Dente ${ctx.tooth_number}${ctx.tooth_surface ? ` [${ctx.tooth_surface}]` : ''}`;
+    if (ctx?.scope === 'tooth' && ctx.tooth_number) {
+        anatomicalLabel = `Dente ${ctx.tooth_number}`;
     } else if (ctx?.scope === 'arch' && ctx.arcade_arch) {
         const archLabel =
             ctx.arcade_arch === 'superior' ? 'Superior' : 'Inferior';
-        cardTitle = itemLabel;
-        cardSubtitle = `Arcada ${archLabel}`;
+        anatomicalLabel = `Arcada ${archLabel}`;
     } else if (ctx?.scope === 'full') {
-        cardTitle = itemLabel;
-        cardSubtitle = 'Arcada Superior e Inferior';
-    } else {
-        cardTitle = itemLabel;
+        anatomicalLabel = 'Arcada Superior e Inferior';
     }
 
     return (
         <div className={styles.procItem}>
-            <div className={styles.procMain}>
-                <div className={styles.procInfoBlock}>
-                    <div
-                        className={
-                            isProductContainer
-                                ? styles.productsTitleRow
-                                : styles.procTitleRow
-                        }
-                    >
-                        <strong>{cardTitle}</strong>
-                        {cardSubtitle && (
-                            <p className={styles.textMuted}>{cardSubtitle}</p>
-                        )}
-                    </div>
+            <div className={styles.clinicalCardHeader}>
+                <div className={styles.clinicalIdentity}>
+                    {anatomicalLabel && (
+                        <strong className={styles.anatomicalLabel}>
+                            {anatomicalLabel}
+                        </strong>
+                    )}
+                    <strong className={styles.clinicalServiceName}>
+                        {isProductContainer ? 'Produtos usados' : itemLabel}
+                    </strong>
                 </div>
                 {!isProductContainer && (
-                    <div className={styles.procHeaderActions}>
-                        <PaymentBadge
-                            item={item}
-                            onMarkCompleted={onMarkCompleted}
-                        />
-                        <ItemActions
-                            item={item}
-                            isExpanded={isExpanded}
-                            onToggleDetails={onToggleDetails}
-                            onEdit={onEdit}
-                            onDelete={onDelete}
-                            locked={locked}
-                        />
-                    </div>
+                    <ItemActions
+                        item={item}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                        locked={locked}
+                    />
                 )}
             </div>
 
-            {isExpanded && !isProductContainer && (
-                <div className={styles.procDetailsBox}>
-                    {ctx?.scope === 'tooth' && (
-                        <p className={styles.textMuted}>
-                            <strong>Faces:</strong> {ctx.tooth_surface || '-'}
-                        </p>
-                    )}
-                    {item.notes && (
-                        <p className={styles.textMuted}>
-                            <strong>Observações:</strong> {item.notes}
-                        </p>
-                    )}
-                </div>
+            {!isProductContainer && (
+                <>
+                    <div className={styles.clinicalDetails}>
+                        {ctx?.scope === 'tooth' && ctx.tooth_surface && (
+                            <p>
+                                <strong>Face:</strong> {ctx.tooth_surface}
+                            </p>
+                        )}
+                        {item.notes && (
+                            <p>
+                                <strong>Observação clínica:</strong>{' '}
+                                {item.notes}
+                            </p>
+                        )}
+                    </div>
+                    <div className={styles.clinicalCardFooter}>
+                        <strong className={styles.clinicalPrice}>
+                            {formatMoney(item.patient_price)}
+                        </strong>
+                    </div>
+                </>
             )}
 
             {childItems.length > 0 && (
                 <div className={styles.productsBlock}>
-                    {childItems.map(child => {
-                        const childExpanded = expandedChildId === child.id;
-                        return (
-                            <div key={child.id} className={styles.productRow}>
-                                <div className={styles.procInfoBlock}>
-                                    <div className={styles.procTitleRow}>
-                                        <span>{child.custom_name}</span>
-                                    </div>
-                                </div>
-                                <div className={styles.procHeaderActions}>
-                                    <PaymentBadge
-                                        item={child}
-                                        onMarkCompleted={onMarkCompleted}
-                                    />
-                                    <ItemActions
-                                        item={child}
-                                        isExpanded={childExpanded}
-                                        onToggleDetails={childId =>
-                                            setExpandedChildId(
-                                                childId === child.id &&
-                                                    childExpanded
-                                                    ? null
-                                                    : childId,
-                                            )
-                                        }
-                                        onEdit={onEdit}
-                                        onDelete={onDelete}
-                                        locked={locked}
-                                    />
-                                </div>
-                                {childExpanded && child.notes && (
-                                    <div className={styles.procDetailsBox}>
-                                        <p className={styles.textMuted}>
-                                            <strong>Observações:</strong>{' '}
-                                            {child.notes}
-                                        </p>
-                                    </div>
-                                )}
+                    {childItems.map(child => (
+                        <div key={child.id} className={styles.productRow}>
+                            <div className={styles.clinicalCardHeader}>
+                                <strong className={styles.clinicalServiceName}>
+                                    {child.custom_name}
+                                </strong>
+                                <ItemActions
+                                    item={child}
+                                    onEdit={onEdit}
+                                    onDelete={onDelete}
+                                    locked={locked}
+                                />
                             </div>
-                        );
-                    })}
+                            {child.notes && (
+                                <div className={styles.clinicalDetails}>
+                                    <p>
+                                        <strong>Observação clínica:</strong>{' '}
+                                        {child.notes}
+                                    </p>
+                                </div>
+                            )}
+                            <div className={styles.clinicalCardFooter}>
+                                <strong className={styles.clinicalPrice}>
+                                    {formatMoney(child.patient_price)}
+                                </strong>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             )}
         </div>

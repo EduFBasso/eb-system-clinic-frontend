@@ -9,7 +9,9 @@ function isMobileDevice() {
 }
 // frontend\src\components\NavBar.tsx
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AboutModal } from '../AboutModal/AboutModal';
+import OdontoPlanCreateModal from '../odonto/OdontoPlanCreateModal';
 import { SessionExpiredModal } from '../SessionExpiredModal/SessionExpiredModal';
 import { API_BASE } from '../../config/api';
 import { openClientForm } from '../../utils/openClientForm';
@@ -108,6 +110,7 @@ export const NavBar: React.FC<NavBarProps> = ({
 
     // About modal state
     const [aboutOpen, setAboutOpen] = useState(false);
+    const [clinicProfileOpen, setClinicProfileOpen] = useState(false);
     // Admin modals (superuser only)
     const [createProfOpen, setCreateProfOpen] = useState(false);
     // Biometric / WebAuthn
@@ -547,7 +550,16 @@ export const NavBar: React.FC<NavBarProps> = ({
                                     setAboutOpen(true);
                                 }}
                             >
-                                Sobre
+                                Configurações
+                            </button>
+                            <button
+                                className={styles.dropdownItem}
+                                onClick={() => {
+                                    setDropdownOpen(false);
+                                    setClinicProfileOpen(true);
+                                }}
+                            >
+                                Editar Dados da Clínica
                             </button>
                             {/* Opções adicionais removidas para simplificar o menu de Clientes */}
                         </div>
@@ -1017,6 +1029,17 @@ export const NavBar: React.FC<NavBarProps> = ({
                 open={createProfOpen}
                 onClose={() => setCreateProfOpen(false)}
             />
+            {createPortal(
+                <OdontoPlanCreateModal
+                    open={clinicProfileOpen}
+                    saving={false}
+                    profileOnly
+                    onClose={() => setClinicProfileOpen(false)}
+                    onSave={() => undefined}
+                    onProfileSaved={() => undefined}
+                />,
+                document.body,
+            )}
             {/* Modal: oferecer registro de biometria após login */}
             <AppModal
                 open={offerBiometricOpen}

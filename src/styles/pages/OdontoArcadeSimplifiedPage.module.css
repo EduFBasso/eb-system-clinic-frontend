@@ -2,11 +2,60 @@
     display: grid;
     gap: 12px;
     padding: 12px;
-    background: #f4f6f8;
-    min-height: 100%;
+    background: var(--color-bg);
+    min-height: 100vh;
+    align-content: start;
     max-width: 100%;
     overflow-x: hidden;
     box-sizing: border-box;
+}
+
+.planListPageHeader {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.planDetailPageHeader {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.planDetailPageHeader .headerTitleRow {
+    padding-right: 0;
+}
+
+.planListPageTitle {
+    margin: 0;
+    width: 100%;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 600;
+    font-size: clamp(1.8rem, 3vw, 2.5rem);
+    line-height: 1.2;
+    color: var(--color-primary);
+    letter-spacing: 0.01em;
+}
+
+.planListPageCloseBtn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    background: var(--color-input, var(--color-bg-section));
+    color: var(--color-text-main, var(--color-heading));
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 .headerCard,
 .card,
@@ -52,6 +101,16 @@
     color: var(--color-text-main, var(--color-heading));
 }
 
+.patientName {
+    margin: 4px 0 0;
+    font-size: 18px;
+    line-height: 1.25;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 600;
+    color: var(--color-primary);
+    letter-spacing: 0.01em;
+}
+
 .sectionTitle {
     margin: 0;
     font-size: 20px;
@@ -64,6 +123,11 @@
     justify-content: space-between;
     gap: 10px;
     flex-wrap: wrap;
+}
+
+.arcadeMapCard {
+    width: 100%;
+    min-width: 0;
 }
 
 .text {
@@ -488,7 +552,7 @@
     overflow: auto;
     border: 1px solid var(--color-border);
     border-radius: 12px;
-    background: var(--color-panel, var(--color-bg));
+    background: var(--color-bg-section, #ffffff);
     padding: 12px;
     display: grid;
     gap: 10px;
@@ -822,13 +886,13 @@
 /* ── Procedure card refinement ────────────────────────────────────────────── */
 
 .procItem {
-    border: 1px solid var(--color-border);
+    border: 1px solid color-mix(in oklab, var(--color-border) 72%, #d1d5db);
     border-radius: 8px;
-    background: #f5f7f8;
-    padding: 10px;
+    background: #ffffff;
+    padding: 14px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
     margin-bottom: 8px;
     max-width: 100%;
     overflow: visible;
@@ -841,6 +905,75 @@
 
 .procItem:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+}
+
+.clinicalCardHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+}
+
+.clinicalIdentity {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    min-width: 0;
+}
+
+.anatomicalLabel {
+    color: var(--color-primary);
+    font-size: 15px;
+    white-space: nowrap;
+}
+
+.clinicalServiceName {
+    color: var(--color-text-main, var(--color-heading));
+    font-size: 15px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.clinicalDetails {
+    display: grid;
+    gap: 6px;
+    color: var(--color-text-soft, var(--color-text));
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.clinicalDetails p {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.clinicalCardFooter {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    min-height: 24px;
+}
+
+.clinicalPrice {
+    color: var(--color-text-main, var(--color-heading));
+    font-size: 16px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.productRow {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    width: 100%;
+    padding: 12px;
+    border: 1px solid color-mix(in oklab, var(--color-border) 72%, #d1d5db);
+    border-radius: 8px;
+    background: #ffffff;
+    box-sizing: border-box;
 }
 
 .value {
@@ -873,19 +1006,8 @@
         width: 100%;
     }
 
-    .procInfoBlock {
-        max-width: 45%;
-    }
-
-    /* On small screens keep the value + actions inline without shrinking icons. */
-    .procMain {
-        flex-wrap: nowrap;
-        align-items: center;
-    }
-
-    /* Product rows keep horizontal on mobile for compact look */
-    .productRow {
-        align-items: start;
+    .clinicalCardHeader {
+        gap: 8px;
     }
 
     .modalCard {
@@ -928,7 +1050,7 @@
     }
 
     .procItem {
-        padding: 8px;
+        padding: 12px;
     }
 
 }
@@ -938,15 +1060,17 @@
 .planListHeader {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 12px;
     flex-wrap: wrap;
 }
 
 .planList {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
+    align-items: start;
+    width: 100%;
 }
 
 .archivedPlansToggle {
@@ -986,20 +1110,28 @@
 .planWorkspaceHeader {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
-    background: #ffffff;
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
-    padding: 10px 14px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
 }
 
-.planWorkspaceTitle {
-    flex: 1;
+.planWorkspaceFooter {
     display: flex;
-    flex-direction: column;
-    min-width: 0;
-    gap: 2px;
+    justify-content: flex-end;
+    width: 100%;
+    padding: 4px 0 8px;
+}
+
+.planWorkspaceFooter .printTooltip {
+    top: auto;
+    bottom: calc(100% + 8px);
+}
+
+.planWorkspaceFooter .printButtonLabel {
+    display: inline;
 }
 
 .planNotes {

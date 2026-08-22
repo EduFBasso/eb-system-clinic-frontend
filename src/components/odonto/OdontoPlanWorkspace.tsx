@@ -1,12 +1,7 @@
 import React from 'react';
 import { OdontoToothGrid } from '../OdontoToothGrid/OdontoToothGrid';
 import OdontoProcedureCard from './OdontoProcedureCard';
-import {
-    formatDate,
-    formatMoney,
-    planDisplayName,
-    ORDERED_TEETH,
-} from '../../pages/odontoArcadeHelpers';
+import { formatMoney, ORDERED_TEETH } from '../../pages/odontoArcadeHelpers';
 import type {
     ItemGroup,
     PaymentCondition,
@@ -24,6 +19,8 @@ type Props = {
     markingPrinted: boolean;
     onBack: () => void;
     onMarkPrinted: () => void;
+    onOpenService: () => void;
+    onOpenProduct: () => void;
     onSaveNotes: (value: string) => void;
 
     paymentCondition: PaymentCondition;
@@ -51,6 +48,8 @@ export default function OdontoPlanWorkspace({
     markingPrinted,
     onBack,
     onMarkPrinted,
+    onOpenService,
+    onOpenProduct,
     onSaveNotes,
     paymentCondition,
     onPaymentConditionChange,
@@ -107,50 +106,22 @@ export default function OdontoPlanWorkspace({
                 <button type='button' className={styles.btn} onClick={onBack}>
                     ← Planos
                 </button>
-                <div className={styles.planWorkspaceTitle}>
-                    <strong>{planDisplayName(plan)}</strong>
-                    <span className={styles.textMuted}>
-                        {plan.created_at
-                            ? formatDate(plan.created_at.slice(0, 10))
-                            : ''}
-                    </span>
-                </div>
-                <span
-                    className={styles.printTooltipSlot}
-                    onMouseEnter={showPrintTooltip}
-                    onMouseLeave={hidePrintTooltip}
+                <button
+                    type='button'
+                    className={styles.btnPrimary}
+                    onClick={onOpenService}
+                    disabled={isPlanLocked}
                 >
-                    <button
-                        type='button'
-                        className={styles.btn}
-                        onClick={onMarkPrinted}
-                        disabled={markingPrinted}
-                        onFocus={showPrintTooltip}
-                        onBlur={hidePrintTooltip}
-                        onTouchStart={showPrintTooltipOnTouch}
-                        aria-label='Imprimir orçamento A4'
-                        aria-describedby={
-                            printTooltipVisible
-                                ? 'print-lock-tooltip'
-                                : undefined
-                        }
-                    >
-                        <span aria-hidden='true'>🖨</span>{' '}
-                        <span className={styles.printButtonLabel}>
-                            Imprimir Orçamento
-                        </span>
-                    </button>
-                    {printTooltipVisible && (
-                        <span
-                            id='print-lock-tooltip'
-                            className={styles.printTooltip}
-                            role='status'
-                        >
-                            Ao imprimir, o orçamento ficará travado e não poderá
-                            mais ser editado.
-                        </span>
-                    )}
-                </span>
+                    Novo Tratamento
+                </button>
+                <button
+                    type='button'
+                    className={styles.btnPrimary}
+                    onClick={onOpenProduct}
+                    disabled={isPlanLocked}
+                >
+                    Novo Produto
+                </button>
             </div>
 
             {isPlanLocked && (
@@ -163,6 +134,54 @@ export default function OdontoPlanWorkspace({
                     alterações, crie um novo plano.
                 </div>
             )}
+
+            {/* Arcade map */}
+            <section className={`${styles.card} ${styles.arcadeMapCard}`}>
+                <div className={styles.sectionHeaderRow}>
+                    <h2 className={styles.sectionTitle}>Mapa da arcada</h2>
+                    <button
+                        type='button'
+                        className={styles.viewBtn}
+                        onClick={() => setMapVisible(prev => !prev)}
+                        aria-label={mapVisible ? 'Ocultar mapa' : 'Ver mapa'}
+                    >
+                        <svg
+                            viewBox='0 0 24 24'
+                            aria-hidden='true'
+                            className={styles.viewIcon}
+                        >
+                            <path
+                                d='M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z'
+                                fill='none'
+                                stroke='currentColor'
+                                strokeWidth='1.8'
+                                strokeLinecap='round'
+                                strokeLinejoin='round'
+                            />
+                            <circle
+                                cx='12'
+                                cy='12'
+                                r='3.2'
+                                fill='none'
+                                stroke='currentColor'
+                                strokeWidth='1.8'
+                            />
+                        </svg>
+                        {mapVisible ? 'Ocultar' : 'Ver'}
+                    </button>
+                </div>
+                {mapVisible && (
+                    <div className={styles.gridWrap}>
+                        <OdontoToothGrid
+                            orderedTeeth={ORDERED_TEETH}
+                            selectedToothNumber={null}
+                            suppressDateHighlights={false}
+                            activeDateToothNumbers={activeToothNumbers}
+                            readOnly
+                        />
+                    </div>
+                )}
+            </section>
 
             {/* Observations textarea — persisted on blur */}
             <section className={styles.card}>
@@ -247,57 +266,9 @@ export default function OdontoPlanWorkspace({
                 )}
             </section>
 
-            {/* Arcade map */}
+            {/* Procedures list */}
             <section className={styles.card}>
-                <div className={styles.sectionHeaderRow}>
-                    <h2 className={styles.sectionTitle}>Mapa da arcada</h2>
-                    <button
-                        type='button'
-                        className={styles.viewBtn}
-                        onClick={() => setMapVisible(prev => !prev)}
-                        aria-label={mapVisible ? 'Ocultar mapa' : 'Ver mapa'}
-                    >
-                        <svg
-                            viewBox='0 0 24 24'
-                            aria-hidden='true'
-                            className={styles.viewIcon}
-                        >
-                            <path
-                                d='M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z'
-                                fill='none'
-                                stroke='currentColor'
-                                strokeWidth='1.8'
-                                strokeLinecap='round'
-                                strokeLinejoin='round'
-                            />
-                            <circle
-                                cx='12'
-                                cy='12'
-                                r='3.2'
-                                fill='none'
-                                stroke='currentColor'
-                                strokeWidth='1.8'
-                            />
-                        </svg>
-                        {mapVisible ? 'Ocultar' : 'Ver'}
-                    </button>
-                </div>
-                {mapVisible && (
-                    <div className={styles.gridWrap}>
-                        <OdontoToothGrid
-                            orderedTeeth={ORDERED_TEETH}
-                            selectedToothNumber={null}
-                            suppressDateHighlights={false}
-                            activeDateToothNumbers={activeToothNumbers}
-                            readOnly
-                        />
-                    </div>
-                )}
-            </section>
-
-            {/* Appointments list */}
-            <section className={styles.card}>
-                <h2 className={styles.sectionTitle}>Atendimentos</h2>
+                <h2 className={styles.sectionTitle}>Procedimentos</h2>
                 {groupedItems.length === 0 ? (
                     <p className={styles.textMuted}>
                         Nenhum procedimento cadastrado.
@@ -318,15 +289,8 @@ export default function OdontoPlanWorkspace({
                                             key={item.id}
                                             item={item}
                                             childItems={children}
-                                            isExpanded={expandedItemIds.has(
-                                                item.id,
-                                            )}
-                                            onToggleDetails={onToggleDetails}
                                             onEdit={onEditItem}
                                             onDelete={onDeleteItem}
-                                            onMarkCompleted={
-                                                onMarkItemCompleted
-                                            }
                                             locked={isPlanLocked}
                                         />
                                     );
@@ -336,6 +300,45 @@ export default function OdontoPlanWorkspace({
                     </div>
                 )}
             </section>
+
+            <footer className={styles.planWorkspaceFooter}>
+                <span
+                    className={styles.printTooltipSlot}
+                    onMouseEnter={showPrintTooltip}
+                    onMouseLeave={hidePrintTooltip}
+                >
+                    <button
+                        type='button'
+                        className={styles.btn}
+                        onClick={onMarkPrinted}
+                        disabled={markingPrinted}
+                        onFocus={showPrintTooltip}
+                        onBlur={hidePrintTooltip}
+                        onTouchStart={showPrintTooltipOnTouch}
+                        aria-label='Imprimir orçamento A4'
+                        aria-describedby={
+                            printTooltipVisible
+                                ? 'print-lock-tooltip'
+                                : undefined
+                        }
+                    >
+                        <span aria-hidden='true'>🖨</span>{' '}
+                        <span className={styles.printButtonLabel}>
+                            Imprimir Orçamento
+                        </span>
+                    </button>
+                    {printTooltipVisible && (
+                        <span
+                            id='print-lock-tooltip'
+                            className={styles.printTooltip}
+                            role='status'
+                        >
+                            Ao imprimir, o orçamento ficará travado e não poderá
+                            mais ser editado.
+                        </span>
+                    )}
+                </span>
+            </footer>
         </>
     );
 }

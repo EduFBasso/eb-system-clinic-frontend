@@ -57,6 +57,10 @@ export type ModalClosedPayload = {
     type: string;
     id?: number;
 };
+export type TreatmentSettingsUpdatedPayload = {
+    showArchivedPlans?: boolean;
+    lockAfterPrint?: boolean;
+};
 
 // Extend here as needed
 export interface EventMap {
@@ -76,6 +80,7 @@ export interface EventMap {
     'modal:closed': ModalClosedPayload;
     'agenda:closeAll': AgendaCloseAllPayload;
     ensureScrollUnlocked: EnsureScrollUnlockedPayload;
+    treatmentSettingsUpdated: TreatmentSettingsUpdatedPayload;
 }
 
 export const events: (keyof EventMap)[] = [
@@ -95,6 +100,7 @@ export const events: (keyof EventMap)[] = [
     'modal:closed',
     'agenda:closeAll',
     'ensureScrollUnlocked',
+    'treatmentSettingsUpdated',
 ];
 
 // Emit helper

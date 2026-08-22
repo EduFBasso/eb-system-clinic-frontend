@@ -2,6 +2,7 @@ import React from 'react';
 import { AppModal } from '../Modal/Modal';
 import { coalesceVersion, fetchServerVersion } from '../../hooks/useAppVersion';
 import { useTheme, type AppTheme } from '../../contexts/ThemeContext';
+import { emit } from '../../events/bus';
 
 const THEME_OPTIONS: Array<{
     value: AppTheme;
@@ -38,8 +39,11 @@ export const AboutModal: React.FC<AboutModalProps> = ({
     backendVersion,
 }) => {
     const { theme, setTheme } = useTheme();
-    const [resolvedBackendVersion, setResolvedBackendVersion] =
-        React.useState<string | null>(backendVersion ?? null);
+    const [showArchivedPlans, setShowArchivedPlans] = React.useState(false);
+    const [lockAfterPrint, setLockAfterPrint] = React.useState(true);
+    const [resolvedBackendVersion, setResolvedBackendVersion] = React.useState<
+        string | null
+    >(backendVersion ?? null);
 
     React.useEffect(() => {
         if (!open) return;
@@ -65,7 +69,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
     return (
         <AppModal open={open} onClose={onClose}>
             <div style={{ padding: 8, maxWidth: 420 }}>
-                <h3 style={{ marginTop: 0 }}>Sobre o Sistema</h3>
+                <h3 style={{ marginTop: 0 }}>Configurações</h3>
                 <section style={{ marginBottom: 12 }}>
                     <strong>Versão / Build</strong>
                     <div style={{ fontSize: 13 }}>
@@ -94,7 +98,11 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                                 <button
                                     key={option.value}
                                     type='button'
-                                    className={selected ? 'ui-btn ui-btn--theme' : 'ui-btn ui-btn--neutral'}
+                                    className={
+                                        selected
+                                            ? 'ui-btn ui-btn--theme'
+                                            : 'ui-btn ui-btn--neutral'
+                                    }
                                     onClick={() => setTheme(option.value)}
                                     aria-pressed={selected}
                                     aria-label={`Aplicar tema ${option.label}`}
@@ -120,6 +128,60 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                         })}
                     </div>
                 </section>
+                <section style={{ display: 'grid', gap: 10, marginBottom: 16 }}>
+                    <label
+                        style={{
+                            display: 'flex',
+                            gap: 10,
+                            alignItems: 'flex-start',
+                        }}
+                    >
+                        <input
+                            type='checkbox'
+                            checked={showArchivedPlans}
+                            onChange={event => {
+                                const value = event.target.checked;
+                                setShowArchivedPlans(value);
+                                emit('treatmentSettingsUpdated', {
+                                    showArchivedPlans: value,
+                                });
+                            }}
+                        />
+                        <span>
+                            <strong>Mostrar planos arquivados</strong>
+                            <small style={{ display: 'block', marginTop: 4 }}>
+                                Exibe planos removidos com tratamentos para
+                                preservar o histórico.
+                            </small>
+                        </span>
+                    </label>
+                    <label
+                        style={{
+                            display: 'flex',
+                            gap: 10,
+                            alignItems: 'flex-start',
+                        }}
+                    >
+                        <input
+                            type='checkbox'
+                            checked={lockAfterPrint}
+                            onChange={event => {
+                                const value = event.target.checked;
+                                setLockAfterPrint(value);
+                                emit('treatmentSettingsUpdated', {
+                                    lockAfterPrint: value,
+                                });
+                            }}
+                        />
+                        <span>
+                            <strong>Bloquear edição após imprimir?</strong>
+                            <small style={{ display: 'block', marginTop: 4 }}>
+                                A impressão trava o plano contra novas
+                                alterações.
+                            </small>
+                        </span>
+                    </label>
+                </section>
                 <div style={{ textAlign: 'right' }}>
                     <button
                         type='button'
@@ -133,4 +195,3 @@ export const AboutModal: React.FC<AboutModalProps> = ({
         </AppModal>
     );
 };
-
