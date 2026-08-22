@@ -116,6 +116,12 @@ export default function OdontoArcadeSimplifiedPage() {
                         activeToothNumbers={itemFlows.activeToothNumbers}
                         isPlanLocked={plans.isPlanLocked}
                         markingPrinted={plans.markingPrinted}
+                        hasActiveModal={
+                            plans.planModalOpen ||
+                            itemFlows.serviceFlowOpen ||
+                            itemFlows.productFlowOpen ||
+                            itemFlows.editingItem !== null
+                        }
                         onBack={plans.backToPlanList}
                         onMarkPrinted={() => void plans.markPrinted()}
                         onOpenService={itemFlows.openServiceFlowModal}

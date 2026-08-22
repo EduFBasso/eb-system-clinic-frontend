@@ -130,6 +130,16 @@ export default function OdontoServiceModal({
             .filter(row => row.scope === 'tooth' && row.toothNumber != null)
             .map(row => row.toothNumber as number),
     );
+    const toothFlowStarted =
+        flowType === 'tooth' && selectedToothNumbers.size > 0;
+    const archFlowStarted =
+        flowType === 'arch' && serviceRows.some(row => Boolean(row.arcadeArch));
+    const otherFlowStarted =
+        flowType === 'other' &&
+        serviceRows.some(
+            row => Boolean(row.treatment.trim()) || Boolean(row.value.trim()),
+        );
+    const flowLocked = toothFlowStarted || archFlowStarted || otherFlowStarted;
 
     return (
         <div
@@ -142,25 +152,26 @@ export default function OdontoServiceModal({
                 role='dialog'
                 onClick={event => event.stopPropagation()}
             >
-                <h3 className={styles.sectionTitle}>Novo tratamento</h3>
+                <h3 className={styles.sectionTitle}>Novo Procedimento</h3>
 
                 <div className={styles.typeTabs}>
                     {(['tooth', 'arch', 'other'] as ServiceFlowType[]).map(
-                        type => (
-                            <button
-                                key={type}
-                                type='button'
-                                onClick={() => onFlowTypeChange(type)}
-                                className={`${styles.tabBtn} ${flowType === type ? styles.tabActive : ''}`}
-                                disabled={saving}
-                            >
-                                {type === 'tooth'
-                                    ? 'Por dente'
-                                    : type === 'arch'
-                                      ? 'Arcada'
-                                      : 'Outros'}
-                            </button>
-                        ),
+                        type =>
+                            (!flowLocked || type === flowType) && (
+                                <button
+                                    key={type}
+                                    type='button'
+                                    onClick={() => onFlowTypeChange(type)}
+                                    className={`${styles.tabBtn} ${flowType === type ? styles.tabActive : ''}`}
+                                    disabled={saving}
+                                >
+                                    {type === 'tooth'
+                                        ? 'Por dente'
+                                        : type === 'arch'
+                                          ? 'Arcada'
+                                          : 'Outros'}
+                                </button>
+                            ),
                     )}
                 </div>
 

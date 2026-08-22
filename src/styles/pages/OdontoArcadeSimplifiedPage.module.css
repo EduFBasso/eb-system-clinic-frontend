@@ -538,12 +538,12 @@
 .modalOverlay {
     position: fixed;
     inset: 0;
-    z-index: 100;
+    z-index: 10000;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 10px;
-    background: color-mix(in oklab, #0f172a 56%, transparent);
+    background: rgba(15, 23, 42, 0.62);
 }
 
 .modalCard {
@@ -562,6 +562,10 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
+}
+
+.typeTabs:has(> :only-child) {
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .tabBtn {
@@ -865,14 +869,12 @@
 /* ── Group card: caderno de anotações cronológico ─────────────────────────── */
 
 .groupCard {
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
-    background: #ffffff;
+    border: 1px solid var(--color-border-strong, var(--color-border));
+    border-radius: var(--radius-surface);
+    background: var(--card-bg, #ffffff);
     padding: 10px 12px;
     display: grid;
     gap: 8px;
-    /* Left accent strip to reinforce the notebook look */
-    border-left: 3px solid var(--color-primary);
 }
 
 .groupDate {
@@ -886,9 +888,9 @@
 /* ── Procedure card refinement ────────────────────────────────────────────── */
 
 .procItem {
-    border: 1px solid color-mix(in oklab, var(--color-border) 72%, #d1d5db);
-    border-radius: 8px;
-    background: #ffffff;
+    border: 1px solid var(--color-border-strong, var(--color-border));
+    border-radius: var(--radius-surface);
+    background: var(--color-bg-section, #ffffff);
     padding: 14px;
     display: flex;
     flex-direction: column;
@@ -963,6 +965,13 @@
     white-space: nowrap;
 }
 
+.planTotal {
+    color: var(--color-text-main, var(--color-heading));
+    font-size: 16px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
 .productRow {
     display: flex;
     flex-direction: column;
@@ -970,9 +979,9 @@
     gap: 10px;
     width: 100%;
     padding: 12px;
-    border: 1px solid color-mix(in oklab, var(--color-border) 72%, #d1d5db);
-    border-radius: 8px;
-    background: #ffffff;
+    border: 1px solid var(--color-border-strong, var(--color-border));
+    border-radius: var(--radius-surface);
+    background: var(--color-bg-section, #ffffff);
     box-sizing: border-box;
 }
 

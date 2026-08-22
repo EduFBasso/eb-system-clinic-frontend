@@ -17,6 +17,7 @@ type Props = {
     activeToothNumbers: Set<number>;
     isPlanLocked: boolean;
     markingPrinted: boolean;
+    hasActiveModal: boolean;
     onBack: () => void;
     onMarkPrinted: () => void;
     onOpenService: () => void;
@@ -46,6 +47,7 @@ export default function OdontoPlanWorkspace({
     activeToothNumbers,
     isPlanLocked,
     markingPrinted,
+    hasActiveModal,
     onBack,
     onMarkPrinted,
     onOpenService,
@@ -183,24 +185,51 @@ export default function OdontoPlanWorkspace({
                 )}
             </section>
 
-            {/* Observations textarea — persisted on blur */}
+            {/* Procedures list */}
             <section className={styles.card}>
-                <label className={styles.labelWide}>
-                    <span className={styles.sectionTitle}>Observações</span>
-                    <textarea
-                        className={`${styles.textarea} ${styles.planNotes}`}
-                        rows={3}
-                        defaultValue={plan.notes ?? ''}
-                        placeholder='Observações clínicas, orientações e condições especiais…'
-                        onBlur={e => onSaveNotes(e.target.value)}
-                        disabled={isPlanLocked}
-                    />
-                </label>
+                <h2 className={styles.sectionTitle}>Procedimentos</h2>
+                {groupedItems.length === 0 ? (
+                    <p className={styles.textMuted}>
+                        Nenhum procedimento cadastrado.
+                    </p>
+                ) : (
+                    <div className={styles.groupList}>
+                        {groupedItems.map(group => (
+                            <div key={group.key} className={styles.groupCard}>
+                                <strong className={styles.groupDate}>
+                                    {group.label}
+                                </strong>
+                                {group.items.map(item => {
+                                    const children = items.filter(
+                                        i => i.parent_item === item.id,
+                                    );
+                                    return (
+                                        <OdontoProcedureCard
+                                            key={item.id}
+                                            item={item}
+                                            childItems={children}
+                                            onEdit={onEditItem}
+                                            onDelete={onDeleteItem}
+                                            locked={isPlanLocked}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </section>
 
             {/* Payment condition selector */}
             <section className={styles.card}>
-                <h2 className={styles.sectionTitle}>Condição de Pagamento</h2>
+                <div className={styles.sectionHeaderRow}>
+                    <h2 className={styles.sectionTitle}>
+                        Condição de Pagamento
+                    </h2>
+                    <strong className={styles.planTotal}>
+                        Total: {formatMoney(planTotal)}
+                    </strong>
+                </div>
                 <div className={styles.paymentConditionRow}>
                     <label className={styles.paymentRadioLabel}>
                         <input
@@ -266,79 +295,63 @@ export default function OdontoPlanWorkspace({
                 )}
             </section>
 
-            {/* Procedures list */}
+            {/* Observations textarea — persisted on blur */}
             <section className={styles.card}>
-                <h2 className={styles.sectionTitle}>Procedimentos</h2>
-                {groupedItems.length === 0 ? (
-                    <p className={styles.textMuted}>
-                        Nenhum procedimento cadastrado.
-                    </p>
-                ) : (
-                    <div className={styles.groupList}>
-                        {groupedItems.map(group => (
-                            <div key={group.key} className={styles.groupCard}>
-                                <strong className={styles.groupDate}>
-                                    {group.label}
-                                </strong>
-                                {group.items.map(item => {
-                                    const children = items.filter(
-                                        i => i.parent_item === item.id,
-                                    );
-                                    return (
-                                        <OdontoProcedureCard
-                                            key={item.id}
-                                            item={item}
-                                            childItems={children}
-                                            onEdit={onEditItem}
-                                            onDelete={onDeleteItem}
-                                            locked={isPlanLocked}
-                                        />
-                                    );
-                                })}
-                            </div>
-                        ))}
-                    </div>
-                )}
+                <label className={styles.labelWide}>
+                    <span className={styles.sectionTitle}>
+                        Observações Gerais
+                    </span>
+                    <textarea
+                        className={`${styles.textarea} ${styles.planNotes}`}
+                        rows={3}
+                        defaultValue={plan.notes ?? ''}
+                        placeholder='Observações clínicas, orientações e condições especiais…'
+                        onBlur={e => onSaveNotes(e.target.value)}
+                        disabled={isPlanLocked}
+                    />
+                </label>
             </section>
 
-            <footer className={styles.planWorkspaceFooter}>
-                <span
-                    className={styles.printTooltipSlot}
-                    onMouseEnter={showPrintTooltip}
-                    onMouseLeave={hidePrintTooltip}
-                >
-                    <button
-                        type='button'
-                        className={styles.btn}
-                        onClick={onMarkPrinted}
-                        disabled={markingPrinted}
-                        onFocus={showPrintTooltip}
-                        onBlur={hidePrintTooltip}
-                        onTouchStart={showPrintTooltipOnTouch}
-                        aria-label='Imprimir orçamento A4'
-                        aria-describedby={
-                            printTooltipVisible
-                                ? 'print-lock-tooltip'
-                                : undefined
-                        }
+            {!hasActiveModal && (
+                <footer className={styles.planWorkspaceFooter}>
+                    <span
+                        className={styles.printTooltipSlot}
+                        onMouseEnter={showPrintTooltip}
+                        onMouseLeave={hidePrintTooltip}
                     >
-                        <span aria-hidden='true'>🖨</span>{' '}
-                        <span className={styles.printButtonLabel}>
-                            Imprimir Orçamento
-                        </span>
-                    </button>
-                    {printTooltipVisible && (
-                        <span
-                            id='print-lock-tooltip'
-                            className={styles.printTooltip}
-                            role='status'
+                        <button
+                            type='button'
+                            className={styles.btn}
+                            onClick={onMarkPrinted}
+                            disabled={markingPrinted}
+                            onFocus={showPrintTooltip}
+                            onBlur={hidePrintTooltip}
+                            onTouchStart={showPrintTooltipOnTouch}
+                            aria-label='Imprimir orçamento A4'
+                            aria-describedby={
+                                printTooltipVisible
+                                    ? 'print-lock-tooltip'
+                                    : undefined
+                            }
                         >
-                            Ao imprimir, o orçamento ficará travado e não poderá
-                            mais ser editado.
-                        </span>
-                    )}
-                </span>
-            </footer>
+                            <span aria-hidden='true'>🖨</span>{' '}
+                            <span className={styles.printButtonLabel}>
+                                Imprimir Orçamento
+                            </span>
+                        </button>
+                        {printTooltipVisible && (
+                            <span
+                                id='print-lock-tooltip'
+                                className={styles.printTooltip}
+                                role='status'
+                            >
+                                Ao imprimir, o orçamento ficará travado e não
+                                poderá mais ser editado.
+                            </span>
+                        )}
+                    </span>
+                </footer>
+            )}
         </>
     );
 }
