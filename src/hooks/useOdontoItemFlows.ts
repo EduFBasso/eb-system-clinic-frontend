@@ -343,7 +343,9 @@ export function useOdontoItemFlows(
 
     function openEditItem(item: TreatmentItem) {
         setEditingItem(item);
-        setEditingItemName(item.custom_name ?? '');
+        setEditingItemName(
+            item.custom_name.trim() || item.service_name?.trim() || '',
+        );
         setEditingItemValue(toInputAmount(item.patient_price ?? ''));
         setEditingItemNotes(item.notes ?? '');
     }
@@ -354,14 +356,7 @@ export function useOdontoItemFlows(
 
     async function saveEditedItem() {
         if (!editingItem) return;
-        const name = editingItemName.trim();
-        if (!name) {
-            emit('systemMessage', {
-                text: 'Informe o nome do tratamento.',
-                type: 'warning',
-            });
-            return;
-        }
+        // Name is now read-only, no validation needed
         if (editingItemValue.trim()) {
             const v = validateAmount(editingItemValue, 'Valor');
             if (!v.valid) {
@@ -377,7 +372,6 @@ export function useOdontoItemFlows(
             await apiFetch(`/clinic/treatment/items/${editingItem.id}/`, {
                 method: 'PATCH',
                 body: {
-                    custom_name: name,
                     patient_price: editingItemValue.trim()
                         ? parseAmount(editingItemValue)
                         : null,
@@ -489,7 +483,6 @@ export function useOdontoItemFlows(
 
         editingItem,
         editingItemName,
-        setEditingItemName,
         editingItemValue,
         setEditingItemValue,
         editingItemNotes,

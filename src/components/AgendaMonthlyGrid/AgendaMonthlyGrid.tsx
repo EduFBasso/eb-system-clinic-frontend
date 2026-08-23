@@ -15,7 +15,7 @@ import FloatingDatePicker from '../FloatingDatePicker';
 import { toISODate } from '../../utils/date';
 import { formatTime } from '../../utils/timeFormat';
 
-type StatusFilter = 'all' | 'pending' | 'active' | 'done' | 'canceled';
+type StatusFilter = 'all' | 'active' | 'done' | 'canceled';
 
 const MAX_BADGES = 5;
 
@@ -105,11 +105,6 @@ export function AgendaMonthlyGrid() {
         if (statusFilter === 'all') return items;
         // Use fresh Date() for accuracy; `now` triggers periodic re-renders.
         const currentNow = new Date();
-        if (statusFilter === 'pending')
-            return items.filter(a => {
-                const e = enrichAppointment(a, currentNow);
-                return e._derivedStatus === 'past';
-            });
         if (statusFilter === 'active')
             return items.filter(a => {
                 const e = enrichAppointment(a, currentNow);
@@ -190,35 +185,25 @@ export function AgendaMonthlyGrid() {
                     }}
                 >
                     {(
-                        [
-                            'all',
-                            'pending',
-                            'active',
-                            'done',
-                            'canceled',
-                        ] as StatusFilter[]
+                        ['all', 'active', 'done', 'canceled'] as StatusFilter[]
                     ).map(f => {
                         const label =
                             f === 'all'
                                 ? 'Todos'
-                                : f === 'pending'
-                                  ? 'Pendentes'
-                                  : f === 'active'
-                                    ? 'Ativos'
-                                    : f === 'done'
-                                      ? 'Concluídos'
-                                      : 'Cancelados';
+                                : f === 'active'
+                                  ? 'Ativos'
+                                  : f === 'done'
+                                    ? 'Concluídos'
+                                    : 'Cancelados';
                         const isSelected = statusFilter === f;
                         const activeBg =
-                            f === 'pending'
-                                ? 'var(--color-pending)'
-                                : f === 'active'
-                                  ? 'var(--color-success)'
-                                  : f === 'done'
-                                    ? 'var(--color-done)'
-                                    : f === 'canceled'
-                                      ? 'var(--color-canceled)'
-                                      : 'var(--color-heading)';
+                            f === 'active'
+                                ? 'var(--color-success)'
+                                : f === 'done'
+                                  ? 'var(--color-done)'
+                                  : f === 'canceled'
+                                    ? 'var(--color-canceled)'
+                                    : 'var(--color-heading)';
                         return (
                             <button
                                 key={f}

@@ -72,7 +72,9 @@
     justify-content: space-between;
 }
 
-.counts {
+.paymentSummary {
+    display: grid;
+    gap: 2px;
     font-size: 12px;
     color: var(--color-text-soft, var(--color-text));
 }

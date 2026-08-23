@@ -12,6 +12,18 @@ export function hasOdontoCapability(value: unknown): boolean {
     );
 }
 
+export function hasPodologiaCapability(value: unknown): boolean {
+    if (!value || typeof value !== 'object') return false;
+    const capabilities = value as TenantCapabilities;
+    if (capabilities.podologia === true) return true;
+    const modules = capabilities.modules;
+    return (
+        !!modules &&
+        typeof modules === 'object' &&
+        (modules as TenantCapabilities).podologia === true
+    );
+}
+
 export function readLoggedProfessionalCapabilities(): TenantCapabilities {
     try {
         const stored = localStorage.getItem('loggedProfessional');

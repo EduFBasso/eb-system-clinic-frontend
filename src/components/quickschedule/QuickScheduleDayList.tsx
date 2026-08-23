@@ -1,7 +1,6 @@
 import React from 'react';
 import ClientDayList from '../shared/ClientDayList';
 import type { Appointment } from '../../hooks/useAppointments';
-import { openPendingActionsForAppointment } from '../../utils/appointments/openPendingActions';
 import { getNow } from '../../utils/now';
 
 export type DayFilter = 'todos' | 'ativos' | 'cancelados';
@@ -229,9 +228,6 @@ export const QuickScheduleDayList: React.FC<QuickScheduleDayListProps> = ({
                             editingHighlightId === appt.id &&
                             currentEditId === appt.id,
                     })}
-                    onResolvePending={appt => {
-                        openPendingActionsForAppointment(appt);
-                    }}
                     onUseTime={onUseTime}
                     onEdit={onEdit}
                     onCancel={onCancel}

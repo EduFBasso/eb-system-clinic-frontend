@@ -566,6 +566,7 @@ export default function QuickScheduleModal({
                             <button
                                 type='button'
                                 className={qsStyles.visitTypeTrigger}
+                                aria-label='Tipo'
                                 aria-haspopup='listbox'
                                 aria-expanded={visitTypeOpen}
                                 aria-controls='visit-type-options'

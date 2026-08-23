@@ -3,7 +3,6 @@ import { FaCalendarAlt, FaEdit, FaPlus } from 'react-icons/fa';
 import type { Appointment } from '../../hooks/useAppointments';
 import type { ClientBasic } from '../../types/ClientBasic';
 import styles from './ClientCard.module.css';
-import SolveButton from './SolveButton';
 import { FutureAppointmentsList } from '../../domain/futureAppointments';
 import { API_BASE } from '../../config/api';
 import { getAccessToken } from '../../utils/auth/session';
@@ -23,10 +22,8 @@ interface AgendaActionControl {
 interface ClientCardAgendaSectionProps {
     client: ClientBasic;
     notifyAppt?: { start_at?: string; end_at?: string; title?: string };
-    pendingAppt?: { start_at?: string; end_at?: string };
     hasAgendaLine: boolean;
     isScheduled: boolean;
-    isPending: boolean;
     activeStartISO: string | null;
     activeEndISO: string | null;
     displayStartISO: string | null;
@@ -42,7 +39,6 @@ interface ClientCardAgendaSectionProps {
     separatorOpacity: number;
     onOpenMonthlyAgenda: (dateISO?: string | null) => void;
     onOpenQuickSchedule: (appointment?: Appointment | null) => void;
-    onSolvePending: () => Promise<void> | void;
     formatDateRange: (args: AppointmentDateRangeArgs) => string;
 }
 
@@ -92,10 +88,8 @@ function buildDayLabel(sIso: string | null): string {
 export default function ClientCardAgendaSection({
     client,
     notifyAppt,
-    pendingAppt,
     hasAgendaLine,
     isScheduled,
-    isPending,
     activeStartISO,
     activeEndISO,
     displayStartISO,
@@ -111,7 +105,6 @@ export default function ClientCardAgendaSection({
     separatorOpacity,
     onOpenMonthlyAgenda,
     onOpenQuickSchedule,
-    onSolvePending,
     formatDateRange,
 }: ClientCardAgendaSectionProps) {
     const handleEditNextAppointment = React.useCallback(
@@ -329,7 +322,7 @@ export default function ClientCardAgendaSection({
                 </>
             )}
 
-            {!hasAgendaLine && !isPending && (
+            {!hasAgendaLine && (
                 <div className={styles.infoRow}>
                     <span
                         className={styles.label}
@@ -369,71 +362,6 @@ export default function ClientCardAgendaSection({
                         <FaCalendarAlt color={iconColor} />
                     </button>
                 </div>
-            )}
-
-            {isPending && (
-                <>
-                    <div
-                        aria-hidden
-                        style={{
-                            height: 1,
-                            background: separatorColor,
-                            opacity: separatorOpacity,
-                            margin: '12px 0 12px',
-                            borderRadius: 1,
-                        }}
-                    />
-                    {(client.next_appointment_start_at ||
-                        pendingAppt?.start_at) && (
-                        <div className={styles.infoRow}>
-                            <span
-                                className={styles.label}
-                                style={{
-                                    color: labelColor,
-                                    fontWeight: 'bold',
-                                }}
-                            >
-                                Data:
-                            </span>
-                            <span
-                                className={styles.value}
-                                style={{ color: valueColor }}
-                            >
-                                {formatDateRange({
-                                    startIso:
-                                        client.next_appointment_start_at ||
-                                        pendingAppt?.start_at ||
-                                        null,
-                                    endIso:
-                                        client.next_appointment_end_at ||
-                                        pendingAppt?.end_at ||
-                                        null,
-                                })}
-                            </span>
-                        </div>
-                    )}
-                    <div
-                        className={styles.infoRow}
-                        style={{ alignItems: 'center' }}
-                    >
-                        <span
-                            className={styles.label}
-                            style={{ color: labelColor, fontWeight: 'bold' }}
-                        >
-                            Status:
-                        </span>
-                        <span
-                            className={styles.value}
-                            style={{
-                                color: 'var(--color-text-secondary, #6b7280)',
-                                fontStyle: 'italic',
-                            }}
-                        >
-                            Compromisso pendente
-                        </span>
-                        <SolveButton onSolve={onSolvePending} />
-                    </div>
-                </>
             )}
 
             {futureAppointments.length > 0 && !hideFutureList && (

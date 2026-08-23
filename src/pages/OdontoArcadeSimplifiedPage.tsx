@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import OdontoPlanCreateModal from '../components/odonto/OdontoPlanCreateModal';
 import OdontoPrintView from '../components/odonto/OdontoPrintView';
 import OdontoServiceModal from '../components/odonto/OdontoServiceModal';
@@ -17,6 +17,7 @@ import styles from '../styles/pages/OdontoArcadeSimplifiedPage.module.css';
 export default function OdontoArcadeSimplifiedPage() {
     const navigate = useNavigate();
     const { clientId } = useParams();
+    const [searchParams, setSearchParams] = useSearchParams();
 
     const canAccess = true;
     const numericClientId = React.useMemo(
@@ -24,7 +25,15 @@ export default function OdontoArcadeSimplifiedPage() {
         [clientId],
     );
 
-    const plans = useOdontoTreatmentPlans(numericClientId, canAccess);
+    const initialPlanId = React.useMemo(() => {
+        const value = Number(searchParams.get('plan'));
+        return Number.isInteger(value) && value > 0 ? value : null;
+    }, [searchParams]);
+    const plans = useOdontoTreatmentPlans(
+        numericClientId,
+        canAccess,
+        initialPlanId,
+    );
     const itemFlows = useOdontoItemFlows(
         plans.plan,
         plans.items,
@@ -33,8 +42,25 @@ export default function OdontoArcadeSimplifiedPage() {
     const catalogs = useOdontoCatalogs(
         itemFlows.serviceFlowOpen,
         itemFlows.productFlowOpen,
+        itemFlows.editingItem !== null,
     );
     const [professionalVersion, setProfessionalVersion] = React.useState(0);
+
+    React.useEffect(() => {
+        if (plans.loading) return;
+        const currentPlanId = searchParams.get('plan');
+        const nextPlanId = plans.plan ? String(plans.plan.id) : null;
+        if (currentPlanId === nextPlanId) return;
+        setSearchParams(
+            previous => {
+                const next = new URLSearchParams(previous);
+                if (nextPlanId) next.set('plan', nextPlanId);
+                else next.delete('plan');
+                return next;
+            },
+            { replace: true },
+        );
+    }, [plans.loading, plans.plan, searchParams, setSearchParams]);
 
     React.useEffect(() => {
         return on('treatmentSettingsUpdated', settings => {
@@ -83,11 +109,9 @@ export default function OdontoArcadeSimplifiedPage() {
                                 </button>
                             )}
                         </div>
-                        {plans.plan && (
-                            <p className={styles.patientName}>
-                                {plans.clientName ?? `Cliente #${clientId}`}
-                            </p>
-                        )}
+                        <p className={styles.patientName}>
+                            {plans.clientName ?? `Cliente #${clientId}`}
+                        </p>
                     </div>
                 </header>
 
@@ -126,7 +150,12 @@ export default function OdontoArcadeSimplifiedPage() {
                         onMarkPrinted={() => void plans.markPrinted()}
                         onOpenService={itemFlows.openServiceFlowModal}
                         onOpenProduct={itemFlows.openProductFlowModal}
-                        onSaveNotes={value => void plans.savePlanNotes(value)}
+                        notes={plans.planNotes}
+                        onNotesChange={plans.setPlanNotes}
+                        savingPlanDetails={plans.savingPlanDetails}
+                        planDetailsDirty={plans.isPlanDetailsDirty}
+                        onCancelPlanDetails={plans.cancelPlanDetails}
+                        onSavePlanDetails={() => void plans.savePlanDetails()}
                         paymentCondition={plans.paymentCondition}
                         onPaymentConditionChange={plans.setPaymentCondition}
                         installmentsCount={plans.installmentsCount}
@@ -158,25 +187,25 @@ export default function OdontoArcadeSimplifiedPage() {
 
                 <OdontoServiceModal
                     open={itemFlows.serviceFlowOpen}
-                    saving={itemFlows.savingServiceFlow}
+                    saving={
+                        itemFlows.savingServiceFlow || catalogs.savingCatalog
+                    }
                     flowType={itemFlows.serviceFlowType}
                     serviceRows={itemFlows.serviceRows}
                     orderedTeeth={ORDERED_TEETH}
                     serviceCatalog={catalogs.serviceCatalog}
-                    savingSuggestionIndex={catalogs.savingSuggestionIndex}
                     onClose={itemFlows.closeServiceFlowModal}
-                    onSave={() => void itemFlows.saveServiceFlow()}
+                    onSave={async catalogIndexes => {
+                        const saved = await catalogs.saveServicesToCatalog(
+                            itemFlows.serviceRows,
+                            catalogIndexes,
+                        );
+                        if (saved) await itemFlows.saveServiceFlow();
+                    }}
                     onFlowTypeChange={itemFlows.changeServiceFlowType}
                     onUpdateRow={itemFlows.updateServiceRow}
                     onToggleToothRow={itemFlows.toggleToothServiceRow}
                     onAddItem={itemFlows.addServiceRow}
-                    onSaveSuggestion={index =>
-                        void catalogs.saveTreatmentSuggestion(
-                            itemFlows.serviceRows[index],
-                            index,
-                            itemFlows.serviceFlowType,
-                        )
-                    }
                     onDeleteFromCatalog={serviceId =>
                         void catalogs.deleteFromCatalog(serviceId)
                     }
@@ -184,21 +213,20 @@ export default function OdontoArcadeSimplifiedPage() {
 
                 <OdontoProductModal
                     open={itemFlows.productFlowOpen}
-                    saving={itemFlows.savingProductFlow}
+                    saving={
+                        itemFlows.savingProductFlow || catalogs.savingCatalog
+                    }
                     productRows={itemFlows.productRows}
                     productCatalog={catalogs.productCatalog}
-                    savingSuggestionIndex={
-                        catalogs.savingProductSuggestionIndex
-                    }
                     onClose={itemFlows.closeProductFlowModal}
-                    onSave={() => void itemFlows.saveProductFlow()}
+                    onSave={async catalogIndexes => {
+                        const saved = await catalogs.saveNewProductsToCatalog(
+                            itemFlows.productRows,
+                            catalogIndexes,
+                        );
+                        if (saved) await itemFlows.saveProductFlow();
+                    }}
                     onRowsChange={itemFlows.setProductRows}
-                    onSaveSuggestion={index =>
-                        void catalogs.saveProductNameSuggestion(
-                            itemFlows.productRows[index],
-                            index,
-                        )
-                    }
                 />
 
                 <OdontoEditProcedureModal
@@ -206,12 +234,46 @@ export default function OdontoArcadeSimplifiedPage() {
                     name={itemFlows.editingItemName}
                     value={itemFlows.editingItemValue}
                     notes={itemFlows.editingItemNotes}
-                    saving={itemFlows.savingEditItem}
-                    onNameChange={itemFlows.setEditingItemName}
+                    saving={itemFlows.savingEditItem || catalogs.savingCatalog}
+                    serviceCatalog={catalogs.serviceCatalog}
                     onValueChange={itemFlows.setEditingItemValue}
                     onNotesChange={itemFlows.setEditingItemNotes}
                     onClose={itemFlows.closeEditItemModal}
-                    onSave={() => void itemFlows.saveEditedItem()}
+                    onSave={async updateCatalog => {
+                        const item = itemFlows.editingItem;
+                        if (!item) return;
+
+                        if (updateCatalog) {
+                            const saved = await catalogs.saveServicesToCatalog(
+                                [
+                                    {
+                                        toothNumber:
+                                            item.dental_context?.tooth_number ??
+                                            null,
+                                        toothSurface:
+                                            item.dental_context
+                                                ?.tooth_surface ?? '',
+                                        scope: item.dental_context?.tooth_number
+                                            ? 'tooth'
+                                            : item.dental_context?.arcade_arch
+                                              ? 'arch'
+                                              : 'other',
+                                        arcadeArch:
+                                            item.dental_context?.arcade_arch ??
+                                            null,
+                                        treatment: itemFlows.editingItemName,
+                                        serviceId: item.service,
+                                        value: itemFlows.editingItemValue,
+                                        notes: itemFlows.editingItemNotes,
+                                    },
+                                ],
+                                [0],
+                            );
+                            if (!saved) return;
+                        }
+
+                        await itemFlows.saveEditedItem();
+                    }}
                 />
             </div>
 

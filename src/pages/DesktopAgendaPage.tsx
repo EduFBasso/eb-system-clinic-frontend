@@ -3,7 +3,6 @@ import FloatingDatePicker from '../components/FloatingDatePicker';
 import { FaArrowLeft, FaArrowRight, FaCalendarAlt } from 'react-icons/fa';
 import ClientCardRow from '../components/shared/ClientCardRow';
 import QuickScheduleModal from '../components/QuickScheduleModal/QuickScheduleModal';
-// PendingActionsModal agora é gerenciado globalmente em Home via evento 'pendingActions:open'
 import { AppointmentDetailsModal } from '../components/AppointmentDetailsModal/AppointmentDetailsModal';
 import type { Appointment } from '../hooks/useAppointments';
 import { toISODate } from '../utils/date';
@@ -22,12 +21,11 @@ import { useNowTick } from '../hooks/useNowTick';
 import { apiFetch } from '../utils/apiFetch';
 import { useLocation } from 'react-router-dom';
 import type {
-    PendingReturnContext,
+    AppointmentReturnContext,
     ReopenAppointmentDetailsContext,
 } from '../types/agendaFlow';
 import { cancelAppointment } from '../services/appointments';
 import { dispatchers } from '../events/dispatchers';
-import { openPendingActionsForAppointment } from '../utils/appointments/openPendingActions';
 import { addDays, startOfDay } from '../utils/dateHelpers';
 
 type StatusKey = 'scheduled' | 'done' | 'canceled';
@@ -36,7 +34,7 @@ type EnrichedAppt = Appointment & {
     _start: Date;
     _end: Date;
     _isPast: boolean;
-    _derivedStatus: 'scheduled' | 'done' | 'canceled' | 'past';
+    _derivedStatus: 'scheduled' | 'done' | 'canceled';
     client?: ClientLike | number;
 };
 
@@ -77,15 +75,14 @@ export default function DesktopAgendaPage() {
     );
     const [reloadKey, setReloadKey] = React.useState(0);
     const location = useLocation();
-    // Removido: estado local de PendingActions; usar evento global
     const [detailsOpen, setDetailsOpen] = React.useState(false);
     const [detailsAppt, setDetailsAppt] = React.useState<Appointment | null>(
         null,
     );
     const [detailsReturnContext, setDetailsReturnContext] =
-        React.useState<PendingReturnContext>(null);
+        React.useState<AppointmentReturnContext>(null);
     const buildReturnContext = React.useCallback(
-        (appointmentId?: number): PendingReturnContext => ({
+        (appointmentId?: number): AppointmentReturnContext => ({
             kind: 'desktop-agenda',
             dateISO: toISODate(selectedDay),
             focusAppointmentId: appointmentId,
@@ -98,7 +95,7 @@ export default function DesktopAgendaPage() {
         if (!raw) return;
         sessionStorage.removeItem(RESUME_DESKTOP_AGENDA_KEY);
         try {
-            const parsed = JSON.parse(raw) as PendingReturnContext;
+            const parsed = JSON.parse(raw) as AppointmentReturnContext;
             if (parsed?.kind !== 'desktop-agenda') return;
             const date = new Date(`${parsed.dateISO}T00:00:00`);
             if (!Number.isNaN(date.getTime())) {
@@ -170,7 +167,7 @@ export default function DesktopAgendaPage() {
         }
     }, []);
     const [statusFilter, setStatusFilter] = React.useState<
-        'all' | 'active' | 'past' | 'done' | 'canceled'
+        'all' | 'active' | 'done' | 'canceled'
     >('active');
 
     // Reactive now — ticks every 30 s to detect pending transitions
@@ -392,21 +389,18 @@ export default function DesktopAgendaPage() {
                 >
                     {[
                         { key: 'all' as const, label: 'Todos' },
-                        { key: 'past' as const, label: 'Pendentes' },
                         { key: 'active' as const, label: 'Ativos' },
                         { key: 'done' as const, label: 'Concluídos' },
                         { key: 'canceled' as const, label: 'Cancelados' },
                     ].map(({ key, label }) => {
                         const activeBg =
-                            key === 'past'
-                                ? 'var(--color-pending)'
-                                : key === 'active'
-                                  ? 'var(--color-primary)'
-                                  : key === 'done'
-                                    ? 'var(--color-done)'
-                                    : key === 'canceled'
-                                      ? 'var(--color-canceled)'
-                                      : 'var(--color-heading)';
+                            key === 'active'
+                                ? 'var(--color-primary)'
+                                : key === 'done'
+                                  ? 'var(--color-done)'
+                                  : key === 'canceled'
+                                    ? 'var(--color-canceled)'
+                                    : 'var(--color-heading)';
                         return (
                             <button
                                 key={key}
@@ -525,13 +519,8 @@ export default function DesktopAgendaPage() {
                                                       }
                                                     : undefined
                                             }
-                                            onResolvePending={appt => {
-                                                openPendingActionsForAppointment(
-                                                    appt,
-                                                );
-                                            }}
                                             onDetails={
-                                                a.status === 'done'
+                                                a._derivedStatus === 'done'
                                                     ? appt => {
                                                           setDetailsReturnContext(
                                                               buildReturnContext(
@@ -609,7 +598,6 @@ export default function DesktopAgendaPage() {
                     }}
                 />
             )}
-            {/* PendingActionsModal renderizado globalmente em Home */}
             {detailsOpen && detailsAppt && (
                 <AppointmentDetailsModal
                     open={detailsOpen}

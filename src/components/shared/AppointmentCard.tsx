@@ -16,7 +16,7 @@ export interface SharedAppointmentLike {
     title?: string;
     start_at: string;
     end_at: string;
-    status: 'scheduled' | 'pending' | 'done' | 'canceled';
+    status: 'scheduled' | 'done' | 'canceled';
     notes?: string;
     client_name?: string;
     client?: { id: number; name: string } | number;
@@ -32,8 +32,6 @@ export interface AppointmentCardProps<
     size?: 'sm' | 'md';
     onClick?: (appt: T) => void; // legacy primary click
     onUseTime?: (appt: T) => void; // alias for primary click (QuickSchedule)
-    // Novo: permite que o cartão "Pendente" ative um fluxo de resolução (ex: PendingActionsModal)
-    onResolvePending?: (appt: T) => void;
     onEdit?: (appt: T) => void;
     onCancel?: (appt: T) => void;
     onDetails?: (appt: T) => void;
@@ -66,7 +64,6 @@ function AppointmentCardViewInner<T extends SharedAppointmentLike>({
     size = 'md',
     onClick,
     onUseTime,
-    onResolvePending,
     onEdit,
     onCancel,
     onDetails,
@@ -111,7 +108,6 @@ function AppointmentCardViewInner<T extends SharedAppointmentLike>({
     // Left color stripe by status, akin to QuickSchedule visuals
     const stripeColor = statusStripeColor(status);
 
-    const isPending = status === 'past';
     const scheduledEditAction = canEdit && onEdit ? onEdit : null;
     const handleCancel = React.useCallback(() => {
         if (!onCancel || !canCancel) return false;
@@ -173,9 +169,7 @@ function AppointmentCardViewInner<T extends SharedAppointmentLike>({
             : undefined;
 
     const clickable =
-        // Pending with resolver or any of the click handlers present
-        (isPending && !!onResolvePending) ||
-        (!!onDetails && appt.status === 'done') ||
+        (!!onDetails && status === 'done') ||
         ((!!onCancel || !!scheduledEditAction) &&
             status === 'scheduled' &&
             (canCancel || canEdit)) ||
@@ -233,10 +227,6 @@ function AppointmentCardViewInner<T extends SharedAppointmentLike>({
                 style={base}
                 onClick={() => {
                     if (appt.status === 'canceled') return;
-                    if (isPending && onResolvePending) {
-                        onResolvePending(appt);
-                        return;
-                    }
                     // Novo: para concluídos, o clique do cartão abre detalhes (ícone removido)
                     if (onDetails && status === 'done') {
                         const clientId =
@@ -693,7 +683,6 @@ function areEqualShallow(
     if (
         prev.onClick !== next.onClick ||
         prev.onUseTime !== next.onUseTime ||
-        prev.onResolvePending !== next.onResolvePending ||
         prev.onEdit !== next.onEdit ||
         prev.onCancel !== next.onCancel ||
         prev.onDetails !== next.onDetails
@@ -730,7 +719,7 @@ export function AppointmentCardContainer<T extends SharedAppointmentLike>(
 ) {
     // Simplificado: usar hora local do dispositivo (ou now passado por props)
     // Evitamos criar um "new Date()" a cada render para não invalidar a memoização do card.
-    // Atualizamos o "agora" apenas uma vez por minuto para refletir status pendente.
+    // Atualizamos o horário uma vez por minuto para refletir o estado visual.
     function useNowTick(intervalMs: number) {
         const [now, setNow] = React.useState<Date>(() => new Date());
         React.useEffect(() => {

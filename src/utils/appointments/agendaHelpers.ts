@@ -39,7 +39,7 @@ export function splitName(full?: string): { first: string; last: string } {
  */
 export function makeClientBasic(a: {
     id: number;
-    status: 'scheduled' | 'pending' | 'done' | 'canceled';
+    status: 'scheduled' | 'done' | 'canceled';
     start_at: string;
     end_at: string;
     client?: ClientLike | number;
@@ -76,13 +76,12 @@ export function makeClientBasic(a: {
  * Used by DesktopAgendaPage and DailyAgendaModal so both behave identically.
  *
  * 'active'  → scheduled future (not past)
- * 'past'    → scheduled but past end_at
  * 'done'    → finalized
  * 'canceled'→ canceled
  * 'all'     → everything
  */
 export function matchesStatusFilter(
-    filter: 'all' | 'active' | 'past' | 'done' | 'canceled',
+    filter: 'all' | 'active' | 'done' | 'canceled',
     a: EnrichedAppointment,
 ): boolean {
     const status = a.status;
@@ -91,12 +90,8 @@ export function matchesStatusFilter(
             return true;
         case 'active':
             return status === 'scheduled' && !a._isPast;
-        case 'past':
-            return (
-                status === 'pending' || (status === 'scheduled' && a._isPast)
-            );
         case 'done':
-            return status === 'done';
+            return status === 'done' || (status === 'scheduled' && a._isPast);
         case 'canceled':
             return status === 'canceled';
         default:

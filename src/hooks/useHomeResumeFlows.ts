@@ -2,7 +2,7 @@ import React from 'react';
 import { API_BASE } from '../config/api';
 import { ensureClientBasic } from './useAgendaModals';
 import type {
-    PendingReturnContext,
+    AppointmentReturnContext,
     QuickScheduleInitialDraft,
     ReopenAppointmentDetailsContext,
 } from '../types/agendaFlow';
@@ -33,16 +33,22 @@ export function useHomeResumeFlows(params: {
     locationKey: string;
     openDaily: (date: Date, focusId?: number) => void;
     openWeekly: (date?: Date) => void;
-    setRouteClient: React.Dispatch<React.SetStateAction<ClientBasic | undefined>>;
-    setRouteInitialMonth: React.Dispatch<React.SetStateAction<Date | undefined>>;
+    setRouteClient: React.Dispatch<
+        React.SetStateAction<ClientBasic | undefined>
+    >;
+    setRouteInitialMonth: React.Dispatch<
+        React.SetStateAction<Date | undefined>
+    >;
     setMonthlyOpen: React.Dispatch<React.SetStateAction<boolean>>;
     setRouteEditAppt: React.Dispatch<React.SetStateAction<Appointment | null>>;
-    setQuickInitialDraft: React.Dispatch<React.SetStateAction<QuickScheduleInitialDraft | null>>;
+    setQuickInitialDraft: React.Dispatch<
+        React.SetStateAction<QuickScheduleInitialDraft | null>
+    >;
     setQuickOpen: React.Dispatch<React.SetStateAction<boolean>>;
     setDetailsAppt: React.Dispatch<React.SetStateAction<Appointment | null>>;
     setDetailsOpen: React.Dispatch<React.SetStateAction<boolean>>;
     setDetailsReturnContext: React.Dispatch<
-        React.SetStateAction<PendingReturnContext>
+        React.SetStateAction<AppointmentReturnContext>
     >;
     setSysMsg: React.Dispatch<React.SetStateAction<SysMsg | null>>;
 }) {
@@ -105,7 +111,7 @@ export function useHomeResumeFlows(params: {
             try {
                 const parsed = JSON.parse(
                     resumeAgendaRaw,
-                ) as PendingReturnContext;
+                ) as AppointmentReturnContext;
                 if (parsed?.kind === 'daily-agenda') {
                     const date = new Date(`${parsed.dateISO}T00:00:00`);
                     if (!Number.isNaN(date.getTime())) {
@@ -124,9 +130,7 @@ export function useHomeResumeFlows(params: {
                         .then(clientBasic => {
                             setRouteClient(clientBasic);
                             setRouteInitialMonth(
-                                Number.isNaN(date.getTime())
-                                    ? undefined
-                                    : date,
+                                Number.isNaN(date.getTime()) ? undefined : date,
                             );
                             setMonthlyOpen(true);
                         })
@@ -180,10 +184,5 @@ export function useHomeResumeFlows(params: {
             .catch(() => {
                 /* noop */
             });
-    }, [
-        locationKey,
-        setDetailsAppt,
-        setDetailsOpen,
-        setDetailsReturnContext,
-    ]);
+    }, [locationKey, setDetailsAppt, setDetailsOpen, setDetailsReturnContext]);
 }

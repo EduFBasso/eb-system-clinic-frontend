@@ -16,6 +16,7 @@ import type {
 export function useOdontoTreatmentPlans(
     numericClientId: number,
     canAccess: boolean,
+    initialPlanId: number | null = null,
 ) {
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
@@ -23,6 +24,7 @@ export function useOdontoTreatmentPlans(
 
     const [allPlans, setAllPlans] = React.useState<PlanListItem[]>([]);
     const [plan, setPlan] = React.useState<PlanListItem | null>(null);
+    const activePlanIdRef = React.useRef<number | null>(initialPlanId);
     const [items, setItems] = React.useState<TreatmentItem[]>([]);
     const [planModalOpen, setPlanModalOpen] = React.useState(false);
     const [savingCreatePlan, setSavingCreatePlan] = React.useState(false);
@@ -33,11 +35,14 @@ export function useOdontoTreatmentPlans(
         hasTreatmentHistory: boolean;
     } | null>(null);
 
-    // Payment condition — local UI state, not persisted per plan yet.
     const [paymentCondition, setPaymentCondition] =
         React.useState<PaymentCondition>('avista');
     const [installmentsCount, setInstallmentsCount] = React.useState(2);
     const [firstDueDate, setFirstDueDate] = React.useState(todayISODate());
+    const [planNotes, setPlanNotes] = React.useState('');
+    const [savingPlanDetails, setSavingPlanDetails] = React.useState(false);
+    const detailsDirtyRef = React.useRef(false);
+    const hydratedPlanIdRef = React.useRef<number | null>(null);
 
     const planTotal = React.useMemo(() => computePlanTotal(items), [items]);
     const installmentValue = React.useMemo(() => {
@@ -62,11 +67,26 @@ export function useOdontoTreatmentPlans(
         }
     }, []);
 
-    function resetPaymentCondition() {
-        setPaymentCondition('avista');
-        setInstallmentsCount(2);
-        setFirstDueDate(todayISODate());
+    function hydratePlanDetails(source: PlanListItem) {
+        setPaymentCondition(source.payment_condition ?? 'avista');
+        setInstallmentsCount(source.installments_count ?? 2);
+        setFirstDueDate(source.first_due_date ?? '');
+        setPlanNotes(source.notes ?? '');
+        hydratedPlanIdRef.current = source.id;
+        detailsDirtyRef.current = false;
     }
+
+    const isPlanDetailsDirty = Boolean(
+        plan &&
+        (paymentCondition !== (plan.payment_condition ?? 'avista') ||
+            installmentsCount !== (plan.installments_count ?? 2) ||
+            firstDueDate !== (plan.first_due_date ?? '') ||
+            planNotes !== (plan.notes ?? '')),
+    );
+
+    React.useEffect(() => {
+        detailsDirtyRef.current = isPlanDetailsDirty;
+    }, [isPlanDetailsDirty]);
 
     const loadPlan = React.useCallback(async () => {
         if (!canAccess || !numericClientId) return;
@@ -103,16 +123,25 @@ export function useOdontoTreatmentPlans(
                 ),
             ];
             setAllPlans(plans);
-            // If a plan was already active, refresh its data; otherwise show plan list.
-            if (plan) {
-                const refreshed = plans.find(p => p.id === plan.id);
+            // Preserve the active workspace while refreshing plan and item data.
+            const activePlanId = activePlanIdRef.current;
+            if (activePlanId !== null) {
+                const refreshed = plans.find(p => p.id === activePlanId);
                 if (refreshed) {
+                    activePlanIdRef.current = refreshed.id;
                     setPlan(refreshed);
+                    if (
+                        hydratedPlanIdRef.current !== refreshed.id ||
+                        !detailsDirtyRef.current
+                    ) {
+                        hydratePlanDetails(refreshed);
+                    }
                     const itemsRes = await apiFetch(
                         `/clinic/treatment/items/?plan=${refreshed.id}`,
                     );
                     setItems(asList<TreatmentItem>(itemsRes));
                 } else {
+                    activePlanIdRef.current = null;
                     setPlan(null);
                     setItems([]);
                 }
@@ -129,7 +158,6 @@ export function useOdontoTreatmentPlans(
         } finally {
             setLoading(false);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [canAccess, numericClientId, showArchivedPlans]);
 
     React.useEffect(() => {
@@ -158,9 +186,10 @@ export function useOdontoTreatmentPlans(
             // Immediately enter the new plan workspace.
             const selectedPlan = { ...created };
             setAllPlans(prev => [selectedPlan, ...prev]);
+            activePlanIdRef.current = selectedPlan.id;
             setPlan(selectedPlan);
             setItems([]);
-            resetPaymentCondition();
+            hydratePlanDetails(selectedPlan);
             emit('systemMessage', {
                 text: 'Plano de tratamento criado.',
                 type: 'success',
@@ -182,9 +211,10 @@ export function useOdontoTreatmentPlans(
     async function selectPlan(planId: number) {
         const found = allPlans.find(p => p.id === planId);
         if (!found) return;
+        activePlanIdRef.current = found.id;
         setPlan(found);
         setItems([]);
-        resetPaymentCondition();
+        hydratePlanDetails(found);
         try {
             const res = await apiFetch(
                 `/clinic/treatment/items/?plan=${planId}`,
@@ -199,6 +229,7 @@ export function useOdontoTreatmentPlans(
     }
 
     function backToPlanList() {
+        activePlanIdRef.current = null;
         setPlan(null);
         setItems([]);
         void loadPlan();
@@ -226,6 +257,7 @@ export function useOdontoTreatmentPlans(
             });
             setAllPlans(prev => prev.filter(p => p.id !== planId));
             if (plan?.id === planId) {
+                activePlanIdRef.current = null;
                 setPlan(null);
                 setItems([]);
             }
@@ -247,15 +279,49 @@ export function useOdontoTreatmentPlans(
         }
     }
 
-    async function savePlanNotes(value: string) {
-        if (!plan) return;
+    function cancelPlanDetails() {
+        if (plan) hydratePlanDetails(plan);
+    }
+
+    async function savePlanDetails() {
+        if (!plan || savingPlanDetails || !isPlanDetailsDirty) return;
+        setSavingPlanDetails(true);
         try {
-            await apiFetch(`/clinic/treatment/plans/${plan.id}/`, {
-                method: 'PATCH',
-                body: { notes: value },
+            const updated = (await apiFetch(
+                `/clinic/treatment/plans/${plan.id}/`,
+                {
+                    method: 'PATCH',
+                    body: {
+                        payment_condition: paymentCondition,
+                        installments_count: installmentsCount,
+                        first_due_date:
+                            paymentCondition === 'aprazo' && firstDueDate
+                                ? firstDueDate
+                                : null,
+                        notes: planNotes,
+                    },
+                },
+            )) as PlanListItem;
+            const persisted = { ...plan, ...updated };
+            setPlan(persisted);
+            setAllPlans(prev =>
+                prev.map(item => (item.id === persisted.id ? persisted : item)),
+            );
+            hydratePlanDetails(persisted);
+            emit('systemMessage', {
+                text: 'Condição de pagamento e observações salvas.',
+                type: 'success',
             });
-        } catch {
-            // silently fail — data stays in input
+        } catch (err) {
+            emit('systemMessage', {
+                text:
+                    err instanceof ApiError
+                        ? err.message
+                        : 'Não foi possível salvar os dados do plano.',
+                type: 'error',
+            });
+        } finally {
+            setSavingPlanDetails(false);
         }
     }
 
@@ -348,6 +414,12 @@ export function useOdontoTreatmentPlans(
         setInstallmentsCount,
         firstDueDate,
         setFirstDueDate,
+        planNotes,
+        setPlanNotes,
+        savingPlanDetails,
+        isPlanDetailsDirty,
+        cancelPlanDetails,
+        savePlanDetails,
         planTotal,
         installmentValue,
         isPlanLocked,
@@ -360,7 +432,6 @@ export function useOdontoTreatmentPlans(
         deleteConfirmation,
         cancelDeletePlan,
         confirmDeletePlan,
-        savePlanNotes,
         markPrinted,
         backToPlanList,
     };

@@ -132,6 +132,7 @@ export const TimePicker10: React.FC<TimePicker10Props> = ({
                 <button
                     type='button'
                     className={styles.trigger}
+                    aria-label={`${label || 'Horário'} ${part === 'hour' ? 'hora' : 'minuto'}`}
                     aria-haspopup='listbox'
                     aria-expanded={openPart === part}
                     aria-controls={menuId}

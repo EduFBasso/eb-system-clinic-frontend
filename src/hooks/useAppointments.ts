@@ -15,7 +15,7 @@ export interface Appointment {
     end_at: string;
     notes?: string;
     location?: string;
-    status: 'scheduled' | 'pending' | 'done' | 'canceled';
+    status: 'scheduled' | 'done' | 'canceled';
 }
 
 function dayRangeISO(d: Date) {

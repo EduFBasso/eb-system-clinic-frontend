@@ -6,10 +6,7 @@
 // const dispose = on('openAppointmentDetails', detail => { ... });
 
 import type { Appointment } from '../hooks/useAppointments';
-import type {
-    PendingActionsOpenDetail,
-    PendingReturnContext,
-} from '../types/agendaFlow';
+import type { AppointmentReturnContext } from '../types/agendaFlow';
 
 export type SystemMessagePayload = {
     text: string;
@@ -18,7 +15,7 @@ export type SystemMessagePayload = {
 };
 export type OpenAppointmentDetailsPayload = {
     appointment: Appointment;
-    returnContext?: PendingReturnContext;
+    returnContext?: AppointmentReturnContext;
 };
 export type ScrollToClientCardPayload = { clientId: number };
 export type OpenDailyAgendaPayload =
@@ -35,16 +32,11 @@ export type OpenMonthlyAgendaPayload =
     | undefined;
 export type AgendaSettingsUpdatedPayload = undefined;
 export type AppointmentsChangedPayload = undefined;
-export type PendingActionsForceClosePayload = undefined;
 export type AgendaCloseAllPayload = undefined;
 export type EnsureScrollUnlockedPayload = undefined;
 export type AuthLoginPayload = undefined;
 export type AuthLogoutPayload = {
     reason?: 'manual' | 'session_expired' | 'device_session_invalid';
-};
-export type PendingResolvedPayload = {
-    clientId: number;
-    status: 'done' | 'canceled';
 };
 export type AppointmentStatusChangedPayload = {
     id?: number;
@@ -73,9 +65,6 @@ export interface EventMap {
     'appointments:changed': AppointmentsChangedPayload;
     'auth:login': AuthLoginPayload;
     'auth:logout': AuthLogoutPayload;
-    'pendingActions:open': PendingActionsOpenDetail;
-    'pendingActions:forceClose': PendingActionsForceClosePayload;
-    'pending:resolved': PendingResolvedPayload;
     'appointment:statusChanged': AppointmentStatusChangedPayload;
     'modal:closed': ModalClosedPayload;
     'agenda:closeAll': AgendaCloseAllPayload;
@@ -93,9 +82,6 @@ export const events: (keyof EventMap)[] = [
     'appointments:changed',
     'auth:login',
     'auth:logout',
-    'pendingActions:open',
-    'pendingActions:forceClose',
-    'pending:resolved',
     'appointment:statusChanged',
     'modal:closed',
     'agenda:closeAll',

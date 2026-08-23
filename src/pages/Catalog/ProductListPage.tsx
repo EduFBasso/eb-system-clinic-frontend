@@ -4,7 +4,6 @@ import { apiFetch, ApiError } from '../../utils/apiFetch';
 import FormPage from '../../components/FormKit/FormPage';
 import FormSection from '../../components/FormKit/FormSection';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { consumeFlashMessage } from '../../utils/flashMessage';
 import formStyles from '../../styles/pages/Client.module.css';
 
 type Product = {
@@ -22,17 +21,11 @@ function format2DecimalsBR(value: number): string {
     });
 }
 
-function visibleDescription(description?: string): string {
-    const value = String(description || '').trim();
-    if (!value.startsWith('odonto_scope:')) return value;
-    return value.replace(/^odonto_scope:(?:tooth|arch|all)\s*/i, '').trim();
-}
-
 export default function ProductListPage() {
     const [items, setItems] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const [search, setSearch] = useState('');
     const navigate = useNavigate();
     const location = useLocation();
     const returnTo =
@@ -49,16 +42,6 @@ export default function ProductListPage() {
             navigate('/');
         },
         [cameFromConsulta, navigate],
-    );
-
-    const openProductForm = useMemo(
-        () => (productId?: number) => {
-            const path = productId
-                ? `/catalog/products/${productId}`
-                : '/catalog/products/new';
-            navigate(path, { state: { returnTo } });
-        },
-        [navigate, returnTo],
     );
 
     useEffect(() => {
@@ -83,20 +66,13 @@ export default function ProductListPage() {
         };
     }, []);
 
-    useEffect(() => {
-        const message = consumeFlashMessage('catalog-products');
-        if (!message?.text) return;
-        setSuccessMsg(String(message.text));
-        const ms =
-            typeof message.autoCloseMs === 'number'
-                ? message.autoCloseMs
-                : 6000;
-        setTimeout(() => setSuccessMsg(null), ms);
-    }, []);
-
-    if (loading) return <div style={{ padding: 16 }}>Carregando…</div>;
-    if (error)
-        return <div style={{ padding: 16, color: 'crimson' }}>{error}</div>;
+    const filteredItems = useMemo(() => {
+        const term = search.trim().toLocaleLowerCase('pt-BR');
+        if (!term) return items;
+        return items.filter(product =>
+            product.name.toLocaleLowerCase('pt-BR').includes(term),
+        );
+    }, [items, search]);
 
     return (
         <FormPage title='Produtos' onSubmit={e => e.preventDefault()}>
@@ -105,28 +81,14 @@ export default function ProductListPage() {
                 onClose={handleClose}
                 closeTitle='Fechar'
             >
-                {successMsg && (
-                    <div
-                        style={{
-                            marginBottom: 8,
-                            padding: '10px 12px',
-                            background: 'var(--color-success-bg)',
-                            border: '1px solid var(--color-success-dark)',
-                            borderRadius: 8,
-                            color: 'var(--color-success-dark)',
-                            fontWeight: 600,
-                        }}
-                    >
-                        {successMsg}
-                    </div>
-                )}
                 <div
                     style={{
                         display: 'flex',
-                        justifyContent: 'space-between',
+                        justifyContent: 'flex-start',
                         alignItems: 'center',
                         marginBottom: 12,
                         gap: 8,
+                        flexWrap: 'wrap',
                     }}
                 >
                     <button
@@ -145,24 +107,26 @@ export default function ProductListPage() {
                     >
                         ← Voltar
                     </button>
-                    <button
-                        className='btn'
-                        onClick={() => openProductForm()}
+                    <input
+                        type='search'
+                        value={search}
+                        onChange={event => setSearch(event.target.value)}
+                        placeholder='Search'
+                        aria-label='Buscar produto por nome'
                         style={{
-                            background: 'var(--color-primary)',
-                            color: '#fff',
-                            border: 'none',
+                            flex: '1 1 240px',
+                            minWidth: 180,
+                            maxWidth: 420,
+                            border: '1px solid var(--color-border)',
                             borderRadius: 8,
-                            padding: '8px 14px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
+                            padding: '9px 12px',
+                            color: 'var(--color-text)',
+                            background: 'var(--color-bg)',
                         }}
-                    >
-                        + Novo
-                    </button>
+                    />
                 </div>
                 <div className={formStyles.catalogGrid}>
-                    {items.map(product => (
+                    {filteredItems.map(product => (
                         <article
                             key={product.id}
                             className={`${formStyles.catalogCard} flex w-full flex-col`}
@@ -188,37 +152,13 @@ export default function ProductListPage() {
                                     >
                                         {product.name}
                                     </h2>
-                                    <span
-                                        className='mt-1 inline-block text-xs'
-                                        style={{
-                                            color: 'var(--color-text-muted)',
-                                        }}
-                                    >
-                                        {product.type === 'MEDICATION'
-                                            ? 'Medicamento'
-                                            : 'Produto'}
-                                    </span>
                                 </div>
-                                <button
-                                    aria-label={`Editar ${product.name}`}
-                                    title='Editar produto'
-                                    onClick={() => openProductForm(product.id)}
-                                    className='flex h-11 w-11 shrink-0 items-center justify-center rounded-md border'
-                                    style={{
-                                        background: 'transparent',
-                                        borderColor: 'var(--color-border)',
-                                        cursor: 'pointer',
-                                        fontSize: 17,
-                                    }}
-                                >
-                                    ✏️
-                                </button>
                             </div>
                             <p
                                 className='mt-3 flex-1 text-sm'
                                 style={{ color: 'var(--color-text-light)' }}
                             >
-                                {visibleDescription(product.description) ||
+                                {product.description?.trim() ||
                                     'Sem descrição.'}
                             </p>
                             <div
@@ -233,6 +173,37 @@ export default function ProductListPage() {
                         </article>
                     ))}
                 </div>
+                {!loading && filteredItems.length === 0 && (
+                    <div style={{ padding: 12, color: '#666' }}>
+                        {search
+                            ? 'Nenhum produto encontrado.'
+                            : 'Nenhum produto cadastrado.'}
+                    </div>
+                )}
+                {loading && <div style={{ padding: 12 }}>Carregando…</div>}
+                {error && (
+                    <div style={{ padding: 12, color: 'crimson' }}>{error}</div>
+                )}
+                <button
+                    type='button'
+                    onClick={() => window.print()}
+                    style={{
+                        position: 'fixed',
+                        right: 20,
+                        bottom: 20,
+                        zIndex: 20,
+                        border: '1px solid var(--btn-theme-border)',
+                        borderRadius: 8,
+                        padding: '10px 16px',
+                        background: 'var(--btn-theme-bg)',
+                        color: 'var(--btn-theme-text)',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.16)',
+                    }}
+                >
+                    Imprimir
+                </button>
             </FormSection>
         </FormPage>
     );

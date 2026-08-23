@@ -16,8 +16,6 @@ Single source of truth for the mini card visuals and behavior.
 - onClick?: (appt) => void — Legacy primary click. If onEdit/onUseTime
         exists, they take precedence.
 - onUseTime?: (appt) => void — Primary action for QuickSchedule flows.
-- onResolvePending?: (appt) => void — If status is past (pending), tapping
-        triggers pending resolution.
 - onEdit?, onCancel?, onDetails?: (appt) => void — Optional actions;
         Details shown for done/canceled.
 - highlight?, editingActive?, pulse?, compact?, showNotes?, selected?
@@ -29,8 +27,7 @@ Single source of truth for the mini card visuals and behavior.
 
 - Behavior:
 
-- Click priority: pending+onResolvePending → onEdit → onUseTime → onClick.
-- Compromissos `pending` abrem o fluxo de resolução; não existe estado `ongoing`.
+- Click priority: details → edit → use-time → primary click.
 - Left colored stripe and background computed via centralized status tokens.
 - Client name rendered top-left; visit type under the status badge on the right.
 - Notes clamped to 2 lines by default.
@@ -41,16 +38,6 @@ Single source of truth for the mini card visuals and behavior.
         `--card-text-size`, `--card-radius`, `--card-padding-*`).
 - `size='sm'` applies local overrides to `--card-*-size` variables,
         reducing typography without affecting layout.
-
-### Resolução de compromissos pendentes
-
-A resolução de um compromisso pendente usa somente as mutações do backend:
-
-- `POST /agenda/appointments/<id>/done/` para concluir;
-- `POST /agenda/appointments/<id>/cancel/` para cancelar.
-
-O frontend não encurta `end_at`, não mantém `original_end_at` para simular
-encerramento e não possui um botão ou estado `ongoing`.
 
 ## ClientCardRow
 
@@ -77,7 +64,7 @@ to show the end time above the start when desired.
 
 - Monthly/Day/Desktop lists should render using `ClientCardRow` to keep a
     single row pattern.
-- Centralize pending resolution, edit, use-time, and details through the card props.
+- Centralize edit, use-time, and details through the card props.
 - Let the container control width; cards flex to fit. - Avoid extra nested grids that constrain the card.
 
 ## Accessibility

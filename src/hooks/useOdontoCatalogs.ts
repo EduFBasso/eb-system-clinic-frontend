@@ -2,32 +2,28 @@
 import React from 'react';
 import { emit } from '../events/bus';
 import { API_BASE } from '../config/api';
-import { ApiError, apiFetch } from '../utils/apiFetch';
+import { apiFetch } from '../utils/apiFetch';
 import { parseAmount } from '../utils/currency';
 import { asList } from '../pages/odontoArcadeHelpers';
 import type {
     CatalogProductItem,
     CatalogServiceItem,
     ProductRow,
-    ServiceFlowType,
     ServiceRow,
 } from '../pages/odontoArcadeHelpers';
 
 export function useOdontoCatalogs(
     serviceFlowOpen: boolean,
     productFlowOpen: boolean,
+    editItemOpen = false,
 ) {
     const [serviceCatalog, setServiceCatalog] = React.useState<
         CatalogServiceItem[]
     >([]);
-    const [savingSuggestionIndex, setSavingSuggestionIndex] = React.useState<
-        number | null
-    >(null);
     const [productCatalog, setProductCatalog] = React.useState<
         CatalogProductItem[]
     >([]);
-    const [savingProductSuggestionIndex, setSavingProductSuggestionIndex] =
-        React.useState<number | null>(null);
+    const [savingCatalog, setSavingCatalog] = React.useState(false);
 
     const loadServiceCatalog = React.useCallback(async () => {
         try {
@@ -46,13 +42,6 @@ export function useOdontoCatalogs(
                     base_price: s.base_price,
                     description: s.description,
                     default_notes: s.default_notes,
-                    // Parse "odonto_scope:tooth|arch|all" tag stored in description.
-                    odonto_scope: s.description?.startsWith('odonto_scope:')
-                        ? (s.description.slice('odonto_scope:'.length) as
-                              | 'tooth'
-                              | 'arch'
-                              | 'all')
-                        : undefined,
                 })),
             );
         } catch {
@@ -61,9 +50,9 @@ export function useOdontoCatalogs(
     }, []);
 
     React.useEffect(() => {
-        if (!serviceFlowOpen) return;
+        if (!serviceFlowOpen && !editItemOpen) return;
         void loadServiceCatalog();
-    }, [serviceFlowOpen, loadServiceCatalog]);
+    }, [serviceFlowOpen, editItemOpen, loadServiceCatalog]);
 
     const loadProductCatalog = React.useCallback(async () => {
         try {
@@ -88,68 +77,66 @@ export function useOdontoCatalogs(
         void loadProductCatalog();
     }, [productFlowOpen, loadProductCatalog]);
 
-    async function saveTreatmentSuggestion(
-        row: ServiceRow,
-        index: number,
-        scope: ServiceFlowType,
-    ) {
-        const name = row.treatment.trim();
-        if (!name) return;
+    async function saveServicesToCatalog(
+        rows: ServiceRow[],
+        indexes: number[],
+    ): Promise<boolean> {
+        const selectedRows = new Map<string, ServiceRow>();
+        for (const index of indexes) {
+            const row = rows[index];
+            const name = row?.treatment.trim();
+            if (row && name) selectedRows.set(name.toLowerCase(), row);
+        }
 
-        const existingItem = serviceCatalog.find(
-            s => s.name.toLowerCase() === name.toLowerCase(),
-        );
-        const priceValue = row.value.trim() ? parseAmount(row.value) : null;
-
-        setSavingSuggestionIndex(index);
+        setSavingCatalog(true);
         try {
-            if (existingItem) {
-                await apiFetch(
-                    `${API_BASE}/inventory/services/${existingItem.id}/`,
-                    {
-                        method: 'PATCH',
+            await Promise.all(
+                [...selectedRows.values()].map(row => {
+                    const name = row.treatment.trim();
+                    const existingItem = serviceCatalog.find(
+                        item =>
+                            item.name.trim().toLowerCase() ===
+                            name.toLowerCase(),
+                    );
+                    const priceValue = row.value.trim()
+                        ? parseAmount(row.value)
+                        : null;
+
+                    if (existingItem) {
+                        return apiFetch(
+                            `${API_BASE}/inventory/services/${existingItem.id}/`,
+                            {
+                                method: 'PATCH',
+                                body: {
+                                    ...(priceValue !== null && {
+                                        base_price: priceValue,
+                                    }),
+                                    default_notes: row.notes.trim(),
+                                },
+                            },
+                        );
+                    }
+
+                    return apiFetch(`${API_BASE}/inventory/services/`, {
+                        method: 'POST',
                         body: {
-                            ...(priceValue !== null && {
-                                base_price: priceValue,
-                            }),
+                            name,
+                            base_price: priceValue ?? 0,
                             default_notes: row.notes.trim(),
                         },
-                    },
-                );
-                emit('systemMessage', {
-                    text: `Dados de "${name}" atualizados no catálogo.`,
-                    type: 'success',
-                });
-            } else {
-                // Create new service with odonto scope tag in description.
-                const scopeTag =
-                    scope === 'tooth'
-                        ? 'tooth'
-                        : scope === 'arch'
-                          ? 'arch'
-                          : 'all';
-                await apiFetch(`${API_BASE}/inventory/services/`, {
-                    method: 'POST',
-                    body: {
-                        name,
-                        base_price: priceValue ?? 0,
-                        description: `odonto_scope:${scopeTag}`,
-                        default_notes: row.notes.trim(),
-                    },
-                });
-                emit('systemMessage', {
-                    text: `"${name}" adicionado ao catálogo de serviços.`,
-                    type: 'success',
-                });
-            }
-            await loadServiceCatalog();
+                    });
+                }),
+            );
+            if (selectedRows.size > 0) await loadServiceCatalog();
+            return true;
         } catch {
             emit('systemMessage', {
-                text: 'Não foi possível salvar no catálogo.',
+                text: 'Não foi possível salvar os serviços no catálogo geral.',
                 type: 'error',
             });
+            return false;
         } finally {
-            setSavingSuggestionIndex(null);
+            setSavingCatalog(false);
         }
     }
 
@@ -172,38 +159,64 @@ export function useOdontoCatalogs(
         }
     }
 
-    async function saveProductNameSuggestion(row: ProductRow, index: number) {
-        const name = row.name.trim();
-        if (!name) return;
-        setSavingProductSuggestionIndex(index);
+    async function saveNewProductsToCatalog(
+        rows: ProductRow[],
+        indexes: number[],
+    ): Promise<boolean> {
+        const selectedRows = new Map<string, ProductRow>();
+        for (const index of indexes) {
+            const row = rows[index];
+            const name = row?.name.trim();
+            if (row && name) selectedRows.set(name.toLowerCase(), row);
+        }
+
+        setSavingCatalog(true);
         try {
-            const priceValue = row.value.trim() ? parseAmount(row.value) : 0;
-            await apiFetch(`${API_BASE}/inventory/products/`, {
-                method: 'POST',
-                body: { name, type: 'PRODUCT', price: priceValue ?? 0 },
-            });
-            await loadProductCatalog();
-            emit('systemMessage', {
-                text: `"${name}" adicionado ao catalogo de produtos.`,
-                type: 'success',
-            });
+            await Promise.all(
+                [...selectedRows.values()].map(row => {
+                    const name = row.name.trim();
+                    if (
+                        productCatalog.some(
+                            item =>
+                                item.name.trim().toLowerCase() ===
+                                name.toLowerCase(),
+                        )
+                    ) {
+                        return Promise.resolve();
+                    }
+                    const priceValue = row.value.trim()
+                        ? parseAmount(row.value)
+                        : 0;
+                    return apiFetch(`${API_BASE}/inventory/products/`, {
+                        method: 'POST',
+                        body: {
+                            name,
+                            type: 'PRODUCT',
+                            price: priceValue ?? 0,
+                            description: row.notes.trim(),
+                        },
+                    });
+                }),
+            );
+            if (selectedRows.size > 0) await loadProductCatalog();
+            return true;
         } catch {
             emit('systemMessage', {
-                text: 'Nao foi possivel salvar no catalogo.',
+                text: 'Nao foi possivel adicionar os produtos ao catalogo geral.',
                 type: 'error',
             });
+            return false;
         } finally {
-            setSavingProductSuggestionIndex(null);
+            setSavingCatalog(false);
         }
     }
 
     return {
         serviceCatalog,
-        savingSuggestionIndex,
-        saveTreatmentSuggestion,
+        savingCatalog,
+        saveServicesToCatalog,
         deleteFromCatalog,
         productCatalog,
-        savingProductSuggestionIndex,
-        saveProductNameSuggestion,
+        saveNewProductsToCatalog,
     };
 }

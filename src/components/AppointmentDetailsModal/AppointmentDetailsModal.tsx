@@ -6,7 +6,7 @@ import { formatTime } from '../../utils/timeFormat';
 import StickyModalHeader from '../shared/StickyModalHeader';
 import { API_BASE } from '../../config/api';
 import { apiFetch } from '../../utils/apiFetch';
-import type { PendingReturnContext } from '../../types/agendaFlow';
+import type { AppointmentReturnContext } from '../../types/agendaFlow';
 
 type ChargeItem = {
     id: number;
@@ -49,7 +49,7 @@ export interface AppointmentDetailsModalProps {
     open: boolean;
     onClose: () => void;
     appt: SharedAppointmentLike | null;
-    returnContext?: PendingReturnContext;
+    returnContext?: AppointmentReturnContext;
 }
 
 function fmtDateTimeRange(startISO: string, endISO: string) {

@@ -15,11 +15,9 @@ type Props = {
     saving: boolean;
     productRows: ProductRow[];
     productCatalog: CatalogProductItem[];
-    savingSuggestionIndex: number | null;
     onClose: () => void;
-    onSave: () => void;
+    onSave: (catalogIndexes: number[]) => void;
     onRowsChange: (rows: ProductRow[]) => void;
-    onSaveSuggestion: (index: number) => void;
 };
 
 function filteredCatalog(
@@ -64,15 +62,20 @@ export default function OdontoProductModal({
     saving,
     productRows,
     productCatalog,
-    savingSuggestionIndex,
     onClose,
     onSave,
     onRowsChange,
-    onSaveSuggestion,
 }: Props) {
     const [openDropdownIndex, setOpenDropdownIndex] = React.useState<
         number | null
     >(null);
+    const [includeInCatalog, setIncludeInCatalog] = React.useState<
+        Record<number, boolean>
+    >({});
+
+    React.useEffect(() => {
+        if (!open) setIncludeInCatalog({});
+    }, [open]);
 
     if (!open) return null;
 
@@ -111,22 +114,6 @@ export default function OdontoProductModal({
                             <div key={index} className={styles.modalRow}>
                                 <div className={styles.modalRowHeader}>
                                     <strong>Produto {index + 1}</strong>
-                                    <button
-                                        type='button'
-                                        className={styles.iconBtnDanger}
-                                        onClick={() =>
-                                            onRowsChange(
-                                                productRows.filter(
-                                                    (_, i) => i !== index,
-                                                ),
-                                            )
-                                        }
-                                        disabled={
-                                            saving || productRows.length === 1
-                                        }
-                                    >
-                                        Remover
-                                    </button>
                                 </div>
 
                                 <div className={styles.formGrid}>
@@ -233,29 +220,6 @@ export default function OdontoProductModal({
                                                 </div>
                                             )}
                                         </div>
-                                        {showSave && (
-                                            <button
-                                                type='button'
-                                                className={
-                                                    styles.saveSuggestionBtn
-                                                }
-                                                onMouseDown={event =>
-                                                    event.preventDefault()
-                                                }
-                                                onClick={() =>
-                                                    onSaveSuggestion(index)
-                                                }
-                                                disabled={
-                                                    saving ||
-                                                    savingSuggestionIndex ===
-                                                        index
-                                                }
-                                            >
-                                                {savingSuggestionIndex === index
-                                                    ? 'Salvando...'
-                                                    : `✓ Salvar "${row.name.trim()}" no catálogo`}
-                                            </button>
-                                        )}
                                     </label>
 
                                     <label className={styles.label}>
@@ -295,6 +259,57 @@ export default function OdontoProductModal({
                                             disabled={saving}
                                         />
                                     </label>
+
+                                    {showSave && (
+                                        <label
+                                            className={`${styles.labelWide} ${styles.catalogCheckboxLabel}`}
+                                        >
+                                            <span
+                                                className={
+                                                    styles.catalogCheckboxBox
+                                                }
+                                            >
+                                                <input
+                                                    type='checkbox'
+                                                    className={
+                                                        styles.catalogCheckboxInput
+                                                    }
+                                                    checked={
+                                                        includeInCatalog[
+                                                            index
+                                                        ] !== false
+                                                    }
+                                                    onChange={event =>
+                                                        setIncludeInCatalog(
+                                                            previous => ({
+                                                                ...previous,
+                                                                [index]:
+                                                                    event.target
+                                                                        .checked,
+                                                            }),
+                                                        )
+                                                    }
+                                                    disabled={saving}
+                                                />
+                                                <span
+                                                    className={
+                                                        styles.catalogCheckboxMark
+                                                    }
+                                                    aria-hidden='true'
+                                                >
+                                                    {includeInCatalog[index] !==
+                                                        false && '✓'}
+                                                </span>
+                                            </span>
+                                            <span
+                                                className={
+                                                    styles.catalogCheckboxText
+                                                }
+                                            >
+                                                Adicionar ao catálogo geral
+                                            </span>
+                                        </label>
+                                    )}
                                 </div>
                             </div>
                         );
@@ -326,7 +341,25 @@ export default function OdontoProductModal({
                     <button
                         type='button'
                         className={styles.btnPrimary}
-                        onClick={onSave}
+                        onClick={() =>
+                            onSave(
+                                productRows
+                                    .map((row, index) =>
+                                        row.name.trim() &&
+                                        includeInCatalog[index] !== false &&
+                                        !catalogExistsByName(
+                                            productCatalog,
+                                            row.name,
+                                        )
+                                            ? index
+                                            : null,
+                                    )
+                                    .filter(
+                                        (index): index is number =>
+                                            index !== null,
+                                    ),
+                            )
+                        }
                         disabled={saving}
                     >
                         {saving ? 'Salvando...' : 'Salvar'}

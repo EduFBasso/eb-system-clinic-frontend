@@ -2,7 +2,7 @@ import React from 'react';
 import { deriveStatus } from '../utils/appointments/status';
 
 export interface AppointmentCardState {
-    status: 'scheduled' | 'done' | 'canceled' | 'past';
+    status: 'scheduled' | 'done' | 'canceled';
     canEdit: boolean;
     canCancel: boolean;
     start: Date;
@@ -13,7 +13,7 @@ export function useAppointmentCardState(
     appt: {
         start_at: string;
         end_at: string;
-        status: 'scheduled' | 'pending' | 'done' | 'canceled';
+        status: 'scheduled' | 'done' | 'canceled';
     },
     now: Date,
 ): AppointmentCardState {

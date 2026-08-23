@@ -3,13 +3,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import AppointmentCard, { type SharedAppointmentLike } from './AppointmentCard';
 
-// openPendingActions dispatches a CustomEvent which succeeds (returns true) in jsdom,
-// causing requestFinalizeAppointment to return early and never call proceed().
-// We mock it to return false so the normal finalize flow executes in tests.
-vi.mock('../../utils/appointments/openPendingActions', () => ({
-    openPendingActions: vi.fn(() => false),
-}));
-
 function makeAppt(
     partial: Partial<SharedAppointmentLike>,
 ): SharedAppointmentLike {
@@ -26,13 +19,13 @@ function makeAppt(
 }
 
 describe('AppointmentCard', () => {
-    it('renders status badge "Pendente" for past scheduled', () => {
+    it('renders status badge "Concluído" for past scheduled', () => {
         const past = makeAppt({
             start_at: new Date(Date.now() - 10 * 60_000).toISOString(),
             end_at: new Date(Date.now() - 5 * 60_000).toISOString(),
         });
         render(<AppointmentCard appt={past} now={new Date()} />);
-        expect(screen.getByText('Pendente')).toBeInTheDocument();
+        expect(screen.getByText('Concluído')).toBeInTheDocument();
     });
 
     it('renders status badge "Ativo" for scheduled appointment in progress', () => {
@@ -149,19 +142,19 @@ describe('AppointmentCard', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('pending (past scheduled) prioritizes onResolvePending over other handlers', () => {
+    it('past scheduled opens details as completed', () => {
         const past = makeAppt({
             start_at: new Date(Date.now() - 20 * 60_000).toISOString(),
             end_at: new Date(Date.now() - 10 * 60_000).toISOString(),
         });
-        const onResolvePending = vi.fn();
+        const onDetails = vi.fn();
         const onEdit = vi.fn();
         const onUseTime = vi.fn();
         const onClick = vi.fn();
         render(
             <AppointmentCard
                 appt={past}
-                onResolvePending={onResolvePending}
+                onDetails={onDetails}
                 onEdit={onEdit}
                 onUseTime={onUseTime}
                 onClick={onClick}
@@ -169,23 +162,10 @@ describe('AppointmentCard', () => {
             />,
         );
         fireEvent.click(screen.getByText('Fulano'));
-        expect(onResolvePending).toHaveBeenCalledTimes(1);
+        expect(onDetails).toHaveBeenCalledTimes(1);
         expect(onEdit).not.toHaveBeenCalled();
         expect(onUseTime).not.toHaveBeenCalled();
         expect(onClick).not.toHaveBeenCalled();
-    });
-
-    it('pending without onResolvePending falls back to onEdit if provided', () => {
-        const past = makeAppt({
-            start_at: new Date(Date.now() - 20 * 60_000).toISOString(),
-            end_at: new Date(Date.now() - 10 * 60_000).toISOString(),
-        });
-        const onEdit = vi.fn();
-        render(
-            <AppointmentCard appt={past} onEdit={onEdit} now={new Date()} />,
-        );
-        fireEvent.click(screen.getByText('Fulano'));
-        expect(onEdit).toHaveBeenCalledTimes(1);
     });
 
     it('scheduled: opens the action chooser and can edit without canceling', async () => {

@@ -12,7 +12,6 @@ import {
     type Appointment,
 } from '../../hooks/useAppointments';
 import { useAppointmentDetailsModal } from '../../hooks/useAppointmentDetailsModal';
-import { openPendingActionsForAppointment } from '../../utils/appointments/openPendingActions';
 import { cancelAppointment } from '../../services/appointments';
 import { dispatchers } from '../../events/dispatchers';
 import { toISODate } from '../../utils/date';
@@ -234,9 +233,6 @@ export function WeeklyPreviewModal({
     const { detailsModal, openDetails } =
         useAppointmentDetailsModal<Appointment>();
     // Pending actions modal state
-    // PendingActions é global — nenhum estado local necessário
-
-    // PendingActions é global — nenhum alinhamento local necessário
 
     const weekLabel = React.useMemo(() => {
         const first = days[0];
@@ -546,17 +542,11 @@ export function WeeklyPreviewModal({
                                                 onClick={() =>
                                                     setSelectedDayISO(iso)
                                                 }
-                                                onResolvePending={appt => {
-                                                    try {
-                                                        openPendingActionsForAppointment(
-                                                            appt,
-                                                        );
-                                                    } catch {
-                                                        /* noop */
-                                                    }
-                                                }}
                                                 onDetails={
-                                                    a.status === 'done'
+                                                    deriveStatus(
+                                                        a,
+                                                        new Date(),
+                                                    ) === 'done'
                                                         ? appt =>
                                                               openDetails(
                                                                   appt as Appointment,
@@ -593,7 +583,6 @@ export function WeeklyPreviewModal({
                     // Ensure the floating picker stays below sticky bars so its header is fully visible on iPhone
                     minTop={160}
                 />
-                {/* PendingActionsModal é global (Home) */}
 
                 {detailsModal}
             </div>

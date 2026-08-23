@@ -61,8 +61,6 @@ export const MainContent: React.FC<MainContentProps> = ({
     const [filterMode, setFilterMode] = useState<FilterMode>('all');
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
     const {
-        pendingIds: pendingClientIds,
-        pendingAppts: pendingClientAppts,
         tomorrowIds: tomorrowClientIds,
         tomorrowAppts: tomorrowClientAppts,
     } = useAppointmentSets(clients.length);
@@ -645,25 +643,6 @@ export const MainContent: React.FC<MainContentProps> = ({
             .sort(sortByPeriodThenTime);
     }, [clients, tomorrowClientIds, sortByPeriodThenTime]);
 
-    // Clientes com compromisso pendente.
-    // Fonte de verdade: backend (status='pending' + resumo no payload de clientes).
-    // A lista scheduled abaixo é usada somente para o bloco de "amanhã".
-
-    const pendingClients = React.useMemo(() => {
-        return clients
-            .filter(c => pendingClientIds.has(c.id))
-            .sort((a, b) => {
-                const ta = a.last_appointment_start_at
-                    ? new Date(a.last_appointment_start_at).getTime()
-                    : 0;
-                const tb = b.last_appointment_start_at
-                    ? new Date(b.last_appointment_start_at).getTime()
-                    : 0;
-                return ta - tb;
-            });
-    }, [clients, pendingClientIds]);
-
-    const pendingCount = pendingClients.length;
     const todayCount = todayClients.length;
     const tomorrowCount = tomorrowClients.length;
 
@@ -671,17 +650,10 @@ export const MainContent: React.FC<MainContentProps> = ({
     const [isResettingFilter] = React.useState(false);
 
     const displayedClients = React.useMemo(() => {
-        if (filterMode === 'pending') return pendingClients;
         if (filterMode === 'today') return todayClients;
         if (filterMode === 'tomorrow') return tomorrowClients;
         return filteredClients;
-    }, [
-        filterMode,
-        pendingClients,
-        todayClients,
-        tomorrowClients,
-        filteredClients,
-    ]);
+    }, [filterMode, todayClients, tomorrowClients, filteredClients]);
 
     // Ao mudar filterMode: reseta contagem e volta ao topo
     React.useEffect(() => {
@@ -879,7 +851,6 @@ export const MainContent: React.FC<MainContentProps> = ({
             <MainContentHeader
                 filter={filter}
                 filterMode={filterMode}
-                pendingCount={pendingCount}
                 todayCount={todayCount}
                 tomorrowCount={tomorrowCount}
                 mobileFiltersOpen={mobileFiltersOpen}
@@ -908,8 +879,6 @@ export const MainContent: React.FC<MainContentProps> = ({
                 filterMode={filterMode}
                 isResettingFilter={isResettingFilter}
                 tomorrowClientAppts={tomorrowClientAppts}
-                pendingClientIds={pendingClientIds}
-                pendingClientAppts={pendingClientAppts}
                 onSelectClient={handleSelectClient}
                 onViewClient={handleView}
                 onCardRef={handleCardRef}

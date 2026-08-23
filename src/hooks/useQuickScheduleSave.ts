@@ -8,7 +8,6 @@ import { track } from '../utils/telemetry';
 import { buildDeviceHeaders } from '../services/device';
 import ensureDeviceSession from '../services/sessions';
 import { pad2, toMinutes, fromMinutes } from '../utils/hmTime';
-import { openPendingActionsForAppointment } from '../utils/appointments/openPendingActions';
 import { unlockPageScroll } from '../utils/unlockPageScroll';
 import { getAccessToken } from '../utils/auth/session';
 
@@ -235,60 +234,6 @@ export function useQuickScheduleSave({
                         }
                     } catch {
                         /* ignore */
-                    }
-
-                    // If backend indicates pending, open resolver
-                    if (/pendente/i.test(text)) {
-                        try {
-                            const token2 = getAccessToken();
-                            const headers2: Record<string, string> = {};
-                            if (token2)
-                                headers2['Authorization'] = `Bearer ${token2}`;
-                            const url = `${API_BASE}/agenda/appointments/?client=${clientId}&status=scheduled&ordering=-end_at&limit=50&ts=${Date.now()}`;
-                            const r = await fetch(url, {
-                                headers: headers2,
-                                cache: 'no-store',
-                            });
-                            if (r.ok) {
-                                const data = (await r.json()) as Appointment[];
-                                const nowMs = Date.now();
-                                const pending = Array.isArray(data)
-                                    ? data.find(ap => {
-                                          const endMs = new Date(
-                                              ap.end_at,
-                                          ).getTime();
-                                          return (
-                                              ap.status === 'scheduled' &&
-                                              isFinite(endMs) &&
-                                              endMs <= nowMs
-                                          );
-                                      })
-                                    : null;
-                                if (pending) {
-                                    try {
-                                        openPendingActionsForAppointment(
-                                            pending as Appointment,
-                                        );
-                                    } catch {
-                                        /* noop */
-                                    }
-                                    try {
-                                        window.dispatchEvent(
-                                            new CustomEvent('systemMessage', {
-                                                detail: {
-                                                    text: 'Há uma pendência anterior. Resolva-a antes de criar um novo compromisso.',
-                                                    type: 'warning',
-                                                },
-                                            }),
-                                        );
-                                    } catch {
-                                        /* noop */
-                                    }
-                                }
-                            }
-                        } catch {
-                            /* ignore */
-                        }
                     }
 
                     const friendly = (() => {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { statusStripeColor } from '../../utils/appointments/status';
 
-export type StatusKind = 'scheduled' | 'done' | 'canceled' | 'past';
+export type StatusKind = 'scheduled' | 'done' | 'canceled';
 
 export interface StatusBadgeProps {
     status: StatusKind;
@@ -15,7 +15,6 @@ const LABELS: Record<StatusKind, string> = {
     scheduled: 'Ativo',
     done: 'Concluído',
     canceled: 'Cancelado',
-    past: 'Pendente',
 };
 
 const color = statusStripeColor;

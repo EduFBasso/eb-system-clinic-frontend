@@ -17,7 +17,7 @@ export interface ClientCardRowProps<
 
 /**
  * High-level row wrapper that always renders time on the left and the centralized AppointmentCard on the right.
- * Keeps handler mapping inside the card (onResolvePending/onEdit/onUseTime/onClick) consistent across surfaces.
+ * Keeps handler mapping inside the card consistent across agenda surfaces.
  */
 export default function ClientCardRow<T extends SharedAppointmentLike>(
     props: ClientCardRowProps<T>,

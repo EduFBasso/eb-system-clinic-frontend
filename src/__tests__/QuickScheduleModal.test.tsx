@@ -23,13 +23,6 @@ vi.mock('../services/sessions', () => ({
     ensureDeviceSession: () => Promise.resolve(),
 }));
 
-// We'll mock findFirstPendingForClient per-test via vi.mocked()
-const mockFindFirstPending = vi.fn();
-vi.mock('../services/pending', () => ({
-    findFirstPendingForClient: (...args: unknown[]) =>
-        mockFindFirstPending(...args),
-}));
-
 interface FetchResponse {
     ok: boolean;
     headers?: { get: (k: string) => string | null };
@@ -79,6 +72,24 @@ function openModal() {
     );
 }
 
+function expectTime(label: 'Início' | 'Fim', hour: string, minute: string) {
+    expect(
+        screen.getByRole('button', { name: `${label} hora` }),
+    ).toHaveTextContent(hour);
+    expect(
+        screen.getByRole('button', { name: `${label} minuto` }),
+    ).toHaveTextContent(minute);
+}
+
+function selectTimePart(
+    label: 'Início' | 'Fim',
+    part: 'hora' | 'minuto',
+    value: string,
+) {
+    fireEvent.click(screen.getByRole('button', { name: `${label} ${part}` }));
+    fireEvent.click(screen.getByRole('option', { name: value }));
+}
+
 beforeEach(() => {
     vi.restoreAllMocks();
     // Fixa "agora" em hoje às 09:00 para que o appointment 10:00-11:00 seja sempre futuro.
@@ -109,25 +120,14 @@ afterEach(() => {
 });
 
 describe('QuickScheduleModal', () => {
-    it('shows pending resolver behavior when backend blocks with pendente', async () => {
+    it('shows the backend error without fetching a resolver appointment', async () => {
         const fetchMock = globalThis.fetch as unknown as Mock;
         const resp1: FetchResponse = {
             ok: false,
             headers: { get: () => 'text/plain' },
-            text: async () => 'Cliente possui compromisso pendente',
-        };
-        const resp2: FetchResponse = {
-            ok: true,
-            json: async () => [
-                {
-                    id: 99,
-                    status: 'scheduled',
-                    end_at: new Date(Date.now() - 60_000).toISOString(),
-                },
-            ],
+            text: async () => 'Não foi possível criar o compromisso',
         };
         fetchMock.mockResolvedValueOnce(resp1 as unknown as Response);
-        fetchMock.mockResolvedValueOnce(resp2 as unknown as Response);
 
         openModal();
 
@@ -136,7 +136,7 @@ describe('QuickScheduleModal', () => {
 
         await waitFor(
             () => {
-                expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2);
+                expect(fetchMock).toHaveBeenCalledTimes(1);
             },
             { timeout: 10000 },
         );
@@ -174,70 +174,11 @@ describe('QuickScheduleModal', () => {
             json: async () => [],
         } as unknown as Response);
         openModal();
-        // Find the visit type select by label 'Tipo'
-        const tipo = await screen.findByLabelText(/tipo/i);
-        // Assert initial value 'Consulta'
-        expect((tipo as HTMLSelectElement).value).toBe('consulta');
-        // Interact with the TimePicker hour select (label 'Início')
-        const hourSelect = await screen.findByLabelText(/início/i, {
-            selector: 'label select',
-        });
-        fireEvent.mouseDown(hourSelect);
-        fireEvent.click(hourSelect);
-        fireEvent.keyDown(hourSelect, { key: 'ArrowDown' });
-        // The visit type should remain unchanged
-        expect((tipo as HTMLSelectElement).value).toBe('consulta');
-    });
-
-    it('clicking Resolver agora fires pendingActions:open', async () => {
-        const fetchMock = globalThis.fetch as unknown as Mock;
-        const pendingEnd = new Date(Date.now() - 5 * 60_000).toISOString();
-        const pendingStart = new Date(Date.now() - 30 * 60_000).toISOString();
-
-        // usePendingGuard will call findFirstPendingForClient — mock to return pending
-        mockFindFirstPending.mockResolvedValue({
-            id: 555,
-            status: 'scheduled',
-            start_at: pendingStart,
-            end_at: pendingEnd,
-            client: client.id,
-            title: 'Consulta',
-            notes: undefined,
-            client_name: client.first_name,
-        });
-
-        // "Resolver agora" fetch: GET /appointments/555/
-        fetchMock.mockResolvedValueOnce({
-            ok: true,
-            json: async () => ({
-                id: 555,
-                status: 'scheduled',
-                start_at: pendingStart,
-                end_at: pendingEnd,
-                client: { id: client.id, name: client.first_name },
-                title: 'Consulta',
-                notes: null,
-            }),
-        } as unknown as Response);
-
-        const listener = vi.fn<(e: Event) => void>();
-        window.addEventListener('pendingActions:open', listener);
-        openModal();
-
-        // Pending guard detects the pending → "Resolver agora" button appears
-        const resolverBtn = await screen.findByRole('button', {
-            name: /resolver agora/i,
-        });
-        fireEvent.click(resolverBtn);
-
-        await waitFor(() => expect(listener).toHaveBeenCalled());
-        interface PendingDetail {
-            appointmentId?: number;
-        }
-        const evt = listener.mock.calls[0][0] as CustomEvent<PendingDetail>;
-        expect(evt).toBeTruthy();
-        expect(evt.detail?.appointmentId).toBe(555);
-        window.removeEventListener('pendingActions:open', listener);
+        const tipo = await screen.findByRole('button', { name: 'Tipo' });
+        const initialVisitType = tipo.textContent;
+        fireEvent.click(screen.getByRole('button', { name: 'Início hora' }));
+        fireEvent.click(screen.getAllByRole('option')[0]);
+        expect(tipo).toHaveTextContent(initialVisitType || 'Outro');
     });
 
     it('loads the selected appointment into the form when editing from the day card', async () => {
@@ -260,20 +201,19 @@ describe('QuickScheduleModal', () => {
             expect(
                 screen.getByRole('button', { name: 'Salvar' }),
             ).toBeInTheDocument();
-            const comboboxes = screen.getAllByRole('combobox');
-            expect((comboboxes[0] as HTMLSelectElement).value).toBe(
+            expectTime(
+                'Início',
                 String(startDate.getHours()).padStart(2, '0'),
-            );
-            expect((comboboxes[1] as HTMLSelectElement).value).toBe(
                 String(startDate.getMinutes()).padStart(2, '0'),
             );
-            expect((comboboxes[2] as HTMLSelectElement).value).toBe(
+            expectTime(
+                'Fim',
                 String(endDate.getHours()).padStart(2, '0'),
-            );
-            expect((comboboxes[3] as HTMLSelectElement).value).toBe(
                 String(endDate.getMinutes()).padStart(2, '0'),
             );
-            expect((comboboxes[4] as HTMLSelectElement).value).toBe('consulta');
+            expect(
+                screen.getByRole('button', { name: 'Tipo' }),
+            ).toHaveTextContent('Consulta');
             expect(screen.getByRole('textbox')).toHaveValue('ajustar horario');
         });
     });
@@ -295,12 +235,12 @@ describe('QuickScheduleModal', () => {
             />,
         );
 
-        const comboboxes = await screen.findAllByRole('combobox');
-        expect((comboboxes[0] as HTMLSelectElement).value).toBe('11');
-        expect((comboboxes[1] as HTMLSelectElement).value).toBe('00');
-        expect((comboboxes[2] as HTMLSelectElement).value).toBe('11');
-        expect((comboboxes[3] as HTMLSelectElement).value).toBe('30');
-        expect((comboboxes[4] as HTMLSelectElement).value).toBe('consulta');
+        await screen.findByRole('button', { name: 'Início hora' });
+        expectTime('Início', '11', '00');
+        expectTime('Fim', '11', '30');
+        expect(screen.getByRole('button', { name: 'Tipo' })).toHaveTextContent(
+            'Consulta',
+        );
         expect(screen.getByRole('textbox')).toHaveValue('retomar rascunho');
     });
 
@@ -438,27 +378,26 @@ describe('QuickScheduleModal', () => {
 
         openModal();
 
-        const comboboxes = screen.getAllByRole('combobox');
-        fireEvent.change(comboboxes[0], {
-            target: {
-                value: String(apptStart.getHours()).padStart(2, '0'),
-            },
-        });
-        fireEvent.change(comboboxes[1], {
-            target: {
-                value: String(apptStart.getMinutes()).padStart(2, '0'),
-            },
-        });
-        fireEvent.change(comboboxes[2], {
-            target: {
-                value: String(apptEnd.getHours()).padStart(2, '0'),
-            },
-        });
-        fireEvent.change(comboboxes[3], {
-            target: {
-                value: String(apptEnd.getMinutes()).padStart(2, '0'),
-            },
-        });
+        selectTimePart(
+            'Início',
+            'hora',
+            String(apptStart.getHours()).padStart(2, '0'),
+        );
+        selectTimePart(
+            'Início',
+            'minuto',
+            String(apptStart.getMinutes()).padStart(2, '0'),
+        );
+        selectTimePart(
+            'Fim',
+            'hora',
+            String(apptEnd.getHours()).padStart(2, '0'),
+        );
+        selectTimePart(
+            'Fim',
+            'minuto',
+            String(apptEnd.getMinutes()).padStart(2, '0'),
+        );
 
         fireEvent.click(screen.getByRole('button', { name: /criar/i }));
 
@@ -511,29 +450,28 @@ describe('QuickScheduleModal', () => {
             />,
         );
 
-        const comboboxes = screen.getAllByRole('combobox');
         const conflictingStart = new Date(conflictingAppt.start_at);
         const conflictingEnd = new Date(conflictingAppt.end_at);
-        fireEvent.change(comboboxes[0], {
-            target: {
-                value: String(conflictingStart.getHours()).padStart(2, '0'),
-            },
-        });
-        fireEvent.change(comboboxes[1], {
-            target: {
-                value: String(conflictingStart.getMinutes()).padStart(2, '0'),
-            },
-        });
-        fireEvent.change(comboboxes[2], {
-            target: {
-                value: String(conflictingEnd.getHours()).padStart(2, '0'),
-            },
-        });
-        fireEvent.change(comboboxes[3], {
-            target: {
-                value: String(conflictingEnd.getMinutes()).padStart(2, '0'),
-            },
-        });
+        selectTimePart(
+            'Início',
+            'hora',
+            String(conflictingStart.getHours()).padStart(2, '0'),
+        );
+        selectTimePart(
+            'Início',
+            'minuto',
+            String(conflictingStart.getMinutes()).padStart(2, '0'),
+        );
+        selectTimePart(
+            'Fim',
+            'hora',
+            String(conflictingEnd.getHours()).padStart(2, '0'),
+        );
+        selectTimePart(
+            'Fim',
+            'minuto',
+            String(conflictingEnd.getMinutes()).padStart(2, '0'),
+        );
 
         fireEvent.click(screen.getByRole('button', { name: /criar/i }));
         await waitFor(() => expect(listener).toHaveBeenCalled());
@@ -578,7 +516,7 @@ describe('QuickScheduleModal', () => {
             conflictingStart.getTime() + 30 * 60 * 1000,
         );
         const originalDraftStart = new Date(
-            conflictingStart.getTime() + 25 * 60 * 1000,
+            conflictingStart.getTime() + 20 * 60 * 1000,
         );
         const originalDraftEnd = new Date(
             originalDraftStart.getTime() + 30 * 60 * 1000,
@@ -626,30 +564,28 @@ describe('QuickScheduleModal', () => {
             />,
         );
 
-        const comboboxes = screen.getAllByRole('combobox');
-        fireEvent.change(comboboxes[0], {
-            target: {
-                value: String(originalDraftStart.getHours()).padStart(2, '0'),
-            },
-        });
-        fireEvent.change(comboboxes[1], {
-            target: {
-                value: String(originalDraftStart.getMinutes()).padStart(2, '0'),
-            },
-        });
-        fireEvent.change(comboboxes[2], {
-            target: {
-                value: String(originalDraftEnd.getHours()).padStart(2, '0'),
-            },
-        });
-        fireEvent.change(comboboxes[3], {
-            target: {
-                value: String(originalDraftEnd.getMinutes()).padStart(2, '0'),
-            },
-        });
-        fireEvent.change(comboboxes[4], {
-            target: { value: 'consulta' },
-        });
+        selectTimePart(
+            'Início',
+            'hora',
+            String(originalDraftStart.getHours()).padStart(2, '0'),
+        );
+        selectTimePart(
+            'Início',
+            'minuto',
+            String(originalDraftStart.getMinutes()).padStart(2, '0'),
+        );
+        selectTimePart(
+            'Fim',
+            'hora',
+            String(originalDraftEnd.getHours()).padStart(2, '0'),
+        );
+        selectTimePart(
+            'Fim',
+            'minuto',
+            String(originalDraftEnd.getMinutes()).padStart(2, '0'),
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Tipo' }));
+        fireEvent.click(screen.getByRole('option', { name: 'Consulta' }));
         fireEvent.change(screen.getByRole('textbox'), {
             target: { value: 'agendamento da cliente original' },
         });

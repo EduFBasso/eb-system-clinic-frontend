@@ -4,7 +4,6 @@ import { apiFetch, ApiError } from '../../utils/apiFetch';
 import FormPage from '../../components/FormKit/FormPage';
 import FormSection from '../../components/FormKit/FormSection';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { consumeFlashMessage } from '../../utils/flashMessage';
 import formStyles from '../../styles/pages/Client.module.css';
 
 type Service = {
@@ -21,17 +20,11 @@ function format2DecimalsBR(value: number): string {
     });
 }
 
-function visibleDescription(description?: string): string {
-    const value = String(description || '').trim();
-    if (!value.startsWith('odonto_scope:')) return value;
-    return value.replace(/^odonto_scope:(?:tooth|arch|all)\s*/i, '').trim();
-}
-
 export default function ServiceListPage() {
     const [items, setItems] = useState<Service[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const [search, setSearch] = useState('');
     const navigate = useNavigate();
     const location = useLocation();
     const returnTo =
@@ -48,16 +41,6 @@ export default function ServiceListPage() {
             navigate('/');
         },
         [cameFromConsulta, navigate],
-    );
-
-    const openServiceForm = useMemo(
-        () => (serviceId?: number) => {
-            const path = serviceId
-                ? `/catalog/services/${serviceId}`
-                : '/catalog/services/new';
-            navigate(path, { state: { returnTo } });
-        },
-        [navigate, returnTo],
     );
 
     useEffect(() => {
@@ -82,17 +65,13 @@ export default function ServiceListPage() {
         };
     }, []);
 
-    // Exibe imediatamente a mensagem de sucesso ao retornar do formulário
-    useEffect(() => {
-        const message = consumeFlashMessage('catalog-services');
-        if (!message?.text) return;
-        setSuccessMsg(String(message.text));
-        const ms =
-            typeof message.autoCloseMs === 'number'
-                ? message.autoCloseMs
-                : 6000;
-        setTimeout(() => setSuccessMsg(null), ms);
-    }, []);
+    const filteredItems = useMemo(() => {
+        const term = search.trim().toLocaleLowerCase('pt-BR');
+        if (!term) return items;
+        return items.filter(service =>
+            service.name.toLocaleLowerCase('pt-BR').includes(term),
+        );
+    }, [items, search]);
 
     return (
         <FormPage title='Serviços' onSubmit={e => e.preventDefault()}>
@@ -101,28 +80,14 @@ export default function ServiceListPage() {
                 onClose={handleClose}
                 closeTitle='Fechar'
             >
-                {successMsg && (
-                    <div
-                        style={{
-                            marginBottom: 8,
-                            padding: '10px 12px',
-                            background: 'var(--color-success-bg)',
-                            border: '1px solid var(--color-success-dark)',
-                            borderRadius: 8,
-                            color: 'var(--color-success-dark)',
-                            fontWeight: 600,
-                        }}
-                    >
-                        {successMsg}
-                    </div>
-                )}
                 <div
                     style={{
                         display: 'flex',
-                        justifyContent: 'space-between',
+                        justifyContent: 'flex-start',
                         alignItems: 'center',
                         marginBottom: 12,
                         gap: 8,
+                        flexWrap: 'wrap',
                     }}
                 >
                     <button
@@ -141,25 +106,26 @@ export default function ServiceListPage() {
                     >
                         ← Voltar
                     </button>
-                    <button
-                        className='btn'
+                    <input
+                        type='search'
+                        value={search}
+                        onChange={event => setSearch(event.target.value)}
+                        placeholder='Search'
+                        aria-label='Buscar serviço por nome'
                         style={{
-                            background: 'var(--color-primary)',
-                            color: '#fff',
-                            border: 'none',
+                            flex: '1 1 240px',
+                            minWidth: 180,
+                            maxWidth: 420,
+                            border: '1px solid var(--color-border)',
                             borderRadius: 8,
-                            padding: '8px 14px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
+                            padding: '9px 12px',
+                            color: 'var(--color-text)',
+                            background: 'var(--color-bg)',
                         }}
-                        title='Novo serviço'
-                        onClick={() => openServiceForm()}
-                    >
-                        + Novo
-                    </button>
+                    />
                 </div>
                 <div className={formStyles.catalogGrid}>
-                    {items.map(service => (
+                    {filteredItems.map(service => (
                         <article
                             key={service.id}
                             className={`${formStyles.catalogCard} flex w-full flex-col`}
@@ -184,20 +150,6 @@ export default function ServiceListPage() {
                                 >
                                     {service.name}
                                 </h2>
-                                <button
-                                    aria-label={`Editar ${service.name}`}
-                                    title='Editar serviço'
-                                    onClick={() => openServiceForm(service.id)}
-                                    className='flex h-11 w-11 shrink-0 items-center justify-center rounded-md border'
-                                    style={{
-                                        background: 'transparent',
-                                        borderColor: 'var(--color-border)',
-                                        cursor: 'pointer',
-                                        fontSize: 17,
-                                    }}
-                                >
-                                    ✏️
-                                </button>
                             </div>
                             <p
                                 className='mt-2 flex-1 text-sm'
@@ -205,7 +157,7 @@ export default function ServiceListPage() {
                                     color: 'var(--color-text-light)',
                                 }}
                             >
-                                {visibleDescription(service.description) ||
+                                {service.description?.trim() ||
                                     'Sem descrição.'}
                             </p>
                             <div
@@ -223,15 +175,37 @@ export default function ServiceListPage() {
                         </article>
                     ))}
                 </div>
-                {!loading && items.length === 0 && (
+                {!loading && filteredItems.length === 0 && (
                     <div style={{ padding: 12, color: '#666' }}>
-                        Nenhum serviço cadastrado.
+                        {search
+                            ? 'Nenhum serviço encontrado.'
+                            : 'Nenhum serviço cadastrado.'}
                     </div>
                 )}
                 {loading && <div style={{ padding: 12 }}>Carregando…</div>}
                 {error && (
                     <div style={{ padding: 12, color: 'crimson' }}>{error}</div>
                 )}
+                <button
+                    type='button'
+                    onClick={() => window.print()}
+                    style={{
+                        position: 'fixed',
+                        right: 20,
+                        bottom: 20,
+                        zIndex: 20,
+                        border: '1px solid var(--btn-theme-border)',
+                        borderRadius: 8,
+                        padding: '10px 16px',
+                        background: 'var(--btn-theme-bg)',
+                        color: 'var(--btn-theme-text)',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.16)',
+                    }}
+                >
+                    Imprimir
+                </button>
             </FormSection>
         </FormPage>
     );

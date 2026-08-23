@@ -22,7 +22,6 @@ export interface ClientDayListProps<T extends SharedAppointmentLike> {
     // Event handlers forwarded to the card
     onClick?: (a: T) => void;
     onUseTime?: (a: T) => void;
-    onResolvePending?: (a: T) => void;
     onEdit?: (a: T) => void;
     onCancel?: (a: T) => void;
     onDetails?: (a: T) => void;
@@ -49,7 +48,6 @@ export default function ClientDayList<T extends SharedAppointmentLike>(
         getCardProps,
         onClick,
         onUseTime,
-        onResolvePending,
         onEdit,
         onCancel,
         onDetails,
@@ -92,7 +90,6 @@ export default function ClientDayList<T extends SharedAppointmentLike>(
                         // Forward base handlers; extra can override
                         onClick={onClick}
                         onUseTime={onUseTime}
-                        onResolvePending={onResolvePending}
                         onEdit={onEdit}
                         onCancel={onCancel}
                         onDetails={onDetails}

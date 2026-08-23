@@ -22,7 +22,12 @@ type Props = {
     onMarkPrinted: () => void;
     onOpenService: () => void;
     onOpenProduct: () => void;
-    onSaveNotes: (value: string) => void;
+    notes: string;
+    onNotesChange: (value: string) => void;
+    savingPlanDetails: boolean;
+    planDetailsDirty: boolean;
+    onCancelPlanDetails: () => void;
+    onSavePlanDetails: () => void;
 
     paymentCondition: PaymentCondition;
     onPaymentConditionChange: (value: PaymentCondition) => void;
@@ -52,7 +57,12 @@ export default function OdontoPlanWorkspace({
     onMarkPrinted,
     onOpenService,
     onOpenProduct,
-    onSaveNotes,
+    notes,
+    onNotesChange,
+    savingPlanDetails,
+    planDetailsDirty,
+    onCancelPlanDetails,
+    onSavePlanDetails,
     paymentCondition,
     onPaymentConditionChange,
     installmentsCount,
@@ -295,7 +305,7 @@ export default function OdontoPlanWorkspace({
                 )}
             </section>
 
-            {/* Observations textarea — persisted on blur */}
+            {/* General plan observations */}
             <section className={styles.card}>
                 <label className={styles.labelWide}>
                     <span className={styles.sectionTitle}>
@@ -304,13 +314,36 @@ export default function OdontoPlanWorkspace({
                     <textarea
                         className={`${styles.textarea} ${styles.planNotes}`}
                         rows={3}
-                        defaultValue={plan.notes ?? ''}
+                        value={notes}
                         placeholder='Observações clínicas, orientações e condições especiais…'
-                        onBlur={e => onSaveNotes(e.target.value)}
+                        onChange={event => onNotesChange(event.target.value)}
                         disabled={isPlanLocked}
                     />
                 </label>
             </section>
+
+            {!isPlanLocked && (
+                <div className={styles.planDetailsActions}>
+                    <button
+                        type='button'
+                        className={styles.btnDanger}
+                        onClick={onCancelPlanDetails}
+                        disabled={!planDetailsDirty || savingPlanDetails}
+                    >
+                        Cancelar alterações
+                    </button>
+                    <button
+                        type='button'
+                        className={styles.btnPrimary}
+                        onClick={onSavePlanDetails}
+                        disabled={!planDetailsDirty || savingPlanDetails}
+                    >
+                        {savingPlanDetails
+                            ? 'Salvando...'
+                            : 'Salvar alterações'}
+                    </button>
+                </div>
+            )}
 
             {!hasActiveModal && (
                 <footer className={styles.planWorkspaceFooter}>
@@ -336,7 +369,7 @@ export default function OdontoPlanWorkspace({
                         >
                             <span aria-hidden='true'>🖨</span>{' '}
                             <span className={styles.printButtonLabel}>
-                                Imprimir Orçamento
+                                Imprimir
                             </span>
                         </button>
                         {printTooltipVisible && (

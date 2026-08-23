@@ -2,7 +2,7 @@ import React from 'react';
 import styles from '../../styles/components/Main.module.css';
 import { ClientCard } from '../clientCard/ClientCard';
 import type { FilterMode } from '../FilterBar/FilterBar';
-import type { PendingAppointmentLike } from '../../hooks/useAppointmentSets';
+import type { ScheduledAppointmentLike } from '../../hooks/useAppointmentSets';
 import type { ClientBasic } from '../../types/ClientBasic';
 
 const LOAD_BATCH = 50;
@@ -14,9 +14,7 @@ interface MainContentListProps {
     selectedClientId: number | null;
     filterMode: FilterMode;
     isResettingFilter: boolean;
-    tomorrowClientAppts: Map<number, PendingAppointmentLike>;
-    pendingClientIds: Set<number>;
-    pendingClientAppts: Map<number, PendingAppointmentLike>;
+    tomorrowClientAppts: Map<number, ScheduledAppointmentLike>;
     onSelectClient: (client: ClientBasic) => void;
     onViewClient: (client: ClientBasic) => void;
     onCardRef: (clientId: number, element: HTMLDivElement | null) => void;
@@ -30,8 +28,6 @@ export function MainContentList({
     filterMode,
     isResettingFilter,
     tomorrowClientAppts,
-    pendingClientIds,
-    pendingClientAppts,
     onSelectClient,
     onViewClient,
     onCardRef,
@@ -96,11 +92,6 @@ export function MainContentList({
                             notifyAppt={
                                 filterMode === 'tomorrow'
                                     ? tomorrowClientAppts.get(client.id)
-                                    : undefined
-                            }
-                            pendingAppt={
-                                pendingClientIds.has(client.id)
-                                    ? pendingClientAppts.get(client.id)
                                     : undefined
                             }
                             onSelect={() => onSelectClient(client)}

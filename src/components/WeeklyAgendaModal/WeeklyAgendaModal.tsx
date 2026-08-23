@@ -15,10 +15,9 @@ import {
 } from '../../hooks/useAppointments';
 import { useAppointmentDetailsModal } from '../../hooks/useAppointmentDetailsModal';
 import { useNowTick } from '../../hooks/useNowTick';
-import { openPendingActionsForAppointment } from '../../utils/appointments/openPendingActions';
 import { cancelAppointment } from '../../services/appointments';
 import { dispatchers } from '../../events/dispatchers';
-import type { PendingReturnContext } from '../../types/agendaFlow';
+import type { AppointmentReturnContext } from '../../types/agendaFlow';
 import QuickScheduleModal from '../QuickScheduleModal/QuickScheduleModal';
 import { makeClientBasic } from '../../utils/appointments/agendaHelpers';
 import type { ClientBasic } from '../../types/ClientBasic';
@@ -77,7 +76,7 @@ function WeeklyAgendaContent({
         [anchorDate],
     );
     const buildReturnContext = React.useCallback(
-        (): PendingReturnContext => ({
+        (): AppointmentReturnContext => ({
             kind: 'weekly-agenda',
             dateISO: toISODate(anchorDate),
         }),
@@ -305,7 +304,6 @@ function WeeklyAgendaContent({
 
     const { detailsModal, openDetails } =
         useAppointmentDetailsModal<Appointment>();
-    // PendingActions é global — nenhum estado local necessário
 
     // QuickSchedule: abrir em modo edição ao tocar no cartão
     const [qsOpen, setQsOpen] = React.useState(false);
@@ -555,14 +553,8 @@ function WeeklyAgendaContent({
                                                     onClick={() =>
                                                         setSelected(iso, 'user')
                                                     }
-                                                    onResolvePending={appt => {
-                                                        openPendingActionsForAppointment(
-                                                            appt,
-                                                            buildReturnContext(),
-                                                        );
-                                                    }}
                                                     onDetails={
-                                                        a.status === 'done'
+                                                        derivedStatus === 'done'
                                                             ? appt =>
                                                                   openDetails(
                                                                       appt as Appointment,
@@ -601,7 +593,6 @@ function WeeklyAgendaContent({
             />
 
             {detailsModal}
-            {/* PendingActionsModal é global (Home) */}
             {qsOpen && qsClient && (
                 <QuickScheduleModal
                     open={qsOpen}

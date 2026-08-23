@@ -15,18 +15,6 @@ import {
 import { toInputAmount } from '../../utils/currency';
 import styles from '../../styles/pages/OdontoArcadeSimplifiedPage.module.css';
 
-// Names that indicate a non-tooth-specific (global/facial) procedure.
-const GLOBAL_PROCEDURE_KEYWORDS = [
-    'botox',
-    'preenchimento',
-    'harmonizacao',
-    'harmonização',
-    'facial',
-    'laser',
-    'filler',
-    'bichectomia',
-];
-
 function parseBRPrice(value: string): number {
     return parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0;
 }
@@ -38,16 +26,13 @@ type Props = {
     serviceRows: ServiceRow[];
     orderedTeeth: ToothItem[];
     serviceCatalog: CatalogServiceItem[];
-    savingSuggestionIndex: number | null;
     onClose: () => void;
-    onSave: () => void;
+    onSave: (catalogIndexes: number[]) => void;
     onFlowTypeChange: (type: ServiceFlowType) => void;
     onUpdateRow: (index: number, patch: Partial<ServiceRow>) => void;
     /** Toggles the service row for a given FDI tooth number. */
     onToggleToothRow: (toothNumber: number) => void;
     onAddItem: () => void;
-    /** Called when the user checks the "add to catalog" checkbox for a row. */
-    onSaveSuggestion: (index: number) => void;
     /** Called when the user clicks the delete icon on a catalog suggestion. */
     onDeleteFromCatalog: (serviceId: number) => void;
 };
@@ -55,22 +40,8 @@ type Props = {
 function filterCatalog(
     catalog: CatalogServiceItem[],
     searchRaw: string,
-    scope: ServiceFlowType,
 ): CatalogServiceItem[] {
-    let items = [...catalog];
-
-    if (scope === 'tooth') {
-        // Hide arch-tagged or global/facial items for tooth context.
-        items = items.filter(item => {
-            if (item.odonto_scope === 'arch') return false;
-            const norm = normalizeSearchText(item.name);
-            return !GLOBAL_PROCEDURE_KEYWORDS.some(kw => norm.includes(kw));
-        });
-    } else if (scope === 'arch') {
-        // Hide tooth-tagged items for arch context.
-        items = items.filter(item => item.odonto_scope !== 'tooth');
-    }
-    // scope === 'other': show everything
+    const items = [...catalog];
 
     items.sort((a, b) =>
         a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }),
@@ -93,15 +64,6 @@ function filterCatalog(
         .slice(0, 24);
 }
 
-function treatmentExistsInCatalog(
-    catalog: CatalogServiceItem[],
-    treatmentRaw: string,
-): boolean {
-    const normalized = treatmentRaw.trim().toLowerCase();
-    if (!normalized) return false;
-    return catalog.some(item => item.name.trim().toLowerCase() === normalized);
-}
-
 export default function OdontoServiceModal({
     open,
     saving,
@@ -109,19 +71,24 @@ export default function OdontoServiceModal({
     serviceRows,
     orderedTeeth,
     serviceCatalog,
-    savingSuggestionIndex,
     onClose,
     onSave,
     onFlowTypeChange,
     onUpdateRow,
     onToggleToothRow,
     onAddItem,
-    onSaveSuggestion,
     onDeleteFromCatalog,
 }: Props) {
     const [openDropdownIndex, setOpenDropdownIndex] = React.useState<
         number | null
     >(null);
+    const [includeInCatalog, setIncludeInCatalog] = React.useState<
+        Record<number, boolean>
+    >({});
+
+    React.useEffect(() => {
+        if (!open) setIncludeInCatalog({});
+    }, [open]);
 
     if (!open) return null;
 
@@ -199,7 +166,6 @@ export default function OdontoServiceModal({
                         const suggestions = filterCatalog(
                             serviceCatalog,
                             row.treatment,
-                            row.scope,
                         );
                         const catalogItem = serviceCatalog.find(
                             s =>
@@ -226,7 +192,6 @@ export default function OdontoServiceModal({
                             canAddToCatalog ||
                             priceChangedFromCatalog ||
                             notesChangedFromCatalog;
-                        const isSavingThis = savingSuggestionIndex === index;
                         const checkboxLabel =
                             priceChangedFromCatalog && notesChangedFromCatalog
                                 ? `Atualizar preço e observações de "${row.treatment.trim()}" no catálogo`
@@ -504,12 +469,21 @@ export default function OdontoServiceModal({
                                                     className={
                                                         styles.catalogCheckboxInput
                                                     }
-                                                    checked={isSavingThis}
-                                                    disabled={
-                                                        saving || isSavingThis
+                                                    checked={
+                                                        includeInCatalog[
+                                                            index
+                                                        ] !== false
                                                     }
-                                                    onChange={() =>
-                                                        onSaveSuggestion(index)
+                                                    disabled={saving}
+                                                    onChange={event =>
+                                                        setIncludeInCatalog(
+                                                            previous => ({
+                                                                ...previous,
+                                                                [index]:
+                                                                    event.target
+                                                                        .checked,
+                                                            }),
+                                                        )
                                                     }
                                                 />
                                                 <span
@@ -518,7 +492,8 @@ export default function OdontoServiceModal({
                                                     }
                                                     aria-hidden='true'
                                                 >
-                                                    {isSavingThis && (
+                                                    {includeInCatalog[index] !==
+                                                        false && (
                                                         <svg
                                                             viewBox='0 0 12 10'
                                                             fill='none'
@@ -539,9 +514,7 @@ export default function OdontoServiceModal({
                                                     styles.catalogCheckboxText
                                                 }
                                             >
-                                                {isSavingThis
-                                                    ? 'Salvando...'
-                                                    : checkboxLabel}
+                                                {checkboxLabel}
                                             </span>
                                         </label>
                                     )}
@@ -573,7 +546,54 @@ export default function OdontoServiceModal({
                     <button
                         type='button'
                         className={styles.btnPrimary}
-                        onClick={onSave}
+                        onClick={() =>
+                            onSave(
+                                serviceRows
+                                    .map((row, index) => {
+                                        const catalogItem = serviceCatalog.find(
+                                            item =>
+                                                item.name
+                                                    .trim()
+                                                    .toLowerCase() ===
+                                                row.treatment
+                                                    .trim()
+                                                    .toLowerCase(),
+                                        );
+                                        const priceChanged =
+                                            Boolean(catalogItem) &&
+                                            Boolean(row.serviceId) &&
+                                            Boolean(row.value.trim()) &&
+                                            Math.abs(
+                                                parseBRPrice(row.value) -
+                                                    Number(
+                                                        catalogItem?.base_price ??
+                                                            0,
+                                                    ),
+                                            ) > 0.001;
+                                        const notesChanged =
+                                            Boolean(catalogItem) &&
+                                            Boolean(row.serviceId) &&
+                                            row.notes.trim() !==
+                                                (
+                                                    catalogItem?.default_notes ??
+                                                    ''
+                                                ).trim();
+                                        const selectable =
+                                            (!catalogItem &&
+                                                Boolean(
+                                                    row.treatment.trim(),
+                                                )) ||
+                                            priceChanged ||
+                                            notesChanged;
+
+                                        return selectable &&
+                                            includeInCatalog[index] !== false
+                                            ? index
+                                            : -1;
+                                    })
+                                    .filter(index => index >= 0),
+                            )
+                        }
                         disabled={saving}
                     >
                         {saving ? 'Salvando...' : 'Salvar tratamento'}

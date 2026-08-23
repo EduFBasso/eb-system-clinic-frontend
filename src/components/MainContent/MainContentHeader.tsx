@@ -7,7 +7,6 @@ import type { FilterMode } from '../FilterBar/FilterBar';
 interface MainContentHeaderProps {
     filter: string;
     filterMode: FilterMode;
-    pendingCount: number;
     todayCount: number;
     tomorrowCount: number;
     mobileFiltersOpen: boolean;
@@ -29,7 +28,6 @@ interface MainContentHeaderProps {
 export function MainContentHeader({
     filter,
     filterMode,
-    pendingCount,
     todayCount,
     tomorrowCount,
     mobileFiltersOpen,
@@ -52,7 +50,6 @@ export function MainContentHeader({
             <FilterBar
                 filter={filter}
                 filterMode={filterMode}
-                pendingCount={pendingCount}
                 todayCount={todayCount}
                 tomorrowCount={tomorrowCount}
                 mobileFiltersOpen={mobileFiltersOpen}

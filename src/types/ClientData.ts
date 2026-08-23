@@ -5,6 +5,7 @@ export interface AnamneseBaseData {
     pain_sensitivity: string;
     clinical_history: string;
     sport_activity: string;
+    academic_activity?: string;
 }
 
 export interface AnamnesePodologiaData {
@@ -20,6 +21,14 @@ export interface AnamnesePodologiaData {
     deformities_right: string;
     sensitivity_test: string;
     other_procedures: string;
+}
+
+export interface AnamneseOdontologiaData {
+    gum_bleeding: boolean;
+    floss_usage: boolean;
+    bruxism_clenching: boolean;
+    tooth_brushing_frequency: string;
+    chief_dental_complaint: string;
 }
 
 export interface ClientData {
@@ -45,4 +54,5 @@ export interface ClientData {
     nationality?: string;
     anamnese_base?: Partial<AnamneseBaseData> | null;
     anamnese_podologia?: Partial<AnamnesePodologiaData> | null;
+    anamnese_odontologia?: Partial<AnamneseOdontologiaData> | null;
 }

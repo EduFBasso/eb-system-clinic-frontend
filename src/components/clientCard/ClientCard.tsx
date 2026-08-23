@@ -12,8 +12,6 @@ import { FaEdit } from 'react-icons/fa';
 import '../../styles/palette.css';
 import { parseDOB, calcAge } from '../../utils/dateOfBirth';
 import { useClientCardStyle } from '../clientCard/useClientCardStyle';
-// PendingActionsModal é gerenciado globalmente (Home) via evento 'pendingActions:open'
-import { useClientPendingState } from '../../hooks/useClientPendingState';
 import { useClientCardFocusScroll } from '../clientCard/useClientCardFocusScroll';
 import { useClientFutureAppointments } from '../../domain/futureAppointments';
 // (hysteresis & appointment state consolidated inside hooks)
@@ -39,10 +37,8 @@ interface ClientCardProps {
     /** Quando definido, o botão "Avisar" usa este agendamento em vez do next_appointment do cliente.
      *  Útil quando o filtro ativo é "Amanhã" e o cliente tem um agendamento amanhã distinto do next. */
     notifyAppt?: { start_at?: string; end_at?: string; title?: string };
-    /** Dados do compromisso pendente para exibir data/hora no card pending. */
-    pendingAppt?: { start_at?: string; end_at?: string };
     /** Modo de filtro ativo. Quando 'today' ou 'tomorrow', o card exibe apenas o dia filtrado. */
-    filterMode?: 'all' | 'pending' | 'today' | 'tomorrow';
+    filterMode?: 'all' | 'today' | 'tomorrow';
 }
 
 const LOCAL_HOST_PATTERN = /^(localhost|127\.0\.0\.1|::1)$/i;
@@ -101,7 +97,6 @@ function ClientCardBase({
     selected,
     onSelect,
     notifyAppt,
-    pendingAppt,
     filterMode = 'all',
 }: ClientCardProps) {
     const navigate = useNavigate();
@@ -156,36 +151,15 @@ function ClientCardBase({
             return false;
         }
     }, []);
-    // Hook centralizado de pendência
-    const {
-        effectivePending: isPending,
-        openPendingActions,
-        tryOpenPendingElseQuick,
-    } = useClientPendingState({
-        client,
-        now,
-    });
-
-    // Mostrar seção de agenda somente se há algo concreto ou futuros carregados.
-    // Estado pendente isolado não exibe cabeçalho/tipo para manter UI minimalista.
-    // Agenda line (tipo / horário) é suprimida se pendente para manter visual minimalista.
-    // Porém queremos ainda exibir a linha 'Data:' com o botão Solucionar mesmo que haja um agendamento (scheduled+pending).
-    // Regra revisada:
-    //  - Quando pendente: não mostramos linha de agenda nem linha Data (substituímos por bloco compacto de pendência)
-    //  - Linha de agenda aparece apenas se há scheduled ou futuros e não está pendente
     const isTomorrowFilter = filterMode === 'tomorrow' && !!notifyAppt;
 
-    const hasAgendaLine =
-        (isScheduled || futureAppointments.length > 0) && !isPending;
+    const hasAgendaLine = isScheduled || futureAppointments.length > 0;
 
     // Ações unificadas (+) para agenda e fallback
     const createActionAgenda = useClientCreateAction({
-        isPending,
         futureAppointmentsCount: futureAppointments.length,
         isScheduled,
         dynLimit,
-        openPendingActions,
-        tryOpenPendingElseQuick,
         setEditing: () => {
             /* noop: scheduling flow is hosted globally in Home */
         },
@@ -193,12 +167,9 @@ function ClientCardBase({
         baseTitle: 'Novo agendamento',
     });
     const createActionFallback = useClientCreateAction({
-        isPending,
         futureAppointmentsCount: futureAppointments.length,
         isScheduled,
         dynLimit,
-        openPendingActions,
-        tryOpenPendingElseQuick,
         setEditing: () => {
             /* noop: scheduling flow is hosted globally in Home */
         },
@@ -215,8 +186,6 @@ function ClientCardBase({
     } = useClientCardStyle({
         selected,
         pressed,
-        isScheduled,
-        isPending,
     });
     const openGlobalQuickSchedule = React.useCallback(
         (appointment?: Appointment | null) => {
@@ -255,7 +224,6 @@ function ClientCardBase({
     );
 
     // Align with global forceClose: ensure any ClientCard modal closes too
-    // PendingActions global — sem necessidade de listener local
 
     // Fechar modo edição ao clicar fora do card
     // Efeito de clique fora removido enquanto editor inline está desativado
@@ -606,10 +574,8 @@ function ClientCardBase({
             <ClientCardAgendaSection
                 client={client}
                 notifyAppt={notifyAppt}
-                pendingAppt={pendingAppt}
                 hasAgendaLine={hasAgendaLine}
                 isScheduled={isScheduled}
-                isPending={isPending}
                 activeStartISO={activeStartISO}
                 activeEndISO={activeEndISO}
                 displayStartISO={client.next_appointment_start_at || null}
@@ -625,22 +591,6 @@ function ClientCardBase({
                 separatorOpacity={separatorOpacity}
                 onOpenMonthlyAgenda={openGlobalMonthlyAgenda}
                 onOpenQuickSchedule={openGlobalQuickSchedule}
-                onSolvePending={async () => {
-                    try {
-                        onSelect?.();
-                    } catch {
-                        /* noop */
-                    }
-                    await tryOpenPendingElseQuick(
-                        () => {
-                            /* noop fallback */
-                        },
-                        {
-                            kind: 'home',
-                            clientId: client.id,
-                        },
-                    );
-                }}
                 formatDateRange={formatAppointmentDateRange}
             />
 

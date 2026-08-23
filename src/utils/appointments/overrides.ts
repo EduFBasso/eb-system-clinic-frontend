@@ -2,7 +2,7 @@
 // Keeps a minimal in-memory map of appointmentId -> { status?: 'pending'|'done'|'canceled'|'scheduled' }
 // and a small event bus to notify listeners until network refetch completes.
 
-type Status = 'scheduled' | 'pending' | 'done' | 'canceled';
+type Status = 'scheduled' | 'done' | 'canceled';
 
 export type Override = {
     status?: Status;

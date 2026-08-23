@@ -13,16 +13,14 @@ import {
     type ClientLike,
 } from '../../utils/appointments/agendaHelpers';
 import { useNowTick } from '../../hooks/useNowTick';
-import { openPendingActionsForAppointment } from '../../utils/appointments/openPendingActions';
 import QuickScheduleModal from '../QuickScheduleModal/QuickScheduleModal';
-// PendingActionsModal é global (Home)
 import type { Appointment } from '../../hooks/useAppointments';
 import { useAppointmentsRange } from '../../hooks/useAppointments';
 import { useAppointmentDetailsModal } from '../../hooks/useAppointmentDetailsModal';
 import type { ClientBasic } from '../../types/ClientBasic';
 import { cancelAppointment } from '../../services/appointments';
 import { dispatchers } from '../../events/dispatchers';
-import type { PendingReturnContext } from '../../types/agendaFlow';
+import type { AppointmentReturnContext } from '../../types/agendaFlow';
 import { addDays, startOfDay } from '../../utils/dateHelpers';
 
 interface DailyAgendaModalProps {
@@ -75,7 +73,6 @@ export function DailyAgendaModal({
         if (open) setSelectedDay(startOfDay(date));
     }, [open, date]);
     const [reloadKey, setReloadKey] = React.useState(0);
-    // PendingActions é global — nenhum estado local
 
     // Removido listener local de forceClose — Home coordena
     const { detailsModal, openDetails } =
@@ -85,7 +82,7 @@ export function DailyAgendaModal({
         [selectedDay],
     );
     const buildReturnContext = React.useCallback(
-        (appointmentId?: number): PendingReturnContext => ({
+        (appointmentId?: number): AppointmentReturnContext => ({
             kind: 'daily-agenda',
             dateISO: toISODate(dayStart),
             focusAppointmentId: appointmentId,
@@ -152,14 +149,14 @@ export function DailyAgendaModal({
         }
     }, [open, items, loading, reloadKey, dayStart, dayEnd]);
     const [statusFilter, setStatusFilter] = React.useState<
-        'all' | 'active' | 'past' | 'done' | 'canceled'
+        'all' | 'active' | 'done' | 'canceled'
     >('all');
 
     type EnrichedAppt = Appointment & {
         _start: Date;
         _end: Date;
         _isPast: boolean;
-        _derivedStatus: 'scheduled' | 'done' | 'canceled' | 'past';
+        _derivedStatus: 'scheduled' | 'done' | 'canceled';
         client?: ClientLike | number;
     };
     type RawClientField = ClientLike | number | undefined;
@@ -405,7 +402,6 @@ export function DailyAgendaModal({
                         >
                             <option value='all'>Todos</option>
                             <option value='active'>Ativos</option>
-                            <option value='past'>Pendentes</option>
                             <option value='done'>Concluídos</option>
                             <option value='canceled'>Cancelados</option>
                         </select>
@@ -462,14 +458,8 @@ export function DailyAgendaModal({
                                         setQsEdit(a);
                                         setQsOpen(true);
                                     }}
-                                    onResolvePending={appt => {
-                                        openPendingActionsForAppointment(
-                                            appt,
-                                            buildReturnContext(appt.id),
-                                        );
-                                    }}
                                     onDetails={
-                                        a.status === 'done'
+                                        a._derivedStatus === 'done'
                                             ? appt =>
                                                   openDetails(
                                                       appt as Appointment,
@@ -516,7 +506,6 @@ export function DailyAgendaModal({
                     }}
                 />
             )}
-            {/* PendingActionsModal é global (Home) */}
             {detailsModal}
         </AppModal>
     );

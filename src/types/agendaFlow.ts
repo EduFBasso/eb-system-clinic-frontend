@@ -1,4 +1,3 @@
-import type { SharedAppointmentLike } from '../components/shared/AppointmentCard';
 import type { Appointment } from '../hooks/useAppointments';
 
 export interface QuickScheduleInitialDraft {
@@ -43,7 +42,7 @@ export interface HomeReturnContext {
     clientId: number;
 }
 
-export type PendingReturnContext =
+export type AppointmentReturnContext =
     | QuickScheduleReturnContext
     | DailyAgendaReturnContext
     | WeeklyAgendaReturnContext
@@ -52,13 +51,7 @@ export type PendingReturnContext =
     | HomeReturnContext
     | null;
 
-export interface PendingActionsOpenDetail {
-    appt?: SharedAppointmentLike;
-    appointmentId?: number | null;
-    returnContext?: PendingReturnContext;
-}
-
 export interface ReopenAppointmentDetailsContext {
     appointmentId: number;
-    returnContext?: PendingReturnContext;
+    returnContext?: AppointmentReturnContext;
 }

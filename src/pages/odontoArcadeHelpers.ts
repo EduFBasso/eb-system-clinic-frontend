@@ -21,9 +21,12 @@ export type PlanListItem = {
     updated_at?: string;
     pending_items?: number;
     completed_items?: number;
+    payment_condition?: PaymentCondition;
+    installments_count?: number;
+    first_due_date?: string | null;
+    plan_total?: number | string | null;
 };
 
-/** Local (non-persisted) payment condition state for the plan workspace. */
 export type PaymentCondition = 'avista' | 'aprazo';
 
 /** Represents a tooth slot in the visual grid using FDI notation. */
@@ -70,11 +73,6 @@ export type CatalogServiceItem = {
     base_price: number | string | null;
     description?: string;
     default_notes?: string;
-    /**
-     * Odonto context stored in Service.description as "odonto_scope:tooth|arch|all".
-     * Undefined = no tag → show in all contexts.
-     */
-    odonto_scope?: 'tooth' | 'arch' | 'all';
 };
 
 export type ServiceRow = {

@@ -9,7 +9,7 @@ import type { ClientBasic } from '../types/ClientBasic';
 import type { Appointment } from '../hooks/useAppointments';
 import { API_BASE } from '../config/api';
 import { isTokenExpired } from '../utils/jwt';
-import type { PendingReturnContext } from '../types/agendaFlow';
+import type { AppointmentReturnContext } from '../types/agendaFlow';
 import { getAccessToken } from '../utils/auth/session';
 
 // ---------------------------------------------------------------------------
@@ -91,7 +91,9 @@ export interface UseAgendaModalsReturn {
     weeklyOpen: boolean;
     setWeeklyOpen: React.Dispatch<React.SetStateAction<boolean>>;
     weeklyInitialDate: Date | undefined;
-    setWeeklyInitialDate: React.Dispatch<React.SetStateAction<Date | undefined>>;
+    setWeeklyInitialDate: React.Dispatch<
+        React.SetStateAction<Date | undefined>
+    >;
     // Quick
     quickOpen: boolean;
     setQuickOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -107,9 +109,9 @@ export interface UseAgendaModalsReturn {
     setDetailsOpen: React.Dispatch<React.SetStateAction<boolean>>;
     detailsAppt: Appointment | null;
     setDetailsAppt: React.Dispatch<React.SetStateAction<Appointment | null>>;
-    detailsReturnContext: PendingReturnContext;
+    detailsReturnContext: AppointmentReturnContext;
     setDetailsReturnContext: React.Dispatch<
-        React.SetStateAction<PendingReturnContext>
+        React.SetStateAction<AppointmentReturnContext>
     >;
     // Openers / helpers
     openMonthly: (clientId: number, date?: Date) => Promise<void>;
@@ -139,9 +141,8 @@ export function useAgendaModals(): UseAgendaModalsReturn {
     const [detailsAppt, setDetailsAppt] = React.useState<Appointment | null>(
         null,
     );
-    const [detailsReturnContext, setDetailsReturnContext] = React.useState<PendingReturnContext>(
-        null,
-    );
+    const [detailsReturnContext, setDetailsReturnContext] =
+        React.useState<AppointmentReturnContext>(null);
     const [routeInitialMonth, setRouteInitialMonth] = React.useState<
         Date | undefined
     >(undefined);

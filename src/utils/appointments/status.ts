@@ -1,47 +1,41 @@
-export type StatusKind = 'scheduled' | 'done' | 'canceled' | 'past';
+export type StatusKind = 'scheduled' | 'done' | 'canceled';
 
 /**
  * Derive a visual status for an appointment-like object based on server-aligned time.
  * - canceled → 'canceled'
  * - done → 'done'
- * - pending → 'past' (visual pending)
- * - end < now and status === 'scheduled' → 'past' (pending)
+ * - end < now and status === 'scheduled' → 'done'
  * - else → 'scheduled'
  */
 export function deriveStatus(
     appt: {
         start_at: string;
         end_at: string;
-        status: 'scheduled' | 'pending' | 'done' | 'canceled';
+        status: 'scheduled' | 'done' | 'canceled';
     },
     now: Date,
 ): StatusKind {
     const end = new Date(appt.end_at);
     if (appt.status === 'canceled') return 'canceled';
     if (appt.status === 'done') return 'done';
-    if (appt.status === 'pending') return 'past';
-    if (end < now && appt.status === 'scheduled') return 'past';
+    if (end < now && appt.status === 'scheduled') return 'done';
     return 'scheduled';
 }
 
 export function statusStripeColor(status: StatusKind): string {
     return status === 'canceled'
         ? 'var(--color-canceled)'
-        : status === 'past'
-          ? 'var(--color-pending)'
-          : status === 'done'
-            ? 'var(--color-done)'
-            : 'var(--color-success)';
+        : status === 'done'
+          ? 'var(--color-done)'
+          : 'var(--color-success)';
 }
 
 export function statusBackgroundColor(status: StatusKind): string {
     return status === 'canceled'
         ? 'var(--color-canceled-bg)'
-        : status === 'past'
-          ? 'var(--color-pending-bg)'
-          : status === 'done'
-            ? 'var(--color-done-bg)'
-            : 'var(--color-success-bg)';
+        : status === 'done'
+          ? 'var(--color-done-bg)'
+          : 'var(--color-success-bg)';
 }
 import type { Appointment } from '../../hooks/useAppointments';
 
@@ -49,7 +43,7 @@ export interface EnrichedAppointment extends Appointment {
     _start: Date;
     _end: Date;
     _isPast: boolean;
-    _derivedStatus: 'scheduled' | 'done' | 'canceled' | 'past';
+    _derivedStatus: 'scheduled' | 'done' | 'canceled';
 }
 
 export function enrichAppointment(
@@ -59,9 +53,8 @@ export function enrichAppointment(
     const _start = new Date(appt.start_at);
     const _end = new Date(appt.end_at);
     const _isPast = _end < now;
-    let _derivedStatus: EnrichedAppointment['_derivedStatus'] =
-        appt.status === 'pending' ? 'past' : appt.status;
-    if (appt.status === 'scheduled' && _isPast) _derivedStatus = 'past';
+    let _derivedStatus: EnrichedAppointment['_derivedStatus'] = appt.status;
+    if (appt.status === 'scheduled' && _isPast) _derivedStatus = 'done';
     return { ...appt, _start, _end, _isPast, _derivedStatus };
 }
 

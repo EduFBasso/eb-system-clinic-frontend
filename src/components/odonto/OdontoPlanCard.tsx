@@ -1,6 +1,7 @@
 import React from 'react';
 import type { PlanListItem } from '../../pages/odontoArcadeHelpers';
 import { planDisplayName } from '../../pages/odontoArcadeHelpers';
+import { formatAmount } from '../../utils/currency';
 import styles from './OdontoPlanCard.module.css';
 
 type Props = {
@@ -31,6 +32,13 @@ function StatusBadge({ status }: { status: PlanListItem['status'] }) {
 
 export default function OdontoPlanCard({ plan, onSelect, onDelete }: Props) {
     const isArchived = plan.status === 'archived';
+    const isInstallments = plan.payment_condition === 'aprazo';
+    const installments = Math.max(1, plan.installments_count ?? 1);
+    const total = Number(plan.plan_total ?? 0);
+    const installmentValue = total / installments;
+    const paymentSummary = isInstallments
+        ? `Total: ${formatAmount(total)} a prazo em ${installments}x de ${formatAmount(installmentValue)}`
+        : `Total: ${formatAmount(total)} à vista`;
     return (
         <div
             className={`${styles.card} ${isArchived ? styles.archivedCard : ''}`}
@@ -44,10 +52,17 @@ export default function OdontoPlanCard({ plan, onSelect, onDelete }: Props) {
                 <StatusBadge status={plan.status} />
             </div>
             <div className={styles.footer}>
-                <span className={styles.counts}>
-                    {plan.pending_items ?? 0} pendentes ·{' '}
-                    {plan.completed_items ?? 0} pagos
-                </span>
+                <div className={styles.paymentSummary}>
+                    <span>{paymentSummary}</span>
+                    {isInstallments && plan.first_due_date && (
+                        <span>
+                            1ª parcela em{' '}
+                            {new Date(
+                                `${plan.first_due_date}T12:00:00`,
+                            ).toLocaleDateString('pt-BR')}
+                        </span>
+                    )}
+                </div>
                 {!plan.is_printed && !isArchived && (
                     <button
                         type='button'

@@ -1,6 +1,5 @@
 // frontend/src/pages/ConsultaPage.tsx
 // Página isolada para registrar atendimento (serviços e produtos usados + pagamento).
-// Funciona standalone para testes; será linkada via PendingActionsModal depois.
 
 import React, { useEffect, useState } from 'react';
 import { API_BASE } from '../config/api';
@@ -142,7 +141,6 @@ export default function ConsultaPage() {
             title='Registrar Atendimento'
             onSubmit={e => e.preventDefault()}
         >
-            {/* Contexto do agendamento quando vindo do PendingActionsModal */}
             {apptState.clientName && (
                 <div
                     style={{
