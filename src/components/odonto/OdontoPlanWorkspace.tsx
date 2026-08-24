@@ -38,11 +38,8 @@ type Props = {
     installmentValue: number;
     planTotal: number;
 
-    expandedItemIds: Set<number>;
-    onToggleDetails: (id: number) => void;
     onEditItem: (item: TreatmentItem) => void;
     onDeleteItem: (id: number) => void;
-    onMarkItemCompleted: (id: number) => void;
 };
 
 export default function OdontoPlanWorkspace({
@@ -71,44 +68,56 @@ export default function OdontoPlanWorkspace({
     onFirstDueDateChange,
     installmentValue,
     planTotal,
-    expandedItemIds,
-    onToggleDetails,
     onEditItem,
     onDeleteItem,
-    onMarkItemCompleted,
 }: Props) {
     const [mapVisible, setMapVisible] = React.useState(false);
-    const [printTooltipVisible, setPrintTooltipVisible] = React.useState(false);
-    const printTooltipTimer = React.useRef<ReturnType<
-        typeof setTimeout
-    > | null>(null);
 
-    React.useEffect(() => {
-        return () => {
-            if (printTooltipTimer.current) {
-                clearTimeout(printTooltipTimer.current);
-            }
-        };
-    }, []);
+    const productParentIds = new Set(
+        items
+            .filter(item => item.parent_item != null)
+            .map(item => item.parent_item as number),
+    );
+    const treatmentGroups = groupedItems
+        .map(group => ({
+            ...group,
+            items: group.items.filter(item => !productParentIds.has(item.id)),
+        }))
+        .filter(group => group.items.length > 0);
+    const productGroups = groupedItems
+        .map(group => ({
+            ...group,
+            items: group.items.filter(item => productParentIds.has(item.id)),
+        }))
+        .filter(group => group.items.length > 0);
 
-    function showPrintTooltip() {
-        if (printTooltipTimer.current) {
-            clearTimeout(printTooltipTimer.current);
-            printTooltipTimer.current = null;
-        }
-        setPrintTooltipVisible(true);
-    }
-
-    function hidePrintTooltip() {
-        setPrintTooltipVisible(false);
-    }
-
-    function showPrintTooltipOnTouch() {
-        showPrintTooltip();
-        printTooltipTimer.current = setTimeout(() => {
-            setPrintTooltipVisible(false);
-            printTooltipTimer.current = null;
-        }, 3000);
+    function renderGroups(groups: ItemGroup[]) {
+        return (
+            <div className={styles.groupList}>
+                {groups.map(group => (
+                    <div key={group.key} className={styles.groupCard}>
+                        <strong className={styles.groupDate}>
+                            {group.label}
+                        </strong>
+                        {group.items.map(item => {
+                            const children = items.filter(
+                                candidate => candidate.parent_item === item.id,
+                            );
+                            return (
+                                <OdontoProcedureCard
+                                    key={item.id}
+                                    item={item}
+                                    childItems={children}
+                                    onEdit={onEditItem}
+                                    onDelete={onDeleteItem}
+                                    locked={isPlanLocked}
+                                />
+                            );
+                        })}
+                    </div>
+                ))}
+            </div>
+        );
     }
 
     return (
@@ -117,22 +126,6 @@ export default function OdontoPlanWorkspace({
             <div className={styles.planWorkspaceHeader}>
                 <button type='button' className={styles.btn} onClick={onBack}>
                     ← Planos
-                </button>
-                <button
-                    type='button'
-                    className={styles.btnPrimary}
-                    onClick={onOpenService}
-                    disabled={isPlanLocked}
-                >
-                    Novo Tratamento
-                </button>
-                <button
-                    type='button'
-                    className={styles.btnPrimary}
-                    onClick={onOpenProduct}
-                    disabled={isPlanLocked}
-                >
-                    Novo Produto
                 </button>
             </div>
 
@@ -195,113 +188,47 @@ export default function OdontoPlanWorkspace({
                 )}
             </section>
 
-            {/* Procedures list */}
+            {/* Treatments list */}
             <section className={styles.card}>
-                <h2 className={styles.sectionTitle}>Procedimentos</h2>
-                {groupedItems.length === 0 ? (
+                <div className={styles.sectionHeaderRow}>
+                    <h2 className={styles.sectionTitle}>Tratamentos</h2>
+                    <button
+                        type='button'
+                        className={styles.btnPrimary}
+                        onClick={onOpenService}
+                        disabled={isPlanLocked}
+                    >
+                        Novo Tratamento
+                    </button>
+                </div>
+                {treatmentGroups.length === 0 ? (
                     <p className={styles.textMuted}>
-                        Nenhum procedimento cadastrado.
+                        Nenhum tratamento cadastrado.
                     </p>
                 ) : (
-                    <div className={styles.groupList}>
-                        {groupedItems.map(group => (
-                            <div key={group.key} className={styles.groupCard}>
-                                <strong className={styles.groupDate}>
-                                    {group.label}
-                                </strong>
-                                {group.items.map(item => {
-                                    const children = items.filter(
-                                        i => i.parent_item === item.id,
-                                    );
-                                    return (
-                                        <OdontoProcedureCard
-                                            key={item.id}
-                                            item={item}
-                                            childItems={children}
-                                            onEdit={onEditItem}
-                                            onDelete={onDeleteItem}
-                                            locked={isPlanLocked}
-                                        />
-                                    );
-                                })}
-                            </div>
-                        ))}
-                    </div>
+                    renderGroups(treatmentGroups)
                 )}
             </section>
 
-            {/* Payment condition selector */}
+            {/* Products list */}
             <section className={styles.card}>
                 <div className={styles.sectionHeaderRow}>
-                    <h2 className={styles.sectionTitle}>
-                        Condição de Pagamento
-                    </h2>
-                    <strong className={styles.planTotal}>
-                        Total: {formatMoney(planTotal)}
-                    </strong>
+                    <h2 className={styles.sectionTitle}>Produtos</h2>
+                    <button
+                        type='button'
+                        className={styles.btnPrimary}
+                        onClick={onOpenProduct}
+                        disabled={isPlanLocked}
+                    >
+                        Novo Produto
+                    </button>
                 </div>
-                <div className={styles.paymentConditionRow}>
-                    <label className={styles.paymentRadioLabel}>
-                        <input
-                            type='radio'
-                            name='paymentCondition'
-                            checked={paymentCondition === 'avista'}
-                            onChange={() => onPaymentConditionChange('avista')}
-                            disabled={isPlanLocked}
-                        />
-                        À Vista
-                    </label>
-                    <label className={styles.paymentRadioLabel}>
-                        <input
-                            type='radio'
-                            name='paymentCondition'
-                            checked={paymentCondition === 'aprazo'}
-                            onChange={() => onPaymentConditionChange('aprazo')}
-                            disabled={isPlanLocked}
-                        />
-                        A Prazo
-                    </label>
-                </div>
-
-                {paymentCondition === 'aprazo' && (
-                    <div className={styles.formGrid}>
-                        <label className={styles.label}>
-                            Número de Parcelas
-                            <input
-                                className={styles.input}
-                                type='number'
-                                min={2}
-                                max={24}
-                                value={installmentsCount}
-                                onChange={e =>
-                                    onInstallmentsCountChange(
-                                        Math.max(
-                                            1,
-                                            Number(e.target.value) || 1,
-                                        ),
-                                    )
-                                }
-                                disabled={isPlanLocked}
-                            />
-                        </label>
-                        <label className={styles.label}>
-                            Vencimento da 1ª Parcela
-                            <input
-                                className={styles.input}
-                                type='date'
-                                value={firstDueDate}
-                                onChange={e =>
-                                    onFirstDueDateChange(e.target.value)
-                                }
-                                disabled={isPlanLocked}
-                            />
-                        </label>
-                        <p className={styles.installmentPreview}>
-                            {installmentsCount}x de{' '}
-                            <strong>{formatMoney(installmentValue)}</strong>{' '}
-                            (Total: {formatMoney(planTotal)})
-                        </p>
-                    </div>
+                {productGroups.length === 0 ? (
+                    <p className={styles.textMuted}>
+                        Nenhum produto cadastrado.
+                    </p>
+                ) : (
+                    renderGroups(productGroups)
                 )}
             </section>
 
@@ -322,13 +249,92 @@ export default function OdontoPlanWorkspace({
                 </label>
             </section>
 
-            {!isPlanLocked && (
+            {/* Payment condition selector */}
+            <section className={`${styles.card} ${styles.paymentCard}`}>
+                <h2 className={styles.sectionTitle}>Condição de Pagamento</h2>
+                <div className={styles.paymentContent}>
+                    <div className={styles.paymentConditionRow}>
+                        <label className={styles.paymentRadioLabel}>
+                            <input
+                                type='radio'
+                                name='paymentCondition'
+                                checked={paymentCondition === 'avista'}
+                                onChange={() =>
+                                    onPaymentConditionChange('avista')
+                                }
+                                disabled={isPlanLocked}
+                            />
+                            À Vista
+                        </label>
+                        <label className={styles.paymentRadioLabel}>
+                            <input
+                                type='radio'
+                                name='paymentCondition'
+                                checked={paymentCondition === 'aprazo'}
+                                onChange={() =>
+                                    onPaymentConditionChange('aprazo')
+                                }
+                                disabled={isPlanLocked}
+                            />
+                            A Prazo
+                        </label>
+                    </div>
+
+                    {paymentCondition === 'aprazo' && (
+                        <div className={styles.paymentFields}>
+                            <label className={styles.label}>
+                                Número de Parcelas
+                                <input
+                                    className={styles.input}
+                                    type='number'
+                                    min={2}
+                                    max={24}
+                                    value={installmentsCount}
+                                    onChange={e =>
+                                        onInstallmentsCountChange(
+                                            Math.max(
+                                                1,
+                                                Number(e.target.value) || 1,
+                                            ),
+                                        )
+                                    }
+                                    disabled={isPlanLocked}
+                                />
+                            </label>
+                            <label className={styles.label}>
+                                Vencimento da 1ª Parcela
+                                <input
+                                    className={styles.input}
+                                    type='date'
+                                    value={firstDueDate}
+                                    onChange={e =>
+                                        onFirstDueDateChange(e.target.value)
+                                    }
+                                    disabled={isPlanLocked}
+                                />
+                            </label>
+                            <p className={styles.installmentPreview}>
+                                {installmentsCount}x de{' '}
+                                <strong>{formatMoney(installmentValue)}</strong>
+                            </p>
+                        </div>
+                    )}
+
+                    <div className={styles.paymentTotalRow}>
+                        <span>Total</span>
+                        <strong>{formatMoney(planTotal)}</strong>
+                        {paymentCondition === 'avista' && <span>à vista</span>}
+                    </div>
+                </div>
+            </section>
+
+            {!isPlanLocked && planDetailsDirty && (
                 <div className={styles.planDetailsActions}>
                     <button
                         type='button'
                         className={styles.btnDanger}
                         onClick={onCancelPlanDetails}
-                        disabled={!planDetailsDirty || savingPlanDetails}
+                        disabled={savingPlanDetails}
                     >
                         Cancelar alterações
                     </button>
@@ -336,7 +342,7 @@ export default function OdontoPlanWorkspace({
                         type='button'
                         className={styles.btnPrimary}
                         onClick={onSavePlanDetails}
-                        disabled={!planDetailsDirty || savingPlanDetails}
+                        disabled={savingPlanDetails}
                     >
                         {savingPlanDetails
                             ? 'Salvando...'
@@ -347,42 +353,15 @@ export default function OdontoPlanWorkspace({
 
             {!hasActiveModal && (
                 <footer className={styles.planWorkspaceFooter}>
-                    <span
-                        className={styles.printTooltipSlot}
-                        onMouseEnter={showPrintTooltip}
-                        onMouseLeave={hidePrintTooltip}
+                    <button
+                        type='button'
+                        className={styles.btnPrimary}
+                        onClick={onMarkPrinted}
+                        disabled={markingPrinted}
+                        aria-label='Imprimir orçamento A4'
                     >
-                        <button
-                            type='button'
-                            className={styles.btn}
-                            onClick={onMarkPrinted}
-                            disabled={markingPrinted}
-                            onFocus={showPrintTooltip}
-                            onBlur={hidePrintTooltip}
-                            onTouchStart={showPrintTooltipOnTouch}
-                            aria-label='Imprimir orçamento A4'
-                            aria-describedby={
-                                printTooltipVisible
-                                    ? 'print-lock-tooltip'
-                                    : undefined
-                            }
-                        >
-                            <span aria-hidden='true'>🖨</span>{' '}
-                            <span className={styles.printButtonLabel}>
-                                Imprimir
-                            </span>
-                        </button>
-                        {printTooltipVisible && (
-                            <span
-                                id='print-lock-tooltip'
-                                className={styles.printTooltip}
-                                role='status'
-                            >
-                                Ao imprimir, o orçamento ficará travado e não
-                                poderá mais ser editado.
-                            </span>
-                        )}
-                    </span>
+                        Imprimir
+                    </button>
                 </footer>
             )}
         </>

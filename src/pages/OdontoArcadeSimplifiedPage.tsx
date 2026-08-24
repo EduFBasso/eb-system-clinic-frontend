@@ -77,43 +77,39 @@ export default function OdontoArcadeSimplifiedPage() {
         <>
             <div className={styles.page}>
                 {/* ── Page header ─────────────────────────────────────────── */}
-                <header
-                    className={
-                        plans.plan
-                            ? styles.planDetailPageHeader
-                            : styles.planListPageHeader
-                    }
-                >
-                    <div className={styles.headerInfo}>
-                        <div className={styles.headerTitleRow}>
-                            <h1
-                                className={
-                                    plans.plan
-                                        ? styles.planListPageTitle
-                                        : styles.planListPageTitle
-                                }
-                            >
-                                {plans.plan
-                                    ? planDisplayName(plans.plan)
-                                    : 'Planos de Tratamento'}
-                            </h1>
-                            {!plans.plan && (
-                                <button
-                                    type='button'
-                                    onClick={() => navigate('/')}
-                                    className={styles.planListPageCloseBtn}
-                                    aria-label='Voltar para clientes'
-                                    title='Voltar para clientes'
-                                >
-                                    X
-                                </button>
-                            )}
+                {(!plans.plan || !plans.isPlanLocked) && (
+                    <header
+                        className={
+                            plans.plan
+                                ? styles.planDetailPageHeader
+                                : styles.planListPageHeader
+                        }
+                    >
+                        <div className={styles.headerInfo}>
+                            <div className={styles.headerTitleRow}>
+                                <h1 className={styles.planListPageTitle}>
+                                    {plans.plan
+                                        ? planDisplayName(plans.plan)
+                                        : 'Planos de Tratamento'}
+                                </h1>
+                                {!plans.plan && (
+                                    <button
+                                        type='button'
+                                        onClick={() => navigate('/')}
+                                        className={styles.planListPageCloseBtn}
+                                        aria-label='Voltar para clientes'
+                                        title='Voltar para clientes'
+                                    >
+                                        X
+                                    </button>
+                                )}
+                            </div>
+                            <p className={styles.patientName}>
+                                {plans.clientName ?? `Cliente #${clientId}`}
+                            </p>
                         </div>
-                        <p className={styles.patientName}>
-                            {plans.clientName ?? `Cliente #${clientId}`}
-                        </p>
-                    </div>
-                </header>
+                    </header>
+                )}
 
                 {plans.loading && <p className={styles.text}>Carregando...</p>}
                 {!plans.loading && plans.error && (
@@ -131,48 +127,93 @@ export default function OdontoArcadeSimplifiedPage() {
                 )}
 
                 {/* ── B: Workspace (plan active) ───────────────────────────── */}
-                {!plans.loading && !plans.error && plans.plan && (
-                    <OdontoPlanWorkspace
-                        key={plans.plan.id}
-                        plan={plans.plan}
-                        items={plans.items}
-                        groupedItems={itemFlows.groupedItems}
-                        activeToothNumbers={itemFlows.activeToothNumbers}
-                        isPlanLocked={plans.isPlanLocked}
-                        markingPrinted={plans.markingPrinted}
-                        hasActiveModal={
-                            plans.planModalOpen ||
-                            itemFlows.serviceFlowOpen ||
-                            itemFlows.productFlowOpen ||
-                            itemFlows.editingItem !== null
-                        }
-                        onBack={plans.backToPlanList}
-                        onMarkPrinted={() => void plans.markPrinted()}
-                        onOpenService={itemFlows.openServiceFlowModal}
-                        onOpenProduct={itemFlows.openProductFlowModal}
-                        notes={plans.planNotes}
-                        onNotesChange={plans.setPlanNotes}
-                        savingPlanDetails={plans.savingPlanDetails}
-                        planDetailsDirty={plans.isPlanDetailsDirty}
-                        onCancelPlanDetails={plans.cancelPlanDetails}
-                        onSavePlanDetails={() => void plans.savePlanDetails()}
-                        paymentCondition={plans.paymentCondition}
-                        onPaymentConditionChange={plans.setPaymentCondition}
-                        installmentsCount={plans.installmentsCount}
-                        onInstallmentsCountChange={plans.setInstallmentsCount}
-                        firstDueDate={plans.firstDueDate}
-                        onFirstDueDateChange={plans.setFirstDueDate}
-                        installmentValue={plans.installmentValue}
-                        planTotal={plans.planTotal}
-                        expandedItemIds={itemFlows.expandedItemIds}
-                        onToggleDetails={itemFlows.toggleItemDetails}
-                        onEditItem={itemFlows.openEditItem}
-                        onDeleteItem={id => void itemFlows.deleteItem(id)}
-                        onMarkItemCompleted={id =>
-                            void itemFlows.markItemCompleted(id)
-                        }
-                    />
-                )}
+                {!plans.loading &&
+                    !plans.error &&
+                    plans.plan &&
+                    !plans.isPlanLocked && (
+                        <OdontoPlanWorkspace
+                            key={plans.plan.id}
+                            plan={plans.plan}
+                            items={plans.items}
+                            groupedItems={itemFlows.groupedItems}
+                            activeToothNumbers={itemFlows.activeToothNumbers}
+                            isPlanLocked={plans.isPlanLocked}
+                            markingPrinted={plans.markingPrinted}
+                            hasActiveModal={
+                                plans.planModalOpen ||
+                                itemFlows.serviceFlowOpen ||
+                                itemFlows.productFlowOpen ||
+                                itemFlows.editingItem !== null
+                            }
+                            onBack={plans.backToPlanList}
+                            onMarkPrinted={() => void plans.markPrinted()}
+                            onOpenService={itemFlows.openServiceFlowModal}
+                            onOpenProduct={itemFlows.openProductFlowModal}
+                            notes={plans.planNotes}
+                            onNotesChange={plans.setPlanNotes}
+                            savingPlanDetails={plans.savingPlanDetails}
+                            planDetailsDirty={plans.isPlanDetailsDirty}
+                            onCancelPlanDetails={plans.cancelPlanDetails}
+                            onSavePlanDetails={() =>
+                                void plans.savePlanDetails()
+                            }
+                            paymentCondition={plans.paymentCondition}
+                            onPaymentConditionChange={plans.setPaymentCondition}
+                            installmentsCount={plans.installmentsCount}
+                            onInstallmentsCountChange={
+                                plans.setInstallmentsCount
+                            }
+                            firstDueDate={plans.firstDueDate}
+                            onFirstDueDateChange={plans.setFirstDueDate}
+                            installmentValue={plans.installmentValue}
+                            planTotal={plans.planTotal}
+                            onEditItem={itemFlows.openEditItem}
+                            onDeleteItem={id => void itemFlows.deleteItem(id)}
+                        />
+                    )}
+
+                {!plans.loading &&
+                    !plans.error &&
+                    plans.plan &&
+                    plans.isPlanLocked && (
+                        <>
+                            <div
+                                className={`${styles.planWorkspaceHeader} ${styles.lockedPreviewActions}`}
+                            >
+                                <button
+                                    type='button'
+                                    className={styles.btn}
+                                    onClick={plans.backToPlanList}
+                                >
+                                    ← Planos
+                                </button>
+                                <button
+                                    type='button'
+                                    className={styles.btnPrimary}
+                                    onClick={() => void plans.markPrinted()}
+                                    disabled={plans.markingPrinted}
+                                    aria-label='Imprimir orçamento A4'
+                                >
+                                    Imprimir
+                                </button>
+                            </div>
+                            <div data-screen-only='odonto-quote-preview'>
+                                <OdontoPrintView
+                                    plan={plans.plan}
+                                    items={plans.items}
+                                    clientName={plans.clientName}
+                                    paymentCondition={plans.paymentCondition}
+                                    installmentsCount={plans.installmentsCount}
+                                    installmentValue={plans.installmentValue}
+                                    firstDueDate={plans.firstDueDate}
+                                    planTotal={plans.planTotal}
+                                    professionalVersion={professionalVersion}
+                                    screenPreview
+                                    printable={false}
+                                />
+                            </div>
+                        </>
+                    )}
 
                 {/* ── Modals ───────────────────────────────────────────────── */}
                 <OdontoPlanCreateModal
@@ -277,8 +318,6 @@ export default function OdontoArcadeSimplifiedPage() {
                 />
             </div>
 
-            {/* Print view rendered outside .page so @media print can show it
-                even though .page itself is hidden (display:none !important). */}
             <OdontoPrintView
                 plan={plans.plan}
                 items={plans.items}

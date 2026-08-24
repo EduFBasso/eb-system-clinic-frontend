@@ -103,27 +103,29 @@ export default function OdontoProcedureCard({
     }
 
     return (
-        <div className={styles.procItem}>
-            <div className={styles.clinicalCardHeader}>
-                <div className={styles.clinicalIdentity}>
-                    {anatomicalLabel && (
-                        <strong className={styles.anatomicalLabel}>
-                            {anatomicalLabel}
+        <div
+            className={`${styles.procItem} ${isProductContainer ? styles.productContainer : ''}`}
+        >
+            {!isProductContainer && (
+                <div className={styles.clinicalCardHeader}>
+                    <div className={styles.clinicalIdentity}>
+                        {anatomicalLabel && (
+                            <strong className={styles.anatomicalLabel}>
+                                {anatomicalLabel}
+                            </strong>
+                        )}
+                        <strong className={styles.clinicalServiceName}>
+                            {itemLabel}
                         </strong>
-                    )}
-                    <strong className={styles.clinicalServiceName}>
-                        {isProductContainer ? 'Produtos usados' : itemLabel}
-                    </strong>
-                </div>
-                {!isProductContainer && (
+                    </div>
                     <ItemActions
                         item={item}
                         onEdit={onEdit}
                         onDelete={onDelete}
                         locked={locked}
                     />
-                )}
-            </div>
+                </div>
+            )}
 
             {!isProductContainer && (
                 <>

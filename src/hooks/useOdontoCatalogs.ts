@@ -63,9 +63,15 @@ export function useOdontoCatalogs(
                 id: number;
                 name: string;
                 price: number | string | null;
+                description?: string;
             }>(response);
             setProductCatalog(
-                products.map(p => ({ id: p.id, name: p.name, price: p.price })),
+                products.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    price: p.price,
+                    description: p.description,
+                })),
             );
         } catch {
             /* UX stays functional */
@@ -111,6 +117,7 @@ export function useOdontoCatalogs(
                                     ...(priceValue !== null && {
                                         base_price: priceValue,
                                     }),
+                                    description: row.notes.trim(),
                                     default_notes: row.notes.trim(),
                                 },
                             },
@@ -122,6 +129,7 @@ export function useOdontoCatalogs(
                         body: {
                             name,
                             base_price: priceValue ?? 0,
+                            description: row.notes.trim(),
                             default_notes: row.notes.trim(),
                         },
                     });
@@ -175,18 +183,28 @@ export function useOdontoCatalogs(
             await Promise.all(
                 [...selectedRows.values()].map(row => {
                     const name = row.name.trim();
-                    if (
-                        productCatalog.some(
-                            item =>
-                                item.name.trim().toLowerCase() ===
-                                name.toLowerCase(),
-                        )
-                    ) {
-                        return Promise.resolve();
-                    }
+                    const existingItem = productCatalog.find(
+                        item =>
+                            item.name.trim().toLowerCase() ===
+                            name.toLowerCase(),
+                    );
                     const priceValue = row.value.trim()
                         ? parseAmount(row.value)
                         : 0;
+
+                    if (existingItem?.id) {
+                        return apiFetch(
+                            `${API_BASE}/inventory/products/${existingItem.id}/`,
+                            {
+                                method: 'PATCH',
+                                body: {
+                                    price: priceValue ?? 0,
+                                    description: row.notes.trim(),
+                                },
+                            },
+                        );
+                    }
+
                     return apiFetch(`${API_BASE}/inventory/products/`, {
                         method: 'POST',
                         body: {

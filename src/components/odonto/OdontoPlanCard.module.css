@@ -66,6 +66,11 @@
     color: #146c43;
 }
 
+.statusPrinted {
+    background: #e8eef5;
+    color: #34495e;
+}
+
 .footer {
     display: flex;
     align-items: center;

@@ -98,6 +98,7 @@ export type CatalogProductItem = {
     id?: number;
     name: string;
     price: number | string | null;
+    description?: string;
 };
 
 export type ItemGroup = {

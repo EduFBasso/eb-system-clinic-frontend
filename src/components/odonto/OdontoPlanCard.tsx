@@ -10,19 +10,28 @@ type Props = {
     onDelete: (id: number) => void;
 };
 
-function StatusBadge({ status }: { status: PlanListItem['status'] }) {
-    const label =
-        status === 'completed'
-            ? 'Concluído'
-            : status === 'archived'
-              ? 'Arquivado'
-              : 'Em andamento';
+function StatusBadge({
+    status,
+    isPrinted,
+}: {
+    status: PlanListItem['status'];
+    isPrinted: boolean;
+}) {
+    const label = isPrinted
+        ? 'Impresso'
+        : status === 'completed'
+          ? 'Concluído'
+          : status === 'archived'
+            ? 'Arquivado'
+            : 'Em andamento';
     return (
         <span
             className={`${styles.statusBadge} ${
-                status === 'completed'
-                    ? styles.statusCompleted
-                    : styles.statusPending
+                isPrinted
+                    ? styles.statusPrinted
+                    : status === 'completed'
+                      ? styles.statusCompleted
+                      : styles.statusPending
             }`}
         >
             {label}
@@ -49,7 +58,10 @@ export default function OdontoPlanCard({ plan, onSelect, onDelete }: Props) {
         >
             <div className={styles.body}>
                 <p className={styles.planName}>{planDisplayName(plan)}</p>
-                <StatusBadge status={plan.status} />
+                <StatusBadge
+                    status={plan.status}
+                    isPrinted={Boolean(plan.is_printed)}
+                />
             </div>
             <div className={styles.footer}>
                 <div className={styles.paymentSummary}>

@@ -10,6 +10,10 @@
     box-sizing: border-box;
 }
 
+.page:has(.planWorkspaceFooter) {
+    padding-bottom: 84px;
+}
+
 .planListPageHeader {
     position: relative;
     display: flex;
@@ -201,7 +205,7 @@
 .btn,
 .btnPrimary,
 .btnDanger {
-    border-radius: 999px;
+    border-radius: 8px;
     min-height: 36px;
     padding: 0 12px;
     border: 1px solid var(--color-border);
@@ -382,13 +386,6 @@
     z-index: 1000;
 }
 
-.printTooltipSlot {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    z-index: 1000;
-}
-
 .paymentBadge {
     min-height: 30px;
     padding: 0 8px;
@@ -423,24 +420,6 @@
     border-color: #8ac7a1;
     color: #146c43;
     cursor: default;
-}
-
-.printTooltip {
-    position: absolute;
-    left: 50%;
-    top: calc(100% + 8px);
-    z-index: 100000;
-    transform: translateX(-50%);
-    padding: 5px 8px;
-    border-radius: 6px;
-    background: #1f2937;
-    color: #fff;
-    font-size: 11px;
-    line-height: 1.2;
-    white-space: normal;
-    width: max-content;
-    max-width: min(320px, 80vw);
-    pointer-events: none;
 }
 
 .procIconGroup {
@@ -871,10 +850,10 @@
 /* ── Group card: caderno de anotações cronológico ─────────────────────────── */
 
 .groupCard {
-    border: 1px solid var(--color-border-strong, var(--color-border));
-    border-radius: var(--radius-surface);
-    background: var(--card-bg, #ffffff);
-    padding: 10px 12px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
     display: grid;
     gap: 8px;
 }
@@ -892,7 +871,7 @@
 .procItem {
     border: 1px solid var(--color-border-strong, var(--color-border));
     border-radius: var(--radius-surface);
-    background: var(--color-bg-section, #ffffff);
+    background: color-mix(in oklab, var(--color-border) 50%, white);
     padding: 14px;
     display: flex;
     flex-direction: column;
@@ -909,6 +888,18 @@
 
 .procItem:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+}
+
+.productContainer {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+}
+
+.productContainer:hover {
+    box-shadow: none;
 }
 
 .clinicalCardHeader {
@@ -967,13 +958,6 @@
     white-space: nowrap;
 }
 
-.planTotal {
-    color: var(--color-text-main, var(--color-heading));
-    font-size: 16px;
-    font-weight: 800;
-    white-space: nowrap;
-}
-
 .productRow {
     display: flex;
     flex-direction: column;
@@ -983,7 +967,7 @@
     padding: 12px;
     border: 1px solid var(--color-border-strong, var(--color-border));
     border-radius: var(--radius-surface);
-    background: var(--color-bg-section, #ffffff);
+    background: color-mix(in oklab, var(--color-border) 50%, white);
     box-sizing: border-box;
 }
 
@@ -1057,11 +1041,16 @@
     }
 
     .groupCard {
-        padding: 8px 10px;
+        padding: 0;
     }
 
     .procItem {
         padding: 12px;
+    }
+
+    .productContainer {
+        padding: 0;
+        margin-bottom: 0;
     }
 
 }
@@ -1129,11 +1118,27 @@
     padding: 0;
 }
 
+.lockedPreviewActions {
+    justify-content: space-between;
+    width: min(100%, 210mm);
+    margin: 0 auto 12px;
+}
+
 .planWorkspaceFooter {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 20;
     display: flex;
     justify-content: flex-end;
-    width: 100%;
-    padding: 4px 0 8px;
+    width: auto;
+    padding: 0;
+}
+
+.planWorkspaceFooter button {
+    min-height: 40px;
+    padding: 0 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 }
 
 .planDetailsActions {
@@ -1143,27 +1148,8 @@
     width: 100%;
 }
 
-.planWorkspaceFooter .printTooltip {
-    top: auto;
-    bottom: calc(100% + 8px);
-}
-
-.planWorkspaceFooter .printButtonLabel {
-    display: inline;
-}
-
 .planNotes {
     margin-top: 6px;
-}
-
-.printButtonLabel {
-    display: inline;
-}
-
-@media (max-width: 600px) {
-    .printButtonLabel {
-        display: none;
-    }
 }
 
 /* ── Locked plan banner ───────────────────────────────────────────────────── */
@@ -1214,11 +1200,20 @@
 
 /* ── Payment condition selector ──────────────────────────────────────────── */
 
+.paymentCard {
+    display: grid;
+    gap: 18px;
+}
+
+.paymentContent {
+    display: grid;
+    gap: 20px;
+}
+
 .paymentConditionRow {
     display: flex;
     gap: 20px;
-    margin-top: 8px;
-    margin-bottom: 4px;
+    flex-wrap: wrap;
 }
 
 .paymentRadioLabel {
@@ -1231,11 +1226,44 @@
     cursor: pointer;
 }
 
+.paymentRadioLabel input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--color-primary);
+}
+
+.paymentFields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 12px;
+}
+
 .installmentPreview {
     grid-column: 1 / -1;
-    margin: 4px 0 0;
+    margin: 0;
     font-size: 14px;
     color: var(--color-text-main, #1f2937);
+}
+
+.paymentTotalRow {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-border);
+    color: var(--color-text-main, var(--color-heading));
+}
+
+.paymentTotalRow strong {
+    font-size: 18px;
+    font-weight: 800;
+}
+
+@media (max-width: 600px) {
+    .paymentFields {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* ── Print: hide everything except OdontoPrintView ───────────────────────── */
@@ -1252,4 +1280,5 @@
     .modalOverlay {
         display: none !important;
     }
+
 }

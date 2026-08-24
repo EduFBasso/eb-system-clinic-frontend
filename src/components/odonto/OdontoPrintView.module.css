@@ -1,6 +1,245 @@
-/* hidden on screen — visible only @media print */
 .printSheet {
     display: none;
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 10pt;
+    color: #111;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+}
+
+.screenPreview {
+    display: block;
+    width: min(100%, 210mm);
+    margin: 0 auto;
+}
+
+.screenPreview .printPage {
+    min-height: auto;
+    aspect-ratio: 210 / 277;
+    padding: clamp(16px, 4vw, 42px);
+    margin-bottom: 18px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    break-after: auto;
+    page-break-after: auto;
+}
+
+.printSheet * {
+    font-family: 'Poppins', sans-serif !important;
+}
+
+.printPage {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        min-height: 277mm;
+        box-sizing: border-box;
+        padding-bottom: 14mm;
+        break-after: page;
+        page-break-after: always;
+    }
+
+.printPage:last-child {
+        break-after: auto;
+        page-break-after: auto;
+    }
+
+/* A) Header */
+.printHeader {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 4pt;
+    }
+
+.profName {
+        font-size: 14pt;
+        font-weight: bold;
+        margin: 0 0 2pt;
+        color: var(--color-primary, #004aad);
+    }
+
+.profDetail {
+        font-size: 10pt;
+        margin: 0;
+        color: #444;
+    }
+
+.profAddress {
+        font-size: 9pt;
+        margin: 3pt 0 0;
+        color: #555;
+    }
+
+.printHeaderRight {
+        text-align: right;
+    }
+
+.printDivider {
+        border: none;
+        border-top: 1px solid #ccc;
+        padding: 0;
+        margin: 6pt 0;
+    }
+
+/* B) Title */
+.printTitle {
+        font-size: 16pt;
+        font-weight: bold;
+        letter-spacing: 0;
+        text-align: center;
+        margin: 12pt 0 8pt;
+    }
+
+.printMeta p {
+        margin: 0 0 2pt;
+        font-size: 11pt;
+    }
+
+.printMeta {
+        margin-bottom: 0;
+    }
+
+/* C/D) Sections */
+.printSection {
+        margin-top: 10pt;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+.printSubtitle {
+        font-size: 12pt;
+        font-weight: bold;
+        margin: 0 0 4pt;
+        border-bottom: 1px solid #ccc;
+        padding: 5pt 0;
+    }
+
+.printEmpty {
+        font-size: 10pt;
+        color: #777;
+        font-style: italic;
+        margin: 2pt 0;
+    }
+
+.printTable {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11pt;
+    }
+
+.printTable td {
+        padding: 5pt 0;
+        border-bottom: 0.5px solid #e5e5e5;
+        vertical-align: top;
+    }
+
+.printTable tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+.colValue {
+        width: 90pt;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+    }
+
+/* E) Payment conditions */
+.printTotalRow {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12pt;
+        margin: 7pt 0 4pt;
+    }
+
+.printPaymentLine {
+        margin: 0;
+        font-size: 11pt;
+    }
+
+.printNotesText {
+        margin: 2pt 0;
+        font-size: 11pt;
+        white-space: pre-wrap;
+    }
+
+.clinicalNotes {
+        margin-top: 12pt;
+    }
+
+.clinicalNotes .printSubtitle {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+.observationLines {
+        display: block;
+        margin-top: 8pt;
+    }
+
+.observationLines div {
+        border-bottom: 0.5px solid #ccc;
+    }
+
+.printClosingBlock {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+.validityText {
+        margin: 14pt 0 0;
+        color: #333;
+        font-size: 9.5pt;
+    }
+
+.signatureBlock {
+        width: 33.333%;
+        max-width: 33.333%;
+        margin: 28pt 0 0 auto;
+        text-align: center;
+        font-size: 9pt;
+        color: #444;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+.signatureLine {
+        border-top: 1px solid #555;
+        margin-bottom: 4pt;
+    }
+
+/* F) Page footer */
+.printFooter {
+        margin-top: auto;
+        padding-top: 12pt;
+        border-top: 0.5px solid #ddd;
+        text-align: right;
+        color: #666;
+        font-size: 8.5pt;
+}
+
+@media (max-width: 520px) {
+    .screenPreview {
+        font-size: 8.5pt;
+    }
+
+    .screenPreview .printHeader {
+        gap: 12px;
+    }
+
+    .screenPreview .profName {
+        font-size: 12pt;
+    }
+
+    .screenPreview .printTitle {
+        font-size: 14pt;
+    }
 }
 
 @media print {
@@ -10,157 +249,30 @@
     }
 
     .printSheet {
-        display: flex !important;
-        flex-direction: column;
-        font-family: 'Poppins', sans-serif !important;
-        font-size: 12pt;
-        color: #111;
+        display: block !important;
+    }
+
+    .screenPreview {
+        display: block !important;
         width: 100%;
+        margin: 0;
+    }
+
+    .printPage {
         min-height: 277mm;
-        box-sizing: border-box;
-        padding: 0;
+        aspect-ratio: auto;
+        padding: 10mm 12mm 14mm;
         margin: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        break-after: page;
+        page-break-after: always;
     }
 
-    .printSheet * {
-        font-family: 'Poppins', sans-serif !important;
-    }
-
-    /* A) Header */
-    .printHeader {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 8pt;
-    }
-
-    .profName {
-        font-size: 14pt;
-        font-weight: bold;
-        margin: 0 0 2pt;
-        color: var(--color-primary, #004aad);
-    }
-
-    .profDetail {
-        font-size: 10pt;
-        margin: 0;
-        color: #444;
-    }
-
-    .profAddress {
-        font-size: 9pt;
-        margin: 3pt 0 0;
-        color: #555;
-    }
-
-    .printHeaderRight {
-        text-align: right;
-    }
-
-    .printDivider {
-        border: none;
-        border-top: 1px solid #ccc;
-        padding: 8px 0;
-        margin: 8pt 0;
-    }
-
-    /* B) Title */
-    .printTitle {
-        font-size: 16pt;
-        font-weight: bold;
-        letter-spacing: 0.04em;
-        text-align: center;
-        margin: 10pt 0;
-    }
-
-    .printMeta p {
-        margin: 0 0 2pt;
-        font-size: 11pt;
-    }
-
-    .printMeta {
-        margin-bottom: 24px;
-    }
-
-    /* C/D) Sections */
-    .printSection {
-        margin-top: 20px;
-    }
-
-    .printSubtitle {
-        font-size: 12pt;
-        font-weight: bold;
-        margin: 20px 0 4pt;
-        border-bottom: 1px solid #ccc;
-        padding: 8px 0;
-    }
-
-    .printEmpty {
-        font-size: 10pt;
-        color: #777;
-        font-style: italic;
-        margin: 2pt 0;
-    }
-
-    .printTable {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 11pt;
-    }
-
-    .printTable td {
-        padding: 8px 0;
-        border-bottom: 0.5px solid #e5e5e5;
-        vertical-align: top;
-    }
-
-    .colValue {
-        width: 90pt;
-        text-align: right;
-        font-variant-numeric: tabular-nums;
-    }
-
-    /* E) Payment conditions */
-    .printTotalRow {
-        display: flex;
-        justify-content: space-between;
-        font-size: 12pt;
-        margin: 6pt 0 4pt;
-    }
-
-    .printPaymentLine {
-        margin: 0;
-        font-size: 11pt;
-    }
-
-    .printNotesText {
-        margin: 2pt 0;
-        font-size: 11pt;
-        white-space: pre-wrap;
-    }
-
-    .clinicalNotes {
-        margin-top: 20px;
-    }
-
-    .clinicalNotes .printSubtitle {
-        border-bottom: none;
-        padding-bottom: 0;
-    }
-
-    .observationLines {
-        display: block;
-        margin-top: 8pt;
-    }
-
-    .observationLines div {
-        border-bottom: 0.5px solid #ccc;
-    }
-
-    /* F) Footer */
-    .printFooter {
-        margin-top: auto;
-        padding-top: 16pt;
+    .printPage:last-child {
+        break-after: auto;
+        page-break-after: auto;
     }
 
 }

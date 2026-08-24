@@ -1,6 +1,7 @@
 import React from 'react';
 import { defaultPlanName } from '../../pages/odontoArcadeHelpers';
 import { apiFetch } from '../../utils/apiFetch';
+import { formatCnpj } from '../../utils/formatCpf';
 import { formatPhone } from '../../utils/formatPhone';
 import styles from '../../styles/pages/OdontoArcadeSimplifiedPage.module.css';
 
@@ -153,6 +154,10 @@ export default function OdontoPlanCreateModal({
                                 ['specialty', 'Especialidade'],
                                 ['register_number', 'Registro profissional'],
                                 ['cnpj', 'CNPJ'],
+                                [
+                                    'odonto_quote_validity_days',
+                                    'Validade do orçamento (dias)',
+                                ],
                                 ['phone', 'Telefone'],
                                 ['address', 'Endereço'],
                                 ['number', 'Número'],
@@ -168,7 +173,29 @@ export default function OdontoPlanCreateModal({
                                         value={
                                             field === 'phone'
                                                 ? formatPhone(profile[field])
-                                                : profile[field] || ''
+                                                : field === 'cnpj'
+                                                  ? formatCnpj(
+                                                        profile[field] || '',
+                                                    )
+                                                  : profile[field] || ''
+                                        }
+                                        type={
+                                            field ===
+                                            'odonto_quote_validity_days'
+                                                ? 'number'
+                                                : 'text'
+                                        }
+                                        min={
+                                            field ===
+                                            'odonto_quote_validity_days'
+                                                ? 1
+                                                : undefined
+                                        }
+                                        max={
+                                            field ===
+                                            'odonto_quote_validity_days'
+                                                ? 365
+                                                : undefined
                                         }
                                         placeholder={
                                             field === 'phone'
@@ -184,7 +211,12 @@ export default function OdontoPlanCreateModal({
                                                               event.target
                                                                   .value,
                                                           )
-                                                        : event.target.value,
+                                                        : field === 'cnpj'
+                                                          ? formatCnpj(
+                                                                event.target
+                                                                    .value,
+                                                            )
+                                                          : event.target.value,
                                             }))
                                         }
                                         disabled={saving || savingProfile}

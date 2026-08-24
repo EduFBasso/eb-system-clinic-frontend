@@ -154,13 +154,16 @@ export default function ProductListPage() {
                                     </h2>
                                 </div>
                             </div>
-                            <p
-                                className='mt-3 flex-1 text-sm'
-                                style={{ color: 'var(--color-text-light)' }}
-                            >
-                                {product.description?.trim() ||
-                                    'Sem descrição.'}
-                            </p>
+                            {product.description?.trim() && (
+                                <p
+                                    className='mt-3 flex-1 text-sm'
+                                    style={{
+                                        color: 'var(--color-text-light)',
+                                    }}
+                                >
+                                    {product.description.trim()}
+                                </p>
+                            )}
                             <div
                                 className='mt-4 self-start text-sm font-bold'
                                 style={{
