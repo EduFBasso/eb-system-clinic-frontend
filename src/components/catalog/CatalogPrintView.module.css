@@ -1,0 +1,163 @@
+.printSheet {
+    display: none;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    color: #111;
+    font-family: 'Poppins', sans-serif;
+    font-size: 9.5pt;
+}
+
+@media print {
+    @page {
+        size: A4;
+        margin: 0;
+    }
+
+    .printSheet {
+        display: block !important;
+    }
+
+    .printSheet,
+    .printSheet * {
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    .printPage {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        min-height: 277mm;
+        padding: 10mm 12mm 14mm;
+        margin: 0;
+        box-sizing: border-box;
+        break-after: page;
+        page-break-after: always;
+    }
+
+    .printPage:last-child {
+        break-after: auto;
+        page-break-after: auto;
+    }
+
+    .printHeader {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12mm;
+    }
+
+    .profName {
+        margin: 0 0 2pt;
+        color: var(--color-primary, #004aad);
+        font-size: 14pt;
+        font-weight: 700;
+    }
+
+    .profDetail,
+    .profAddress,
+    .printHeaderRight p {
+        margin: 0;
+        color: #444;
+    }
+
+    .profAddress {
+        margin-top: 3pt;
+        font-size: 8.5pt;
+    }
+
+    .printHeaderRight {
+        flex-shrink: 0;
+        text-align: right;
+        font-size: 9pt;
+    }
+
+    .divider {
+        margin: 7pt 0 9pt;
+        border: 0;
+        border-top: 1px solid #ccc;
+    }
+
+    .documentMeta {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12pt;
+        margin-bottom: 10pt;
+    }
+
+    .documentMeta h1 {
+        margin: 0;
+        font-size: 16pt;
+        letter-spacing: 0;
+    }
+
+    .documentMeta p {
+        margin: 0;
+        color: #555;
+        font-size: 8.5pt;
+        white-space: nowrap;
+    }
+
+    .catalogTable {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+
+    .catalogTable th {
+        padding: 5pt 4pt;
+        border-top: 1px solid #bbb;
+        border-bottom: 1px solid #bbb;
+        text-align: left;
+        font-size: 9pt;
+    }
+
+    .catalogTable th:first-child {
+        width: 28%;
+    }
+
+    .catalogTable th:last-child {
+        width: 22%;
+        text-align: right;
+    }
+
+    .catalogTable td {
+        padding: 5pt 4pt;
+        border-bottom: 0.5px solid #ddd;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+    }
+
+    .catalogTable tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .itemName {
+        font-weight: 700;
+    }
+
+    .itemPrice {
+        text-align: right;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .emptyRow {
+        color: #666;
+        font-style: italic;
+        text-align: center;
+    }
+
+    .printFooter {
+        display: flex;
+        justify-content: space-between;
+        margin-top: auto;
+        padding-top: 10pt;
+        border-top: 0.5px solid #ddd;
+        color: #666;
+        font-size: 8.5pt;
+    }
+}

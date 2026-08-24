@@ -50,7 +50,8 @@
         overflow: visible !important;
         gap: 10px !important;
     }
-    [data-print-card][data-print-layout='odonto-quote'] {
+    [data-print-card][data-print-layout='odonto-quote'],
+    [data-print-card][data-print-layout='catalog'] {
         position: static !important;
         padding: 0 !important;
         gap: 0 !important;

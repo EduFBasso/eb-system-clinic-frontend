@@ -37,19 +37,13 @@ type PrintableItem = {
     item: TreatmentItem;
 };
 
-const PAGE_ITEM_CAPACITY = 11;
-const CLOSING_BLOCK_WEIGHT = 4;
+const PAGE_ITEM_CAPACITY = 6;
 
 function paginateItems(items: PrintableItem[]): PrintableItem[][] {
     if (items.length === 0) return [[]];
-    const pageCount = Math.max(
-        1,
-        Math.ceil((items.length + CLOSING_BLOCK_WEIGHT) / PAGE_ITEM_CAPACITY),
-    );
-    const itemsPerPage = Math.ceil(items.length / pageCount);
     const pages: PrintableItem[][] = [];
-    for (let index = 0; index < items.length; index += itemsPerPage) {
-        pages.push(items.slice(index, index + itemsPerPage));
+    for (let index = 0; index < items.length; index += PAGE_ITEM_CAPACITY) {
+        pages.push(items.slice(index, index + PAGE_ITEM_CAPACITY));
     }
     return pages;
 }
