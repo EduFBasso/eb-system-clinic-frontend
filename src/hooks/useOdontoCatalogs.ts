@@ -9,6 +9,7 @@ import type {
     CatalogProductItem,
     CatalogServiceItem,
     ProductRow,
+    ServiceFlowType,
     ServiceRow,
 } from '../pages/odontoArcadeHelpers';
 
@@ -34,6 +35,7 @@ export function useOdontoCatalogs(
                 base_price: number | string | null;
                 description?: string;
                 default_notes?: string;
+                treatment_scopes?: ServiceFlowType[];
             }>(response);
             setServiceCatalog(
                 services.map(s => ({
@@ -42,6 +44,7 @@ export function useOdontoCatalogs(
                     base_price: s.base_price,
                     description: s.description,
                     default_notes: s.default_notes,
+                    treatment_scopes: s.treatment_scopes ?? [],
                 })),
             );
         } catch {
@@ -109,6 +112,12 @@ export function useOdontoCatalogs(
                         : null;
 
                     if (existingItem) {
+                        const treatmentScopes = Array.from(
+                            new Set([
+                                ...existingItem.treatment_scopes,
+                                row.scope,
+                            ]),
+                        );
                         return apiFetch(
                             `${API_BASE}/inventory/services/${existingItem.id}/`,
                             {
@@ -119,6 +128,7 @@ export function useOdontoCatalogs(
                                     }),
                                     description: row.notes.trim(),
                                     default_notes: row.notes.trim(),
+                                    treatment_scopes: treatmentScopes,
                                 },
                             },
                         );
@@ -131,6 +141,7 @@ export function useOdontoCatalogs(
                             base_price: priceValue ?? 0,
                             description: row.notes.trim(),
                             default_notes: row.notes.trim(),
+                            treatment_scopes: [row.scope],
                         },
                     });
                 }),
@@ -143,6 +154,88 @@ export function useOdontoCatalogs(
                 type: 'error',
             });
             return false;
+        } finally {
+            setSavingCatalog(false);
+        }
+    }
+
+    async function saveNewServicesToCatalog(
+        rows: ServiceRow[],
+        indexes: number[],
+    ): Promise<ServiceRow[] | null> {
+        const selectedRows = new Map<
+            string,
+            { index: number; row: ServiceRow }
+        >();
+        for (const index of indexes) {
+            const row = rows[index];
+            const name = row?.treatment.trim();
+            if (!row || !name) continue;
+            const normalizedName = name.toLowerCase();
+            selectedRows.set(normalizedName, { index, row });
+        }
+
+        setSavingCatalog(true);
+        try {
+            const resolvedRows = rows.map(row => ({ ...row }));
+            await Promise.all(
+                [...selectedRows.values()].map(async ({ index, row }) => {
+                    const priceValue = row.value.trim()
+                        ? parseAmount(row.value)
+                        : null;
+                    const normalizedName = row.treatment.trim().toLowerCase();
+                    const existingItem = serviceCatalog.find(
+                        item =>
+                            item.name.trim().toLowerCase() === normalizedName,
+                    );
+
+                    if (existingItem) {
+                        const treatmentScopes = Array.from(
+                            new Set([
+                                ...existingItem.treatment_scopes,
+                                row.scope,
+                            ]),
+                        );
+                        await apiFetch(
+                            `${API_BASE}/inventory/services/${existingItem.id}/`,
+                            {
+                                method: 'PATCH',
+                                body: { treatment_scopes: treatmentScopes },
+                            },
+                        );
+                        resolvedRows[index].serviceId = existingItem.id;
+                        return;
+                    }
+
+                    const created = await apiFetch(
+                        `${API_BASE}/inventory/services/`,
+                        {
+                            method: 'POST',
+                            body: {
+                                name: row.treatment.trim(),
+                                base_price: priceValue ?? 0,
+                                description: row.notes.trim(),
+                                default_notes: row.notes.trim(),
+                                treatment_scopes: [row.scope],
+                            },
+                        },
+                    );
+                    const createdId = Number(
+                        (created as { id?: number } | null)?.id,
+                    );
+                    if (Number.isFinite(createdId)) {
+                        resolvedRows[index].serviceId = createdId;
+                    }
+                }),
+            );
+            if (selectedRows.size > 0) await loadServiceCatalog();
+            return resolvedRows;
+        } catch {
+            emit('systemMessage', {
+                text: 'Não foi possível adicionar os serviços ao catálogo geral.',
+                type: 'error',
+            });
+            return null;
         } finally {
             setSavingCatalog(false);
         }
@@ -171,40 +264,26 @@ export function useOdontoCatalogs(
         rows: ProductRow[],
         indexes: number[],
     ): Promise<boolean> {
-        const selectedRows = new Map<string, ProductRow>();
+        const newRows = new Map<string, ProductRow>();
         for (const index of indexes) {
             const row = rows[index];
             const name = row?.name.trim();
-            if (row && name) selectedRows.set(name.toLowerCase(), row);
+            if (!row || !name) continue;
+            const normalizedName = name.toLowerCase();
+            const alreadyExists = productCatalog.some(
+                item => item.name.trim().toLowerCase() === normalizedName,
+            );
+            if (!alreadyExists) newRows.set(normalizedName, row);
         }
 
         setSavingCatalog(true);
         try {
             await Promise.all(
-                [...selectedRows.values()].map(row => {
+                [...newRows.values()].map(row => {
                     const name = row.name.trim();
-                    const existingItem = productCatalog.find(
-                        item =>
-                            item.name.trim().toLowerCase() ===
-                            name.toLowerCase(),
-                    );
                     const priceValue = row.value.trim()
                         ? parseAmount(row.value)
                         : 0;
-
-                    if (existingItem?.id) {
-                        return apiFetch(
-                            `${API_BASE}/inventory/products/${existingItem.id}/`,
-                            {
-                                method: 'PATCH',
-                                body: {
-                                    price: priceValue ?? 0,
-                                    description: row.notes.trim(),
-                                },
-                            },
-                        );
-                    }
-
                     return apiFetch(`${API_BASE}/inventory/products/`, {
                         method: 'POST',
                         body: {
@@ -216,7 +295,7 @@ export function useOdontoCatalogs(
                     });
                 }),
             );
-            if (selectedRows.size > 0) await loadProductCatalog();
+            if (newRows.size > 0) await loadProductCatalog();
             return true;
         } catch {
             emit('systemMessage', {
@@ -233,6 +312,7 @@ export function useOdontoCatalogs(
         serviceCatalog,
         savingCatalog,
         saveServicesToCatalog,
+        saveNewServicesToCatalog,
         deleteFromCatalog,
         productCatalog,
         saveNewProductsToCatalog,

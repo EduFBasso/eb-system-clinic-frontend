@@ -73,6 +73,7 @@ export type CatalogServiceItem = {
     base_price: number | string | null;
     description?: string;
     default_notes?: string;
+    treatment_scopes: ServiceFlowType[];
 };
 
 export type ServiceRow = {
@@ -239,4 +240,34 @@ export function normalizeSearchText(value: string): string {
         .replace(/[\u0300-\u036f]/g, '')
         .toLowerCase()
         .trim();
+}
+
+export function filterServiceCatalog(
+    catalog: CatalogServiceItem[],
+    searchRaw: string,
+    flowType: ServiceFlowType,
+): CatalogServiceItem[] {
+    const items = catalog.filter(item =>
+        item.treatment_scopes.includes(flowType),
+    );
+    items.sort((a, b) =>
+        a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }),
+    );
+
+    const search = normalizeSearchText(searchRaw);
+    if (!search) return items.slice(0, 24);
+
+    return items
+        .filter(item => normalizeSearchText(item.name).includes(search))
+        .sort((a, b) => {
+            const aName = normalizeSearchText(a.name);
+            const bName = normalizeSearchText(b.name);
+            const aStarts = aName.startsWith(search) ? 0 : 1;
+            const bStarts = bName.startsWith(search) ? 0 : 1;
+            if (aStarts !== bStarts) return aStarts - bStarts;
+            return a.name.localeCompare(b.name, 'pt-BR', {
+                sensitivity: 'base',
+            });
+        })
+        .slice(0, 24);
 }

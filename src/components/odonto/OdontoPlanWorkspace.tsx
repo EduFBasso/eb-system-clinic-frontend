@@ -81,7 +81,14 @@ export default function OdontoPlanWorkspace({
     const treatmentGroups = groupedItems
         .map(group => ({
             ...group,
-            items: group.items.filter(item => !productParentIds.has(item.id)),
+            items: group.items.filter(
+                item =>
+                    !productParentIds.has(item.id) &&
+                    !(
+                        item.kind === 'service' &&
+                        item.custom_name.trim() === 'Produtos usados'
+                    ),
+            ),
         }))
         .filter(group => group.items.length > 0);
     const productGroups = groupedItems

@@ -7,6 +7,7 @@ import OdontoProductModal from '../components/odonto/OdontoProductModal';
 import OdontoEditProcedureModal from '../components/odonto/OdontoEditProcedureModal';
 import OdontoPlanListView from '../components/odonto/OdontoPlanListView';
 import OdontoPlanWorkspace from '../components/odonto/OdontoPlanWorkspace';
+import ActionPromptModal from '../components/shared/ActionPromptModal';
 import { useOdontoTreatmentPlans } from '../hooks/useOdontoTreatmentPlans';
 import { useOdontoItemFlows } from '../hooks/useOdontoItemFlows';
 import { useOdontoCatalogs } from '../hooks/useOdontoCatalogs';
@@ -45,6 +46,16 @@ export default function OdontoArcadeSimplifiedPage() {
         itemFlows.editingItem !== null,
     );
     const [professionalVersion, setProfessionalVersion] = React.useState(0);
+    const [printConfirmationOpen, setPrintConfirmationOpen] =
+        React.useState(false);
+
+    function handleMarkPrinted() {
+        if (plans.lockAfterPrint && plans.plan && !plans.plan.is_printed) {
+            setPrintConfirmationOpen(true);
+            return;
+        }
+        void plans.markPrinted();
+    }
 
     React.useEffect(() => {
         if (plans.loading) return;
@@ -64,14 +75,11 @@ export default function OdontoArcadeSimplifiedPage() {
 
     React.useEffect(() => {
         return on('treatmentSettingsUpdated', settings => {
-            if (typeof settings.showArchivedPlans === 'boolean') {
-                plans.setShowArchivedPlans(settings.showArchivedPlans);
-            }
             if (typeof settings.lockAfterPrint === 'boolean') {
                 void plans.updateLockAfterPrint(settings.lockAfterPrint);
             }
         });
-    }, [plans.setShowArchivedPlans, plans.updateLockAfterPrint]);
+    }, [plans.updateLockAfterPrint]);
 
     return (
         <>
@@ -146,7 +154,7 @@ export default function OdontoArcadeSimplifiedPage() {
                                 itemFlows.editingItem !== null
                             }
                             onBack={plans.backToPlanList}
-                            onMarkPrinted={() => void plans.markPrinted()}
+                            onMarkPrinted={handleMarkPrinted}
                             onOpenService={itemFlows.openServiceFlowModal}
                             onOpenProduct={itemFlows.openProductFlowModal}
                             notes={plans.planNotes}
@@ -190,7 +198,7 @@ export default function OdontoArcadeSimplifiedPage() {
                                 <button
                                     type='button'
                                     className={styles.btnPrimary}
-                                    onClick={() => void plans.markPrinted()}
+                                    onClick={handleMarkPrinted}
                                     disabled={plans.markingPrinted}
                                     aria-label='Imprimir orçamento A4'
                                 >
@@ -226,6 +234,55 @@ export default function OdontoArcadeSimplifiedPage() {
                     }
                 />
 
+                <ActionPromptModal
+                    open={printConfirmationOpen}
+                    title='Confirmar impressão do plano?'
+                    message={
+                        <p style={{ margin: 0 }}>
+                            A impressão vai bloquear futuras alterações neste
+                            plano.
+                        </p>
+                    }
+                    onClose={() => setPrintConfirmationOpen(false)}
+                    actions={[
+                        {
+                            label: 'Cancelar',
+                            onClick: () => setPrintConfirmationOpen(false),
+                        },
+                        {
+                            label: 'Imprimir e bloquear',
+                            variant: 'danger',
+                            onClick: () => {
+                                setPrintConfirmationOpen(false);
+                                void plans.markPrinted();
+                            },
+                        },
+                    ]}
+                />
+
+                <ActionPromptModal
+                    open={plans.deleteConfirmation !== null}
+                    title='Excluir plano definitivamente?'
+                    message={
+                        <p style={{ margin: 0 }}>
+                            Todos os tratamentos, produtos e valores deste plano
+                            serão excluídos definitivamente.
+                        </p>
+                    }
+                    onClose={plans.cancelDeletePlan}
+                    actions={[
+                        {
+                            label: 'Cancelar',
+                            onClick: plans.cancelDeletePlan,
+                        },
+                        {
+                            label: 'Excluir definitivamente',
+                            variant: 'danger',
+                            onClick: () => void plans.confirmDeletePlan(),
+                        },
+                    ]}
+                />
+
                 <OdontoServiceModal
                     open={itemFlows.serviceFlowOpen}
                     saving={
@@ -237,11 +294,13 @@ export default function OdontoArcadeSimplifiedPage() {
                     serviceCatalog={catalogs.serviceCatalog}
                     onClose={itemFlows.closeServiceFlowModal}
                     onSave={async catalogIndexes => {
-                        const saved = await catalogs.saveServicesToCatalog(
-                            itemFlows.serviceRows,
-                            catalogIndexes,
-                        );
-                        if (saved) await itemFlows.saveServiceFlow();
+                        const resolvedRows =
+                            await catalogs.saveNewServicesToCatalog(
+                                itemFlows.serviceRows,
+                                catalogIndexes,
+                            );
+                        if (resolvedRows)
+                            await itemFlows.saveServiceFlow(resolvedRows);
                     }}
                     onFlowTypeChange={itemFlows.changeServiceFlowType}
                     onUpdateRow={itemFlows.updateServiceRow}
@@ -294,14 +353,22 @@ export default function OdontoArcadeSimplifiedPage() {
                                         toothSurface:
                                             item.dental_context
                                                 ?.tooth_surface ?? '',
-                                        scope: item.dental_context?.tooth_number
-                                            ? 'tooth'
-                                            : item.dental_context?.arcade_arch
-                                              ? 'arch'
-                                              : 'other',
+                                        scope:
+                                            item.dental_context?.scope ===
+                                            'tooth'
+                                                ? 'tooth'
+                                                : item.dental_context?.scope ===
+                                                        'arch' ||
+                                                    item.dental_context
+                                                        ?.scope === 'full'
+                                                  ? 'arch'
+                                                  : 'other',
                                         arcadeArch:
-                                            item.dental_context?.arcade_arch ??
-                                            null,
+                                            item.dental_context?.scope ===
+                                            'full'
+                                                ? 'AMBAS'
+                                                : (item.dental_context
+                                                      ?.arcade_arch ?? null),
                                         treatment: itemFlows.editingItemName,
                                         serviceId: item.service,
                                         value: itemFlows.editingItemValue,

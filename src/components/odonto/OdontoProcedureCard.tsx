@@ -100,6 +100,8 @@ export default function OdontoProcedureCard({
         anatomicalLabel = `Arcada ${archLabel}`;
     } else if (ctx?.scope === 'full') {
         anatomicalLabel = 'Arcada Superior e Inferior';
+    } else if (item.kind === 'service' && !ctx) {
+        anatomicalLabel = 'Outros';
     }
 
     return (

@@ -4,6 +4,8 @@ import { apiFetch, ApiError } from '../../utils/apiFetch';
 import FormPage from '../../components/FormKit/FormPage';
 import FormSection from '../../components/FormKit/FormSection';
 import CatalogPrintView from '../../components/catalog/CatalogPrintView';
+import ActionPromptModal from '../../components/shared/ActionPromptModal';
+import { emit } from '../../events/bus';
 import { useLocation, useNavigate } from 'react-router-dom';
 import formStyles from '../../styles/pages/Client.module.css';
 
@@ -27,6 +29,10 @@ export default function ProductListPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState('');
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+    const [deleting, setDeleting] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
     const returnTo =
@@ -75,6 +81,62 @@ export default function ProductListPage() {
         );
     }, [items, search]);
 
+    function toggleSelectionMode() {
+        if (selectionMode) {
+            setSelectedIds(new Set());
+            setConfirmDeleteOpen(false);
+        }
+        setSelectionMode(current => !current);
+    }
+
+    function toggleSelected(productId: number) {
+        setSelectedIds(current => {
+            const next = new Set(current);
+            if (next.has(productId)) next.delete(productId);
+            else next.add(productId);
+            return next;
+        });
+    }
+
+    async function deleteSelectedProducts() {
+        const ids = Array.from(selectedIds);
+        setConfirmDeleteOpen(false);
+        setDeleting(true);
+        const deletedIds: number[] = [];
+        const failedIds: number[] = [];
+
+        for (const productId of ids) {
+            try {
+                await apiFetch(`${API_BASE}/inventory/products/${productId}/`, {
+                    method: 'DELETE',
+                });
+                deletedIds.push(productId);
+            } catch {
+                failedIds.push(productId);
+            }
+        }
+
+        setItems(current =>
+            current.filter(product => !deletedIds.includes(product.id)),
+        );
+        setSelectedIds(new Set(failedIds));
+        setDeleting(false);
+
+        if (failedIds.length === 0) {
+            setSelectionMode(false);
+            emit('systemMessage', {
+                text: `${deletedIds.length} ${deletedIds.length === 1 ? 'produto removido' : 'produtos removidos'} do catálogo.`,
+                type: 'success',
+            });
+            return;
+        }
+
+        emit('systemMessage', {
+            text: `Não foi possível remover ${failedIds.length} ${failedIds.length === 1 ? 'produto' : 'produtos'}.`,
+            type: 'error',
+        });
+    }
+
     return (
         <>
             <div data-screen-only style={{ display: 'contents' }}>
@@ -110,13 +172,47 @@ export default function ProductListPage() {
                             >
                                 ← Voltar
                             </button>
+                            <button
+                                type='button'
+                                className={`${formStyles.catalogActionButton} ${formStyles.catalogCompactButton} ${formStyles.catalogThemeButton}`}
+                                onClick={() =>
+                                    navigate('/catalog/products/new', {
+                                        state: { returnTo },
+                                    })
+                                }
+                                disabled={selectionMode || deleting}
+                            >
+                                + Novo
+                            </button>
+                            <button
+                                type='button'
+                                className={`${formStyles.catalogActionButton} ${formStyles.catalogCompactButton} ${!selectionMode ? formStyles.catalogSelectButton : ''}`}
+                                onClick={toggleSelectionMode}
+                                disabled={deleting || items.length === 0}
+                            >
+                                {selectionMode ? 'Cancelar' : 'Apagar'}
+                            </button>
+                            {selectionMode && (
+                                <button
+                                    type='button'
+                                    className={`${formStyles.catalogActionButton} ${formStyles.catalogCompactButton} ${formStyles.catalogDeleteButton}`}
+                                    onClick={() => setConfirmDeleteOpen(true)}
+                                    disabled={
+                                        selectedIds.size === 0 || deleting
+                                    }
+                                >
+                                    {deleting
+                                        ? 'Excluindo...'
+                                        : `Excluir selecionados (${selectedIds.size})`}
+                                </button>
+                            )}
                             <input
                                 type='search'
                                 value={search}
                                 onChange={event =>
                                     setSearch(event.target.value)
                                 }
-                                placeholder='Search'
+                                placeholder='Pesquisar'
                                 aria-label='Buscar produto por nome'
                                 style={{
                                     flex: '1 1 240px',
@@ -134,10 +230,15 @@ export default function ProductListPage() {
                             {filteredItems.map(product => (
                                 <article
                                     key={product.id}
-                                    className={`${formStyles.catalogCard} flex w-full flex-col`}
+                                    className={`${formStyles.catalogCard} flex w-full flex-col ${selectionMode ? formStyles.catalogCardSelectable : ''} ${selectedIds.has(product.id) ? formStyles.catalogCardSelected : ''}`}
                                     style={{
                                         minHeight: 156,
                                     }}
+                                    onClick={
+                                        selectionMode
+                                            ? () => toggleSelected(product.id)
+                                            : undefined
+                                    }
                                 >
                                     <div
                                         className='flex min-w-0 items-start justify-between gap-3'
@@ -158,6 +259,25 @@ export default function ProductListPage() {
                                                 {product.name}
                                             </h2>
                                         </div>
+                                        {!selectionMode && (
+                                            <button
+                                                type='button'
+                                                className={
+                                                    formStyles.catalogEditButton
+                                                }
+                                                onClick={() =>
+                                                    navigate(
+                                                        `/catalog/products/${product.id}`,
+                                                        {
+                                                            state: { returnTo },
+                                                        },
+                                                    )
+                                                }
+                                                aria-label={`Editar ${product.name}`}
+                                            >
+                                                Editar
+                                            </button>
+                                        )}
                                     </div>
                                     {product.description?.trim() && (
                                         <p
@@ -178,6 +298,24 @@ export default function ProductListPage() {
                                     >
                                         R$ {format2DecimalsBR(product.price)}
                                     </div>
+                                    {selectionMode && (
+                                        <input
+                                            type='checkbox'
+                                            className={
+                                                formStyles.catalogCheckbox
+                                            }
+                                            checked={selectedIds.has(
+                                                product.id,
+                                            )}
+                                            onClick={event =>
+                                                event.stopPropagation()
+                                            }
+                                            onChange={() =>
+                                                toggleSelected(product.id)
+                                            }
+                                            aria-label={`Selecionar ${product.name}`}
+                                        />
+                                    )}
                                 </article>
                             ))}
                         </div>
@@ -218,6 +356,31 @@ export default function ProductListPage() {
                         </button>
                     </FormSection>
                 </FormPage>
+                <ActionPromptModal
+                    open={confirmDeleteOpen}
+                    title='Excluir produtos selecionados?'
+                    message={
+                        <p style={{ margin: 0 }}>
+                            Esta ação removerá permanentemente{' '}
+                            <strong>{selectedIds.size}</strong>{' '}
+                            {selectedIds.size === 1 ? 'produto' : 'produtos'} do
+                            catálogo. Itens já usados em planos conservarão o
+                            nome registrado.
+                        </p>
+                    }
+                    onClose={() => setConfirmDeleteOpen(false)}
+                    actions={[
+                        {
+                            label: 'Cancelar',
+                            onClick: () => setConfirmDeleteOpen(false),
+                        },
+                        {
+                            label: 'Excluir',
+                            variant: 'danger',
+                            onClick: deleteSelectedProducts,
+                        },
+                    ]}
+                />
             </div>
             <CatalogPrintView
                 title='Catálogo de Produtos'

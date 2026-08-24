@@ -39,7 +39,6 @@ export const AboutModal: React.FC<AboutModalProps> = ({
     backendVersion,
 }) => {
     const { theme, setTheme } = useTheme();
-    const [showArchivedPlans, setShowArchivedPlans] = React.useState(false);
     const [lockAfterPrint, setLockAfterPrint] = React.useState(true);
     const [resolvedBackendVersion, setResolvedBackendVersion] = React.useState<
         string | null
@@ -129,32 +128,6 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                     </div>
                 </section>
                 <section style={{ display: 'grid', gap: 10, marginBottom: 16 }}>
-                    <label
-                        style={{
-                            display: 'flex',
-                            gap: 10,
-                            alignItems: 'flex-start',
-                        }}
-                    >
-                        <input
-                            type='checkbox'
-                            checked={showArchivedPlans}
-                            onChange={event => {
-                                const value = event.target.checked;
-                                setShowArchivedPlans(value);
-                                emit('treatmentSettingsUpdated', {
-                                    showArchivedPlans: value,
-                                });
-                            }}
-                        />
-                        <span>
-                            <strong>Mostrar planos arquivados</strong>
-                            <small style={{ display: 'block', marginTop: 4 }}>
-                                Exibe planos removidos com tratamentos para
-                                preservar o histórico.
-                            </small>
-                        </span>
-                    </label>
                     <label
                         style={{
                             display: 'flex',

@@ -50,7 +50,6 @@ export type ModalClosedPayload = {
     id?: number;
 };
 export type TreatmentSettingsUpdatedPayload = {
-    showArchivedPlans?: boolean;
     lockAfterPrint?: boolean;
 };
 

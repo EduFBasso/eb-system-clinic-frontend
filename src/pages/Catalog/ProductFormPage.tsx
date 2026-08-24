@@ -6,14 +6,11 @@ import InputField from '../../components/FormElements/InputField';
 import FormPage from '../../components/FormKit/FormPage';
 import FormSection from '../../components/FormKit/FormSection';
 import FormActions from '../../components/FormKit/FormActions';
-import SelectField from '../../components/FormKit/SelectField';
 import TextAreaField from '../../components/FormKit/TextAreaField';
 import {
     getCatalogFlashScope,
     queueFlashMessage,
 } from '../../utils/flashMessage';
-
-type ProductType = 'PRODUCT' | 'MEDICATION';
 
 export default function ProductFormPage() {
     const navigate = useNavigate();
@@ -24,7 +21,6 @@ export default function ProductFormPage() {
         '/catalog/products';
 
     const [name, setName] = useState('');
-    const [type, setType] = useState<ProductType>('PRODUCT');
     const [description, setDescription] = useState('');
     // Exibição com 2 casas decimais em pt-BR
     const [priceStr, setPriceStr] = useState<string>('');
@@ -66,12 +62,10 @@ export default function ProductFormPage() {
                 if (!mounted) return;
                 const p = data as {
                     name: string;
-                    type: ProductType;
                     description?: string;
                     price: number;
                 };
                 setName(p.name ?? '');
-                setType(p.type ?? 'PRODUCT');
                 setDescription(p.description ?? '');
                 setPriceStr(format2DecimalsBR(p.price ?? 0));
             } catch (err) {
@@ -96,7 +90,6 @@ export default function ProductFormPage() {
         try {
             const body = {
                 name: name.trim(),
-                type,
                 description: description.trim() || undefined,
                 price: parseBRToNumber(priceStr) || 0,
             };
@@ -158,26 +151,11 @@ export default function ProductFormPage() {
                         setName((e.target as HTMLInputElement).value)
                     }
                     required
-                    placeholder='Ex.: Creme hidratante'
                 />
-                <SelectField
-                    label='Tipo'
-                    value={type}
-                    onChange={e =>
-                        setType(
-                            (e.target as HTMLSelectElement)
-                                .value as ProductType,
-                        )
-                    }
-                >
-                    <option value='PRODUCT'>Produto</option>
-                    <option value='MEDICATION'>Medicamento</option>
-                </SelectField>
                 <TextAreaField
                     label='Descrição'
                     value={description}
                     onChange={e => setDescription(e.target.value)}
-                    placeholder='Descreva o produto'
                     rows={3}
                 />
                 <InputField

@@ -31,8 +31,8 @@ const buttonStyles: Record<ActionVariant, React.CSSProperties> = {
         fontWeight: 700,
     },
     danger: {
-        border: '1px solid var(--color-danger)',
-        background: 'var(--color-danger)',
+        border: '1px solid var(--color-action-select)',
+        background: 'var(--color-action-select)',
         color: '#fff',
         fontWeight: 700,
     },

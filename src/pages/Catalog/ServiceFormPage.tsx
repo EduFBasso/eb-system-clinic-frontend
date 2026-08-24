@@ -11,6 +11,7 @@ import {
     getCatalogFlashScope,
     queueFlashMessage,
 } from '../../utils/flashMessage';
+import type { ServiceFlowType } from '../odontoArcadeHelpers';
 
 type Service = {
     id: number;
@@ -18,7 +19,17 @@ type Service = {
     description?: string;
     base_price: number;
     is_active?: boolean;
+    treatment_scopes?: ServiceFlowType[];
 };
+
+const TREATMENT_SCOPE_OPTIONS: Array<{
+    value: ServiceFlowType;
+    label: string;
+}> = [
+    { value: 'tooth', label: 'Por dente' },
+    { value: 'arch', label: 'Arcada' },
+    { value: 'other', label: 'Outros' },
+];
 
 function format2DecimalsBR(value: number | string): string {
     return Number(value || 0).toLocaleString('pt-BR', {
@@ -44,6 +55,9 @@ export default function ServiceFormPage() {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [basePriceStr, setBasePriceStr] = useState<string>('');
+    const [treatmentScopes, setTreatmentScopes] = useState<ServiceFlowType[]>(
+        [],
+    );
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -65,6 +79,7 @@ export default function ServiceFormPage() {
                 setBasePriceStr(
                     format2DecimalsBR(Number(data.base_price || 0)),
                 );
+                setTreatmentScopes(data.treatment_scopes ?? []);
             } catch (err) {
                 const msg = err instanceof ApiError ? err.message : String(err);
                 setError(msg || 'Erro ao carregar serviço');
@@ -84,6 +99,10 @@ export default function ServiceFormPage() {
             setError('Informe o nome do serviço.');
             return;
         }
+        if (treatmentScopes.length === 0) {
+            setError('Selecione ao menos uma subcategoria de tratamento.');
+            return;
+        }
         setSaving(true);
         try {
             const body = {
@@ -91,6 +110,7 @@ export default function ServiceFormPage() {
                 description: description.trim() || undefined,
                 base_price: parseBRToNumber(basePriceStr) || 0,
                 is_active: true,
+                treatment_scopes: treatmentScopes,
             };
             if (id) {
                 await apiFetch(`${API_BASE}/inventory/services/${id}/`, {
@@ -140,13 +160,11 @@ export default function ServiceFormPage() {
                         setName((e.target as HTMLInputElement).value)
                     }
                     required
-                    placeholder='Ex.: Podologia clínica'
                 />
                 <TextAreaField
-                    label='Descrição'
+                    label='Descrição / Observações'
                     value={description}
                     onChange={e => setDescription(e.target.value)}
-                    placeholder='Descreva o serviço'
                     rows={3}
                 />
                 <InputField
@@ -168,6 +186,54 @@ export default function ServiceFormPage() {
                     }}
                     placeholder='0,00'
                 />
+                <fieldset
+                    aria-label='Subcategorias do tratamento'
+                    style={{
+                        border: '1px solid var(--color-border)',
+                        borderRadius: 8,
+                        padding: 12,
+                        margin: 0,
+                    }}
+                >
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: 16,
+                        }}
+                    >
+                        {TREATMENT_SCOPE_OPTIONS.map(option => (
+                            <label
+                                key={option.value}
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 7,
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                <input
+                                    type='checkbox'
+                                    checked={treatmentScopes.includes(
+                                        option.value,
+                                    )}
+                                    onChange={event =>
+                                        setTreatmentScopes(current =>
+                                            event.target.checked
+                                                ? [...current, option.value]
+                                                : current.filter(
+                                                      scope =>
+                                                          scope !==
+                                                          option.value,
+                                                  ),
+                                        )
+                                    }
+                                />
+                                {option.label}
+                            </label>
+                        ))}
+                    </div>
+                </fieldset>
                 {error && (
                     <div style={{ color: 'crimson', fontSize: 13 }}>
                         {error}

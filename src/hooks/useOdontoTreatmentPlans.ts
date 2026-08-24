@@ -29,10 +29,8 @@ export function useOdontoTreatmentPlans(
     const [planModalOpen, setPlanModalOpen] = React.useState(false);
     const [savingCreatePlan, setSavingCreatePlan] = React.useState(false);
     const [markingPrinted, setMarkingPrinted] = React.useState(false);
-    const [showArchivedPlans, setShowArchivedPlans] = React.useState(false);
     const [deleteConfirmation, setDeleteConfirmation] = React.useState<{
         planId: number;
-        hasTreatmentHistory: boolean;
     } | null>(null);
 
     const [paymentCondition, setPaymentCondition] =
@@ -93,13 +91,8 @@ export function useOdontoTreatmentPlans(
         setLoading(true);
         setError(null);
         try {
-            const [plansRes, archivedPlansRes, clientRes] = await Promise.all([
+            const [plansRes, clientRes] = await Promise.all([
                 apiFetch(`/clinic/treatment/plans/?client=${numericClientId}`),
-                showArchivedPlans
-                    ? apiFetch(
-                          `/clinic/treatment/plans/?client=${numericClientId}&status=archived`,
-                      )
-                    : Promise.resolve([]),
                 apiFetch(`/register/clients/${numericClientId}/`).catch(
                     () => null,
                 ),
@@ -114,19 +107,11 @@ export function useOdontoTreatmentPlans(
                 if (fullName) setClientName(fullName);
             }
             const activePlans = asList<PlanListItem>(plansRes);
-            const archivedPlans = asList<PlanListItem>(archivedPlansRes);
-            const plans = [
-                ...activePlans,
-                ...archivedPlans.filter(
-                    archived =>
-                        !activePlans.some(active => active.id === archived.id),
-                ),
-            ];
-            setAllPlans(plans);
+            setAllPlans(activePlans);
             // Preserve the active workspace while refreshing plan and item data.
             const activePlanId = activePlanIdRef.current;
             if (activePlanId !== null) {
-                const refreshed = plans.find(p => p.id === activePlanId);
+                const refreshed = activePlans.find(p => p.id === activePlanId);
                 if (refreshed) {
                     activePlanIdRef.current = refreshed.id;
                     setPlan(refreshed);
@@ -158,7 +143,7 @@ export function useOdontoTreatmentPlans(
         } finally {
             setLoading(false);
         }
-    }, [canAccess, numericClientId, showArchivedPlans]);
+    }, [canAccess, numericClientId]);
 
     React.useEffect(() => {
         void loadPlan();
@@ -236,11 +221,7 @@ export function useOdontoTreatmentPlans(
     }
 
     async function deletePlan(planId: number) {
-        const planToDelete = allPlans.find(item => item.id === planId);
-        const hasTreatmentHistory =
-            (planToDelete?.pending_items ?? 0) > 0 ||
-            (planToDelete?.completed_items ?? 0) > 0;
-        setDeleteConfirmation({ planId, hasTreatmentHistory });
+        setDeleteConfirmation({ planId });
     }
 
     function cancelDeletePlan() {
@@ -249,7 +230,7 @@ export function useOdontoTreatmentPlans(
 
     async function confirmDeletePlan() {
         if (!deleteConfirmation) return;
-        const { planId, hasTreatmentHistory } = deleteConfirmation;
+        const { planId } = deleteConfirmation;
         setDeleteConfirmation(null);
         try {
             await apiFetch(`/clinic/treatment/plans/${planId}/`, {
@@ -262,9 +243,7 @@ export function useOdontoTreatmentPlans(
                 setItems([]);
             }
             emit('systemMessage', {
-                text: hasTreatmentHistory
-                    ? 'Plano arquivado para preservar o histórico.'
-                    : 'Plano removido definitivamente.',
+                text: 'Plano, tratamentos, produtos e valores removidos definitivamente.',
                 type: 'success',
             });
         } catch (err) {
@@ -400,8 +379,6 @@ export function useOdontoTreatmentPlans(
         error,
         clientName,
         allPlans,
-        showArchivedPlans,
-        setShowArchivedPlans,
         plan,
         items,
         planModalOpen,

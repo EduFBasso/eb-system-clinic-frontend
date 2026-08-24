@@ -9,6 +9,7 @@ import {
     todayISODate,
 } from '../pages/odontoArcadeHelpers';
 import type {
+    DentalContext,
     ItemGroup,
     PlanListItem,
     ProductRow,
@@ -35,6 +36,37 @@ function buildEmptyServiceRow(flowType: ServiceFlowType): ServiceRow {
         serviceId: null,
         value: '',
         notes: '',
+    };
+}
+
+export function dentalContextFromServiceRow(
+    row: ServiceRow,
+): DentalContext | null {
+    if (row.scope === 'other') return null;
+
+    if (row.scope === 'arch') {
+        if (row.arcadeArch === 'AMBAS') {
+            return {
+                scope: 'full',
+                tooth_number: null,
+                tooth_surface: '',
+                arcade_arch: null,
+            };
+        }
+
+        return {
+            scope: 'arch',
+            tooth_number: null,
+            tooth_surface: '',
+            arcade_arch: row.arcadeArch,
+        };
+    }
+
+    return {
+        scope: 'tooth',
+        tooth_number: row.toothNumber,
+        tooth_surface: row.toothSurface,
+        arcade_arch: null,
     };
 }
 
@@ -152,16 +184,16 @@ export function useOdontoItemFlows(
         ]);
     }
 
-    async function saveServiceFlow() {
+    async function saveServiceFlow(rowsToSave = serviceRows) {
         if (!plan) return;
-        if (serviceRows.length === 0) {
+        if (rowsToSave.length === 0) {
             emit('systemMessage', {
                 text: 'Adicione ao menos um item.',
                 type: 'warning',
             });
             return;
         }
-        for (const row of serviceRows) {
+        for (const row of rowsToSave) {
             if (!row.treatment.trim()) {
                 emit('systemMessage', {
                     text: 'Preencha o tratamento em todos os itens.',
@@ -196,30 +228,9 @@ export function useOdontoItemFlows(
         }
         setSavingServiceFlow(true);
         try {
-            for (const row of serviceRows) {
+            for (const row of rowsToSave) {
                 const amount = row.value.trim() ? parseAmount(row.value) : null;
-                const dentalContext =
-                    row.scope === 'other' ||
-                    (row.scope === 'arch' && row.arcadeArch === 'AMBAS')
-                        ? {
-                              scope: 'full' as const,
-                              tooth_number: null,
-                              tooth_surface: '',
-                              arcade_arch: null,
-                          }
-                        : row.scope === 'arch'
-                          ? {
-                                scope: 'arch' as const,
-                                tooth_number: null,
-                                tooth_surface: '',
-                                arcade_arch: row.arcadeArch,
-                            }
-                          : {
-                                scope: 'tooth' as const,
-                                tooth_number: row.toothNumber,
-                                tooth_surface: row.toothSurface,
-                                arcade_arch: null,
-                            };
+                const dentalContext = dentalContextFromServiceRow(row);
 
                 await apiFetch('/clinic/treatment/items/', {
                     method: 'POST',

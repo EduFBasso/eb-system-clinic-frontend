@@ -8,16 +8,12 @@ import type {
 } from '../../pages/odontoArcadeHelpers';
 import {
     ARCH_OPTIONS,
+    filterServiceCatalog,
     SURFACE_OPTIONS,
     normalizeMoneyInput,
-    normalizeSearchText,
 } from '../../pages/odontoArcadeHelpers';
 import { toInputAmount } from '../../utils/currency';
 import styles from '../../styles/pages/OdontoArcadeSimplifiedPage.module.css';
-
-function parseBRPrice(value: string): number {
-    return parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0;
-}
 
 type Props = {
     open: boolean;
@@ -36,33 +32,6 @@ type Props = {
     /** Called when the user clicks the delete icon on a catalog suggestion. */
     onDeleteFromCatalog: (serviceId: number) => void;
 };
-
-function filterCatalog(
-    catalog: CatalogServiceItem[],
-    searchRaw: string,
-): CatalogServiceItem[] {
-    const items = [...catalog];
-
-    items.sort((a, b) =>
-        a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }),
-    );
-    const search = normalizeSearchText(searchRaw);
-    if (!search) return items.slice(0, 24);
-
-    return items
-        .filter(item => normalizeSearchText(item.name).includes(search))
-        .sort((a, b) => {
-            const aN = normalizeSearchText(a.name);
-            const bN = normalizeSearchText(b.name);
-            const aStarts = aN.startsWith(search) ? 0 : 1;
-            const bStarts = bN.startsWith(search) ? 0 : 1;
-            if (aStarts !== bStarts) return aStarts - bStarts;
-            return a.name.localeCompare(b.name, 'pt-BR', {
-                sensitivity: 'base',
-            });
-        })
-        .slice(0, 24);
-}
 
 export default function OdontoServiceModal({
     open,
@@ -119,7 +88,7 @@ export default function OdontoServiceModal({
                 role='dialog'
                 onClick={event => event.stopPropagation()}
             >
-                <h3 className={styles.sectionTitle}>Novo Procedimento</h3>
+                <h3 className={styles.sectionTitle}>Novo Tratamento</h3>
 
                 <div className={styles.typeTabs}>
                     {(['tooth', 'arch', 'other'] as ServiceFlowType[]).map(
@@ -163,43 +132,19 @@ export default function OdontoServiceModal({
 
                 <div className={styles.modalRows}>
                     {serviceRows.map((row, index) => {
-                        const suggestions = filterCatalog(
+                        const suggestions = filterServiceCatalog(
                             serviceCatalog,
                             row.treatment,
+                            flowType,
                         );
                         const catalogItem = serviceCatalog.find(
                             s =>
-                                s.name.toLowerCase() ===
-                                row.treatment.trim().toLowerCase(),
+                                s.treatment_scopes.includes(flowType) &&
+                                s.name.trim().toLowerCase() ===
+                                    row.treatment.trim().toLowerCase(),
                         );
-                        const canAddToCatalog =
-                            !catalogItem && Boolean(row.treatment.trim());
-                        // Show the checkbox also when the user changes the price of a catalog service.
-                        const priceChangedFromCatalog =
-                            Boolean(catalogItem) &&
-                            Boolean(row.serviceId) &&
-                            Boolean(row.value.trim()) &&
-                            Math.abs(
-                                parseBRPrice(row.value) -
-                                    Number(catalogItem?.base_price ?? 0),
-                            ) > 0.001;
-                        const notesChangedFromCatalog =
-                            Boolean(catalogItem) &&
-                            Boolean(row.serviceId) &&
-                            row.notes.trim() !==
-                                (catalogItem?.default_notes ?? '').trim();
                         const showCatalogCheckbox =
-                            canAddToCatalog ||
-                            priceChangedFromCatalog ||
-                            notesChangedFromCatalog;
-                        const checkboxLabel =
-                            priceChangedFromCatalog && notesChangedFromCatalog
-                                ? `Atualizar preço e observações de "${row.treatment.trim()}" no catálogo`
-                                : priceChangedFromCatalog
-                                  ? `Atualizar preço de "${row.treatment.trim()}" no catálogo`
-                                  : notesChangedFromCatalog
-                                    ? `Atualizar observações de "${row.treatment.trim()}" no catálogo`
-                                    : `Adicionar "${row.treatment.trim()}" ao catálogo geral`;
+                            Boolean(row.treatment.trim()) && !catalogItem;
 
                         return (
                             <div key={index} className={styles.modalRow}>
@@ -351,8 +296,11 @@ export default function OdontoServiceModal({
                                                                                             ),
                                                                                         }),
                                                                                     ...(!row.notes.trim() &&
-                                                                                        item.default_notes && {
-                                                                                            notes: item.default_notes,
+                                                                                        (item.description ??
+                                                                                            item.default_notes) && {
+                                                                                            notes:
+                                                                                                item.description ??
+                                                                                                item.default_notes,
                                                                                         }),
                                                                                 },
                                                                             );
@@ -514,7 +462,9 @@ export default function OdontoServiceModal({
                                                     styles.catalogCheckboxText
                                                 }
                                             >
-                                                {checkboxLabel}
+                                                Adicionar "
+                                                {row.treatment.trim()}" ao
+                                                catálogo geral
                                             </span>
                                         </label>
                                     )}
@@ -559,32 +509,9 @@ export default function OdontoServiceModal({
                                                     .trim()
                                                     .toLowerCase(),
                                         );
-                                        const priceChanged =
-                                            Boolean(catalogItem) &&
-                                            Boolean(row.serviceId) &&
-                                            Boolean(row.value.trim()) &&
-                                            Math.abs(
-                                                parseBRPrice(row.value) -
-                                                    Number(
-                                                        catalogItem?.base_price ??
-                                                            0,
-                                                    ),
-                                            ) > 0.001;
-                                        const notesChanged =
-                                            Boolean(catalogItem) &&
-                                            Boolean(row.serviceId) &&
-                                            row.notes.trim() !==
-                                                (
-                                                    catalogItem?.default_notes ??
-                                                    ''
-                                                ).trim();
                                         const selectable =
-                                            (!catalogItem &&
-                                                Boolean(
-                                                    row.treatment.trim(),
-                                                )) ||
-                                            priceChanged ||
-                                            notesChanged;
+                                            !catalogItem &&
+                                            Boolean(row.treatment.trim());
 
                                         return selectable &&
                                             includeInCatalog[index] !== false

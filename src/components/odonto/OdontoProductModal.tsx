@@ -7,7 +7,7 @@ import {
     normalizeMoneyInput,
     normalizeSearchText,
 } from '../../pages/odontoArcadeHelpers';
-import { parseAmount, toInputAmount } from '../../utils/currency';
+import { toInputAmount } from '../../utils/currency';
 import styles from '../../styles/pages/OdontoArcadeSimplifiedPage.module.css';
 
 type Props = {
@@ -110,29 +110,8 @@ export default function OdontoProductModal({
                             productCatalog,
                             row.name,
                         );
-                        const priceChangedFromCatalog =
-                            Boolean(catalogItem) &&
-                            Boolean(row.value.trim()) &&
-                            Math.abs(
-                                (parseAmount(row.value) ?? 0) -
-                                    Number(catalogItem?.price ?? 0),
-                            ) > 0.001;
-                        const notesChangedFromCatalog =
-                            Boolean(catalogItem) &&
-                            row.notes.trim() !==
-                                (catalogItem?.description ?? '').trim();
                         const showCatalogCheckbox =
-                            Boolean(row.name.trim()) &&
-                            (!catalogItem ||
-                                priceChangedFromCatalog ||
-                                notesChangedFromCatalog);
-                        const checkboxLabel = catalogItem
-                            ? priceChangedFromCatalog && notesChangedFromCatalog
-                                ? 'Atualizar valor e observações no catálogo geral'
-                                : priceChangedFromCatalog
-                                  ? 'Atualizar valor no catálogo geral'
-                                  : 'Atualizar observações no catálogo geral'
-                            : 'Adicionar ao catálogo geral';
+                            Boolean(row.name.trim()) && !catalogItem;
 
                         return (
                             <div key={index} className={styles.modalRow}>
@@ -333,7 +312,7 @@ export default function OdontoProductModal({
                                                     styles.catalogCheckboxText
                                                 }
                                             >
-                                                {checkboxLabel}
+                                                Adicionar ao catálogo geral
                                             </span>
                                         </label>
                                     )}
@@ -371,43 +350,18 @@ export default function OdontoProductModal({
                         onClick={() =>
                             onSave(
                                 productRows
-                                    .map((row, index) =>
-                                        (() => {
-                                            const catalogItem = findCatalogItem(
+                                    .map((row, index) => {
+                                        const isNewProduct =
+                                            Boolean(row.name.trim()) &&
+                                            !findCatalogItem(
                                                 productCatalog,
                                                 row.name,
                                             );
-                                            const priceChanged =
-                                                Boolean(catalogItem) &&
-                                                Boolean(row.value.trim()) &&
-                                                Math.abs(
-                                                    (parseAmount(row.value) ??
-                                                        0) -
-                                                        Number(
-                                                            catalogItem?.price ??
-                                                                0,
-                                                        ),
-                                                ) > 0.001;
-                                            const notesChanged =
-                                                Boolean(catalogItem) &&
-                                                row.notes.trim() !==
-                                                    (
-                                                        catalogItem?.description ??
-                                                        ''
-                                                    ).trim();
-                                            const selectable =
-                                                Boolean(row.name.trim()) &&
-                                                (!catalogItem ||
-                                                    priceChanged ||
-                                                    notesChanged);
-
-                                            return selectable &&
-                                                includeInCatalog[index] !==
-                                                    false
-                                                ? index
-                                                : null;
-                                        })(),
-                                    )
+                                        return isNewProduct &&
+                                            includeInCatalog[index] !== false
+                                            ? index
+                                            : null;
+                                    })
                                     .filter(
                                         (index): index is number =>
                                             index !== null,

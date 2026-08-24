@@ -50,6 +50,7 @@
 }
 
 .catalogCard {
+    position: relative;
     min-width: 0;
     border: 1px solid var(--color-border);
     border-radius: 10px;
@@ -57,6 +58,105 @@
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
     padding: 16px;
     box-sizing: border-box;
+}
+
+.catalogCardSelectable {
+    padding-bottom: 44px;
+    cursor: pointer;
+}
+
+.catalogCardSelected {
+    border-color: var(--color-success-dark);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-success-dark) 22%, transparent);
+}
+
+.catalogCheckbox {
+    position: absolute;
+    right: 16px;
+    bottom: 14px;
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    accent-color: var(--color-success-dark);
+    cursor: pointer;
+}
+
+.catalogActionButton {
+    min-height: 38px;
+    padding: 8px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg);
+    color: var(--color-heading);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.catalogDeleteButton {
+    border-color: var(--color-action-select);
+    background: var(--color-action-select);
+    color: #fff;
+}
+
+.catalogThemeButton {
+    border-color: var(--btn-theme-border);
+    background: var(--btn-theme-bg);
+    color: var(--btn-theme-text);
+}
+
+.catalogCompactButton {
+    min-height: 0;
+}
+
+.catalogSelectButton {
+    border-color: var(--color-action-select);
+    background: var(--color-action-select);
+    color: #fff;
+}
+
+.catalogActionButton:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.catalogEditButton {
+    flex: 0 0 auto;
+    padding: 4px 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-bg);
+    color: var(--color-heading);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.catalogScopeList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.catalogScopeList span {
+    padding: 3px 7px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-bg);
+    color: var(--color-text-light);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.catalogScopeList .catalogScopeMissing {
+    border-color: var(--color-danger);
+    color: var(--color-danger);
+}
+
+.catalogActionButton:focus-visible,
+.catalogCheckbox:focus-visible,
+.catalogCardSelectable:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
 }
 
 @media (max-width: 640px) {
