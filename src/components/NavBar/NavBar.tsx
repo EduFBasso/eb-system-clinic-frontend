@@ -649,9 +649,9 @@ export const NavBar: React.FC<NavBarProps> = ({
                                     }
                                     navigate('/catalog/services');
                                 }}
-                                title='Serviços'
+                                title='Tratamentos'
                             >
-                                📋 Serviços
+                                📋 Tratamentos
                             </button>
                             <button
                                 className={styles.dropdownItem}
