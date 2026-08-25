@@ -4,7 +4,7 @@ import React from 'react';
 import { ServerTimeProvider } from '../../contexts/ServerTimeContext';
 import AppointmentCard, {
     type SharedAppointmentLike,
-} from '../shared/AppointmentCard';
+} from '../Shared/AppointmentCard';
 
 // Utility to build an appointment starting "now" and ending +30m
 function buildAppt(

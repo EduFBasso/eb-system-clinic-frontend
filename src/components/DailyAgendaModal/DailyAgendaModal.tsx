@@ -1,9 +1,9 @@
 import React from 'react';
 import { AppModal } from '../Modal/Modal';
 import FloatingDatePicker from '../FloatingDatePicker';
-import StickyModalHeader from '../shared/StickyModalHeader';
+import StickyModalHeader from '../Shared/StickyModalHeader';
 import { FaArrowLeft, FaArrowRight, FaCalendarAlt } from 'react-icons/fa';
-import ClientCardRow from '../shared/ClientCardRow';
+import ClientCardRow from '../Shared/ClientCardRow';
 import { enrichList } from '../../utils/appointments/status';
 import { toISODate } from '../../utils/date';
 import {

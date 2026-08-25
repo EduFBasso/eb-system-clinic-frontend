@@ -2,11 +2,11 @@ import React from 'react';
 import { AppModal } from '../Modal/Modal';
 import { TimePicker10 } from '../TimePicker10/TimePicker10';
 import FloatingDatePicker from '../FloatingDatePicker';
-import QuickScheduleHeader from '../quickschedule/QuickScheduleHeader';
-import DateControlsHeader from '../shared/DateControlsHeader';
+import QuickScheduleHeader from '../QuickSchedule/QuickScheduleHeader';
+import DateControlsHeader from '../Shared/DateControlsHeader';
 import QuickScheduleDayList, {
     type DayFilter,
-} from '../quickschedule/QuickScheduleDayList';
+} from '../QuickSchedule/QuickScheduleDayList';
 import { AppointmentDetailsModal } from '../AppointmentDetailsModal/AppointmentDetailsModal';
 import type { ClientBasic } from '../../types/ClientBasic';
 import type { Appointment } from '../../hooks/useAppointments';

@@ -1,9 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppModal } from '../Modal/Modal';
-import type { SharedAppointmentLike } from '../shared/AppointmentCard';
+import type { SharedAppointmentLike } from '../Shared/AppointmentCard';
 import { formatTime } from '../../utils/timeFormat';
-import StickyModalHeader from '../shared/StickyModalHeader';
+import StickyModalHeader from '../Shared/StickyModalHeader';
 import { API_BASE } from '../../config/api';
 import { apiFetch } from '../../utils/apiFetch';
 import type { AppointmentReturnContext } from '../../types/agendaFlow';

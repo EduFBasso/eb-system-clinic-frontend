@@ -10,8 +10,8 @@ import { useNavigate } from 'react-router-dom';
 import { useConsultaPageContext } from '../hooks/useConsultaPageContext';
 import { useConsultaItems } from '../hooks/useConsultaItems';
 import { useConsultaRegister } from '../hooks/useConsultaRegister';
-import ItemsTable from '../components/consulta/ItemsTable';
-import SelectedItemsTable from '../components/consulta/SelectedItemsTable';
+import ItemsTable from '../components/Consulta/ItemsTable';
+import SelectedItemsTable from '../components/Consulta/SelectedItemsTable';
 import type { Service, Product, SelectedItem } from '../types/consulta';
 
 const linkBtnStyle: React.CSSProperties = {

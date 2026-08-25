@@ -11,7 +11,7 @@ function isMobileDevice() {
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AboutModal } from '../AboutModal/AboutModal';
-import OdontoPlanCreateModal from '../odonto/OdontoPlanCreateModal';
+import OdontoPlanCreateModal from '../Odonto/OdontoPlanCreateModal';
 import { SessionExpiredModal } from '../SessionExpiredModal/SessionExpiredModal';
 import { API_BASE } from '../../config/api';
 import { openClientForm } from '../../utils/openClientForm';

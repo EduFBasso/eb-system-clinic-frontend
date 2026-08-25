@@ -19,7 +19,6 @@ export type PlanListItem = {
     printed_at?: string;
     created_at?: string;
     updated_at?: string;
-    pending_items?: number;
     completed_items?: number;
     payment_condition?: PaymentCondition;
     installments_count?: number;

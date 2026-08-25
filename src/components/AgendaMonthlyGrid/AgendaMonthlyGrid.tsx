@@ -10,7 +10,7 @@ import {
     statusBackgroundColor,
 } from '../../utils/appointments/status';
 import { useNowTick } from '../../hooks/useNowTick';
-import DateControlsHeader from '../shared/DateControlsHeader';
+import DateControlsHeader from '../Shared/DateControlsHeader';
 import FloatingDatePicker from '../FloatingDatePicker';
 import { toISODate } from '../../utils/date';
 import { formatTime } from '../../utils/timeFormat';

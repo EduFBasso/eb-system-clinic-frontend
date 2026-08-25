@@ -1,7 +1,7 @@
 import React from 'react';
 import FloatingDatePicker from '../components/FloatingDatePicker';
 import { FaArrowLeft, FaArrowRight, FaCalendarAlt } from 'react-icons/fa';
-import ClientCardRow from '../components/shared/ClientCardRow';
+import ClientCardRow from '../components/Shared/ClientCardRow';
 import QuickScheduleModal from '../components/QuickScheduleModal/QuickScheduleModal';
 import { AppointmentDetailsModal } from '../components/AppointmentDetailsModal/AppointmentDetailsModal';
 import type { Appointment } from '../hooks/useAppointments';
@@ -9,7 +9,7 @@ import { toISODate } from '../utils/date';
 import { useAppointmentsRange } from '../hooks/useAppointments';
 import type { ClientBasic } from '../types/ClientBasic';
 import { InlineAppointmentEditor } from '../components/InlineAppointmentEditor/InlineAppointmentEditor';
-import TimeRangeLabel from '../components/shared/TimeRangeLabel';
+import TimeRangeLabel from '../components/Shared/TimeRangeLabel';
 import { enrichList } from '../utils/appointments/status';
 import {
     STATUS_ORDER,

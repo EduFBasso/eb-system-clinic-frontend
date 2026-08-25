@@ -1,11 +1,11 @@
 import React from 'react';
 import { FaCalendarAlt } from 'react-icons/fa';
-import StickyModalHeader from '../shared/StickyModalHeader';
+import StickyModalHeader from '../Shared/StickyModalHeader';
 import { useStickyHeaderHeight } from '../../hooks/useStickyHeaderHeight';
 import { AppModal } from '../Modal/Modal';
 import { track } from '../../utils/telemetry';
 import FloatingDatePicker from '../FloatingDatePicker';
-import AppointmentCard from '../shared/AppointmentCard';
+import AppointmentCard from '../Shared/AppointmentCard';
 import { deriveStatus } from '../../utils/appointments/status';
 import {
     useAppointmentsRange,

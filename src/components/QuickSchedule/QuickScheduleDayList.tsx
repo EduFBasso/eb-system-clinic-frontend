@@ -1,5 +1,5 @@
 import React from 'react';
-import ClientDayList from '../shared/ClientDayList';
+import ClientDayList from '../Shared/ClientDayList';
 import type { Appointment } from '../../hooks/useAppointments';
 import { getNow } from '../../utils/now';
 

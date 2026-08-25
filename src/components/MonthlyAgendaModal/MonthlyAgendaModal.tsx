@@ -8,8 +8,8 @@ import { useAppointmentDetailsModal } from '../../hooks/useAppointmentDetailsMod
 import type { ClientBasic } from '../../types/ClientBasic';
 import { matchesStatusFilter } from '../../utils/appointments/agendaHelpers';
 import { enrichList, deriveStatus } from '../../utils/appointments/status';
-import ClientCardRow from '../shared/ClientCardRow';
-import StickyModalHeader from '../shared/StickyModalHeader';
+import ClientCardRow from '../Shared/ClientCardRow';
+import StickyModalHeader from '../Shared/StickyModalHeader';
 import { FaArrowLeft, FaArrowRight } from 'react-icons/fa';
 import FloatingDatePicker from '../FloatingDatePicker';
 import { cancelAppointment } from '../../services/appointments';

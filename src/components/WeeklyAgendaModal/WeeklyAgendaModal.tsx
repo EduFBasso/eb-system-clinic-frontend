@@ -1,12 +1,12 @@
 import React from 'react';
 import { useStickyHeaderHeight } from '../../hooks/useStickyHeaderHeight';
 import { AppModal } from '../Modal/Modal';
-import StickyModalHeader from '../shared/StickyModalHeader';
+import StickyModalHeader from '../Shared/StickyModalHeader';
 import { AgendaMonthlyGrid } from '../AgendaMonthlyGrid/AgendaMonthlyGrid';
 import FloatingDatePicker from '../FloatingDatePicker';
-import DateControlsHeader from '../shared/DateControlsHeader';
+import DateControlsHeader from '../Shared/DateControlsHeader';
 // AppointmentCard replaced by ClientCardRow for consistency with Daily agenda
-import ClientCardRow from '../shared/ClientCardRow';
+import ClientCardRow from '../Shared/ClientCardRow';
 import { deriveStatus } from '../../utils/appointments/status';
 import { toISODate } from '../../utils/date';
 import {
