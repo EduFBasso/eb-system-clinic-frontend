@@ -46,11 +46,12 @@ import {
     getAccessToken,
 } from '../../utils/auth/session';
 import { ProfessionalCreateModal } from '../ProfessionalCreateModal/ProfessionalCreateModal';
-import {
-    startRegistration,
-    startAuthentication,
-} from '@simplewebauthn/browser';
+// import {
+//     startRegistration,
+//     startAuthentication,
+// } from '@simplewebauthn/browser';
 import { useNavigate } from 'react-router-dom';
+// import { useWebAuthn } from './useWebAuthn';
 
 interface NavBarProps {
     openNewClientModal?: () => void;
@@ -113,28 +114,37 @@ export const NavBar: React.FC<NavBarProps> = ({
     const [clinicProfileOpen, setClinicProfileOpen] = useState(false);
     // Admin modals (superuser only)
     const [createProfOpen, setCreateProfOpen] = useState(false);
-    // Biometric / WebAuthn
-    const [offerBiometricOpen, setOfferBiometricOpen] = useState(false);
-    const [biometricLoading, setBiometricLoading] = useState(false);
-    const [platformAuthenticatorAvailable, setPlatformAuthenticatorAvailable] =
-        useState(false);
-    const [, setBiometricConfigured] = useState(false);
-    const isSecureWebAuthnContext =
-        typeof window !== 'undefined' ? (window.isSecureContext ?? true) : true;
-    const hasWebAuthn =
-        !!loginEmail &&
-        platformAuthenticatorAvailable &&
-        isSecureWebAuthnContext;
+
+    // const {
+    //     // biometricLoading,
+    //     // platformAuthenticatorAvailable,
+    //     handleBiometricLogin,
+    // } = useWebAuthn();
+
+    // // Biometric / WebAuthn
+    // const [offerBiometricOpen, setOfferBiometricOpen] = useState(false);
+    // const [biometricLoading, setBiometricLoading] = useState(false);
+    // const [platformAuthenticatorAvailable, setPlatformAuthenticatorAvailable] =
+    //     useState(false);
+    // const [, setBiometricConfigured] = useState(false);
+    // const isSecureWebAuthnContext =
+    //     typeof window !== 'undefined' ? (window.isSecureContext ?? true) : true;
+    // const hasWebAuthn =
+    //     !!loginEmail &&
+    //     platformAuthenticatorAvailable &&
+    //     isSecureWebAuthnContext;
+
     // Estado para modal de sessão expirada
     const [sessionExpiredOpen, setSessionExpiredOpen] = useState(false);
     const [sessionExpiredMessage, setSessionExpiredMessage] = useState(
         'Sua sessão expirou. Por favor, faça login novamente.',
     );
 
-    // Fecha dropdown ao clicar fora
+    // Fecha dropdown ao clicar fora (Corrigido)
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             const target = event.target as Node;
+
             if (dropdownRef.current && !dropdownRef.current.contains(target)) {
                 setDropdownOpen(false);
             }
@@ -145,7 +155,6 @@ export const NavBar: React.FC<NavBarProps> = ({
                 setAgendaDropdownOpen(false);
             }
             if (
-                isSecureWebAuthnContext &&
                 consultaDropdownRef.current &&
                 !consultaDropdownRef.current.contains(target)
             ) {
@@ -158,10 +167,17 @@ export const NavBar: React.FC<NavBarProps> = ({
                 setProfessionalDropdownOpen(false);
             }
         }
+
         document.addEventListener('mousedown', handleClickOutside);
-        return () =>
+        return () => {
             document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+        };
+    }, [
+        dropdownRef,
+        agendaDropdownRef,
+        consultaDropdownRef,
+        professionalDropdownRef,
+    ]);
 
     useEffect(() => {
         const token = getAccessToken();
@@ -251,51 +267,51 @@ export const NavBar: React.FC<NavBarProps> = ({
         };
     }, []);
 
-    useEffect(() => {
-        const email = (loggedProfessional?.email || loginEmail || '').trim();
-        if (!email) {
-            setBiometricConfigured(false);
-            return;
-        }
-        setBiometricConfigured(
-            !!localStorage.getItem(biometricStorageKey(email)),
-        );
-    }, [biometricStorageKey, loggedProfessional, loginEmail]);
+    // useEffect(() => {
+    //     const email = (loggedProfessional?.email || loginEmail || '').trim();
+    //     if (!email) {
+    //         setBiometricConfigured(false);
+    //         return;
+    //     }
+    //     setBiometricConfigured(
+    //         !!localStorage.getItem(biometricStorageKey(email)),
+    //     );
+    // }, [biometricStorageKey, loggedProfessional, loginEmail]);
 
-    useEffect(() => {
-        let active = true;
-        async function detectPlatformAuthenticator() {
-            try {
-                if (
-                    typeof PublicKeyCredential === 'undefined' ||
-                    typeof (
-                        PublicKeyCredential as {
-                            isUserVerifyingPlatformAuthenticatorAvailable?: () => Promise<boolean>;
-                        }
-                    ).isUserVerifyingPlatformAuthenticatorAvailable !==
-                        'function'
-                ) {
-                    if (active) setPlatformAuthenticatorAvailable(false);
-                    return;
-                }
+    // useEffect(() => {
+    //     let active = true;
+    //     async function detectPlatformAuthenticator() {
+    //         try {
+    //             if (
+    //                 typeof PublicKeyCredential === 'undefined' ||
+    //                 typeof (
+    //                     PublicKeyCredential as {
+    //                         isUserVerifyingPlatformAuthenticatorAvailable?: () => Promise<boolean>;
+    //                     }
+    //                 ).isUserVerifyingPlatformAuthenticatorAvailable !==
+    //                     'function'
+    //             ) {
+    //                 if (active) setPlatformAuthenticatorAvailable(false);
+    //                 return;
+    //             }
 
-                const available = await (
-                    PublicKeyCredential as {
-                        isUserVerifyingPlatformAuthenticatorAvailable: () => Promise<boolean>;
-                    }
-                ).isUserVerifyingPlatformAuthenticatorAvailable();
-                if (active)
-                    setPlatformAuthenticatorAvailable(Boolean(available));
-            } catch {
-                if (active) setPlatformAuthenticatorAvailable(false);
-            }
-        }
+    //             const available = await (
+    //                 PublicKeyCredential as {
+    //                     isUserVerifyingPlatformAuthenticatorAvailable: () => Promise<boolean>;
+    //                 }
+    //             ).isUserVerifyingPlatformAuthenticatorAvailable();
+    //             if (active)
+    //                 setPlatformAuthenticatorAvailable(Boolean(available));
+    //         } catch {
+    //             if (active) setPlatformAuthenticatorAvailable(false);
+    //         }
+    //     }
 
-        void detectPlatformAuthenticator();
-        return () => {
-            active = false;
-        };
-    }, []);
+    //     void detectPlatformAuthenticator();
+    //     return () => {
+    //         active = false;
+    //     };
+    // }, []);
 
     const openSessionExpiredState = React.useCallback(
         (
@@ -359,156 +375,195 @@ export const NavBar: React.FC<NavBarProps> = ({
     // handleAgendaNew removido (menu Novo Compromisso retirado)
 
     // --- WebAuthn: register biometric after login ---
-    const handleRegisterBiometric = async () => {
-        setBiometricLoading(true);
-        try {
-            const token = getAccessToken();
-            const email = (
-                loggedProfessional?.email ||
-                loginEmail ||
-                ''
-            ).trim();
-            if (!token || !email) {
-                throw new Error('Entre na conta antes de ativar a biometria.');
-            }
-            const beginRes = await fetch(
-                `${API_BASE}/register/auth/webauthn/register-begin/`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({}),
-                },
-            );
-            if (!beginRes.ok) throw new Error('Erro ao iniciar registro.');
-            const options = await beginRes.json();
-            const credential = await startRegistration({
-                optionsJSON: options,
-            });
-            const ua = navigator.userAgent;
-            const deviceName = /iPhone/.test(ua)
-                ? 'iPhone'
-                : /iPad/.test(ua)
-                  ? 'iPad'
-                  : /Mac/.test(ua)
-                    ? 'Mac'
-                    : 'Dispositivo';
-            const completeRes = await fetch(
-                `${API_BASE}/register/auth/webauthn/register-complete/`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        credential,
-                        device_name: deviceName,
-                    }),
-                },
-            );
-            if (!completeRes.ok) throw new Error('Erro ao concluir registro.');
-            localStorage.setItem(biometricStorageKey(email), '1');
-            setBiometricConfigured(true);
-            setOfferBiometricOpen(false);
-            setModalMessage('Face ID ativado para futuros logins!');
-            setModalOpen(true);
-        } catch (err: unknown) {
-            const msg =
-                err instanceof Error
-                    ? err.message
-                    : 'Erro ao registrar biometria.';
-            setModalMessage(msg);
-            setModalOpen(true);
-        } finally {
-            setBiometricLoading(false);
-        }
-    };
+    // const handleRegisterBiometric = async () => {
+    //     setBiometricLoading(true);
+    //     try {
+    //         const token = getAccessToken();
+    //         const email = (
+    //             loggedProfessional?.email ||
+    //             loginEmail ||
+    //             ''
+    //         ).trim();
+    //         if (!token || !email) {
+    //             throw new Error('Entre na conta antes de ativar a biometria.');
+    //         }
+    //         const beginRes = await fetch(
+    //             `${API_BASE}/register/auth/webauthn/register-begin/`,
+    //             {
+    //                 method: 'POST',
+    //                 headers: {
+    //                     'Content-Type': 'application/json',
+    //                     Authorization: `Bearer ${token}`,
+    //                 },
+    //                 body: JSON.stringify({}),
+    //             },
+    //         );
+    //         if (!beginRes.ok) throw new Error('Erro ao iniciar registro.');
+    //         const options = await beginRes.json();
+    //         const credential = await startRegistration({
+    //             optionsJSON: options,
+    //         });
+    //         const ua = navigator.userAgent;
+    //         const deviceName = /iPhone/.test(ua)
+    //             ? 'iPhone'
+    //             : /iPad/.test(ua)
+    //               ? 'iPad'
+    //               : /Mac/.test(ua)
+    //                 ? 'Mac'
+    //                 : 'Dispositivo';
+    //         const completeRes = await fetch(
+    //             `${API_BASE}/register/auth/webauthn/register-complete/`,
+    //             {
+    //                 method: 'POST',
+    //                 headers: {
+    //                     'Content-Type': 'application/json',
+    //                     Authorization: `Bearer ${token}`,
+    //                 },
+    //                 body: JSON.stringify({
+    //                     credential,
+    //                     device_name: deviceName,
+    //                 }),
+    //             },
+    //         );
+    //         if (!completeRes.ok) throw new Error('Erro ao concluir registro.');
+    //         localStorage.setItem(biometricStorageKey(email), '1');
+    //         setBiometricConfigured(true);
+    //         setOfferBiometricOpen(false);
+    //         setModalMessage('Face ID ativado para futuros logins!');
+    //         setModalOpen(true);
+    //     } catch (err: unknown) {
+    //         const msg =
+    //             err instanceof Error
+    //                 ? err.message
+    //                 : 'Erro ao registrar biometria.';
+    //         setModalMessage(msg);
+    //         setModalOpen(true);
+    //     } finally {
+    //         setBiometricLoading(false);
+    //     }
+    // };
+
+    // --- WebAuthn: login pós-refatoração ---
+    // const handleWebAuthnLogin = async () => {
+    //     // const deviceIdKey = 'device_id';
+
+    //     await handleBiometricLogin({
+    //         loginEmail,
+    //         API_BASE,
+    //         biometricStorageKey,
+    //         getOrCreateDeviceId,
+    //         onSuccess: data => {
+    //             setModalMessage('Login realizado!');
+    //             setModalOpen(true);
+    //             localStorage.setItem('accessToken', data.access);
+    //             localStorage.setItem('lastLoginEmail', loginEmail);
+    //             localStorage.setItem(
+    //                 'loggedProfessional',
+    //                 JSON.stringify(data.professional),
+    //             );
+
+    //             setLoggedProfessional(data.professional || null);
+
+    //             if (data.professional?.is_superuser) {
+    //                 navigate('/admin', { replace: true });
+    //                 return;
+    //             }
+
+    //             emit('auth:login', undefined);
+    //             window.dispatchEvent(new Event('updateClients'));
+    //             window.dispatchEvent(new Event('clearClients'));
+    //         },
+    //         onError: (msg, isCancellation) => {
+    //             if (!isCancellation) {
+    //                 setModalMessage(msg);
+    //                 setModalOpen(true);
+    //             }
+    //         },
+    //     });
+    // };
 
     // --- WebAuthn: login with biometric ---
-    const handleWebAuthnLogin = async () => {
-        setBiometricLoading(true);
-        try {
-            const beginRes = await fetch(
-                `${API_BASE}/register/auth/webauthn/login-begin/`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: loginEmail }),
-                },
-            );
-            if (!beginRes.ok) throw new Error('Erro ao iniciar autenticação.');
-            const options = await beginRes.json();
-            const assertion = await startAuthentication({
-                optionsJSON: options,
-            });
-            const deviceIdKey = 'device_id';
-            const deviceId = getOrCreateDeviceId(deviceIdKey);
-            const completeRes = await fetch(
-                `${API_BASE}/register/auth/webauthn/login-complete/`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: loginEmail,
-                        assertion,
-                        device_id: deviceId,
-                    }),
-                },
-            );
-            let data: VerifyResponse = {};
-            try {
-                data = await completeRes.json();
-            } catch {
-                data = { message: 'Falha ao interpretar resposta do servidor' };
-            }
-            if (completeRes.ok && data.access) {
-                setModalMessage('Login realizado!');
-                setModalOpen(true);
-                localStorage.setItem('accessToken', data.access);
-                localStorage.setItem('lastLoginEmail', loginEmail);
-                localStorage.setItem(biometricStorageKey(loginEmail), '1');
-                setBiometricConfigured(true);
-                localStorage.setItem(
-                    'loggedProfessional',
-                    JSON.stringify(data.professional),
-                );
-                if (data.device_id) {
-                    localStorage.setItem(deviceIdKey, String(data.device_id));
-                }
-                setLoggedProfessional(data.professional || null);
-                if (data.professional?.is_superuser) {
-                    navigate('/admin', { replace: true });
-                    return;
-                }
-                emit('auth:login', undefined);
-                window.dispatchEvent(new Event('updateClients'));
-                window.dispatchEvent(new Event('clearClients'));
-            } else {
-                setModalMessage(
-                    String(data.message || 'Autenticação biométrica falhou.'),
-                );
-                setModalOpen(true);
-            }
-        } catch (err: unknown) {
-            const msg =
-                err instanceof Error
-                    ? err.message
-                    : 'Erro na autenticação biométrica.';
-            // User cancelled the prompt → just ignore, no error modal
-            if (
-                !msg.toLowerCase().includes('cancel') &&
-                !msg.toLowerCase().includes('not allowed')
-            ) {
-                setModalMessage(msg);
-                setModalOpen(true);
-            }
-        } finally {
-            setBiometricLoading(false);
-        }
-    };
+    // const handleWebAuthnLogin = async () => {
+    //     setBiometricLoading(true);
+    //     try {
+    //         const beginRes = await fetch(
+    //             `${API_BASE}/register/auth/webauthn/login-begin/`,
+    //             {
+    //                 method: 'POST',
+    //                 headers: { 'Content-Type': 'application/json' },
+    //                 body: JSON.stringify({ email: loginEmail }),
+    //             },
+    //         );
+    //         if (!beginRes.ok) throw new Error('Erro ao iniciar autenticação.');
+    //         const options = await beginRes.json();
+    //         const assertion = await startAuthentication({
+    //             optionsJSON: options,
+    //         });
+    //         const deviceIdKey = 'device_id';
+    //         const deviceId = getOrCreateDeviceId(deviceIdKey);
+    //         const completeRes = await fetch(
+    //             `${API_BASE}/register/auth/webauthn/login-complete/`,
+    //             {
+    //                 method: 'POST',
+    //                 headers: { 'Content-Type': 'application/json' },
+    //                 body: JSON.stringify({
+    //                     email: loginEmail,
+    //                     assertion,
+    //                     device_id: deviceId,
+    //                 }),
+    //             },
+    //         );
+    //         let data: VerifyResponse = {};
+    //         try {
+    //             data = await completeRes.json();
+    //         } catch {
+    //             data = { message: 'Falha ao interpretar resposta do servidor' };
+    //         }
+    //         if (completeRes.ok && data.access) {
+    //             setModalMessage('Login realizado!');
+    //             setModalOpen(true);
+    //             localStorage.setItem('accessToken', data.access);
+    //             localStorage.setItem('lastLoginEmail', loginEmail);
+    //             localStorage.setItem(biometricStorageKey(loginEmail), '1');
+    //             setBiometricConfigured(true);
+    //             localStorage.setItem(
+    //                 'loggedProfessional',
+    //                 JSON.stringify(data.professional),
+    //             );
+    //             if (data.device_id) {
+    //                 localStorage.setItem(deviceIdKey, String(data.device_id));
+    //             }
+    //             setLoggedProfessional(data.professional || null);
+    //             if (data.professional?.is_superuser) {
+    //                 navigate('/admin', { replace: true });
+    //                 return;
+    //             }
+    //             emit('auth:login', undefined);
+    //             window.dispatchEvent(new Event('updateClients'));
+    //             window.dispatchEvent(new Event('clearClients'));
+    //         } else {
+    //             setModalMessage(
+    //                 String(data.message || 'Autenticação biométrica falhou.'),
+    //             );
+    //             setModalOpen(true);
+    //         }
+    //     } catch (err: unknown) {
+    //         const msg =
+    //             err instanceof Error
+    //                 ? err.message
+    //                 : 'Erro na autenticação biométrica.';
+    //         // User cancelled the prompt → just ignore, no error modal
+    //         if (
+    //             !msg.toLowerCase().includes('cancel') &&
+    //             !msg.toLowerCase().includes('not allowed')
+    //         ) {
+    //             setModalMessage(msg);
+    //             setModalOpen(true);
+    //         }
+    //     } finally {
+    //         setBiometricLoading(false);
+    //     }
+    // };
 
     return (
         <div className={styles.navBar}>
@@ -840,7 +895,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                                             }
                                         }}
                                     />
-                                    {hasWebAuthn && (
+                                    {/* {hasWebAuthn && (
                                         <button
                                             className={styles.loginButton}
                                             disabled={biometricLoading}
@@ -850,7 +905,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                                         >
                                             {biometricLoading ? '...' : '🔒'}
                                         </button>
-                                    )}
+                                    )} */}
                                 </div>
                                 <button
                                     ref={loginButtonRef}
@@ -950,19 +1005,19 @@ export const NavBar: React.FC<NavBarProps> = ({
                                                         .isUserVerifyingPlatformAuthenticatorAvailable ===
                                                         'function'
                                                 ) {
-                                                    try {
+                                                    /* try {
                                                         const ok = await (
                                                             PublicKeyCredential as {
                                                                 isUserVerifyingPlatformAuthenticatorAvailable: () => Promise<boolean>;
                                                             }
                                                         ).isUserVerifyingPlatformAuthenticatorAvailable();
-                                                        if (ok)
-                                                            setOfferBiometricOpen(
-                                                                true,
-                                                            );
+                                                        // if (ok)
+                                                        //     setOfferBiometricOpen(
+                                                        //         true,
+                                                        //     );
                                                     } catch {
-                                                        /* ignore */
-                                                    }
+                                                        // ignore
+                                                    } */
                                                 }
                                             } else {
                                                 setModalMessage(
@@ -1041,7 +1096,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                 document.body,
             )}
             {/* Modal: oferecer registro de biometria após login */}
-            <AppModal
+            {/* <AppModal
                 open={offerBiometricOpen}
                 onClose={() => setOfferBiometricOpen(false)}
                 unmountOnClose
@@ -1070,7 +1125,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                         </button>
                     </div>
                 </div>
-            </AppModal>
+            </AppModal> */}
         </div>
     );
 };
