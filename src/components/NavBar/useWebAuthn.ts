@@ -1,13 +1,28 @@
 import { useState, useEffect } from 'react';
 import { startAuthentication } from '@simplewebauthn/browser';
 
-// Tipagem básica para garantir que o TypeScript não reclame dos dados
+// 1. Criamos a tipagem exata do que o Django responde no login com sucesso
+interface ProfessionalData {
+    id?: number;
+    name?: string;
+    is_superuser?: boolean;
+    // Adicione outras propriedades do profissional se necessário
+}
+
+interface WebAuthnSuccessResponse {
+    access: string;
+    professional?: ProfessionalData;
+    device_id?: string | number;
+    message?: string;
+}
+
+// 2. Ajustamos as propriedades que o Hook recebe
 interface WebAuthnLoginProps {
     loginEmail: string;
     API_BASE: string;
     biometricStorageKey: (email: string) => string;
     getOrCreateDeviceId: (key: string) => string;
-    onSuccess: (data: any) => void;
+    onSuccess: (data: WebAuthnSuccessResponse) => void; // Corrigido aqui (era any)
     onError: (message: string, isCancellation: boolean) => void;
 }
 
@@ -70,20 +85,21 @@ export function useWebAuthn() {
                 },
             );
 
-            let data: any = {};
+            let data: WebAuthnSuccessResponse = { access: '' }; // Corrigido aqui (era any)
             try {
                 data = await completeRes.json();
             } catch {
-                data = { message: 'Falha ao interpretar resposta do servidor' };
+                data = {
+                    access: '',
+                    message: 'Falha ao interpretar resposta do servidor',
+                };
             }
 
             if (completeRes.ok && data.access) {
-                // Salva as chaves de armazenamento que pertencem estritamente à biometria
                 localStorage.setItem(biometricStorageKey(loginEmail), '1');
                 if (data.device_id) {
                     localStorage.setItem(deviceIdKey, String(data.device_id));
                 }
-                // Dispara a função de sucesso que vai rodar na NavBar
                 onSuccess(data);
             } else {
                 onError(
