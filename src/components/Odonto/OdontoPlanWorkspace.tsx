@@ -1,3 +1,5 @@
+import { PodologiaFootGrid } from '../Podologia/PodologiaFootGrid';
+
 import React from 'react';
 import { OdontoToothGrid } from '../OdontoToothGrid/OdontoToothGrid';
 import OdontoProcedureCard from './OdontoProcedureCard';
@@ -127,6 +129,14 @@ export default function OdontoPlanWorkspace({
         );
     }
 
+    // --- Circuitos Lógicos de Capabilities ---
+    const storedProf = localStorage.getItem('loggedProfessional');
+    const profJson = storedProf ? JSON.parse(storedProf) : null;
+
+    // Lendo a propriedade 'specialty' direto da raiz do JSON!
+    const isOdonto = profJson?.specialty === 'Odontologia';
+    const isPodologia = profJson?.specialty === 'Podologia';
+
     return (
         <>
             {/* Plan workspace header */}
@@ -184,13 +194,19 @@ export default function OdontoPlanWorkspace({
                 </div>
                 {mapVisible && (
                     <div className={styles.gridWrap}>
-                        <OdontoToothGrid
-                            orderedTeeth={ORDERED_TEETH}
-                            selectedToothNumber={null}
-                            suppressDateHighlights={false}
-                            activeDateToothNumbers={activeToothNumbers}
-                            readOnly
-                        />
+                        {/* Se o consultório ativo for de odontologia, mostra os dentes */}
+                        {isOdonto && (
+                            <OdontoToothGrid
+                                orderedTeeth={ORDERED_TEETH}
+                                selectedToothNumber={null}
+                                suppressDateHighlights={false}
+                                activeDateToothNumbers={activeToothNumbers}
+                                readOnly
+                            />
+                        )}
+
+                        {/* Se o consultório ativo for de podologia, mostra o pezinho interativo! */}
+                        {isPodologia && <PodologiaFootGrid />}
                     </div>
                 )}
             </section>

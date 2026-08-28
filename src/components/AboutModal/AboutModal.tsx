@@ -1,3 +1,5 @@
+import { PodologiaFootGrid } from '../Podologia/PodologiaFootGrid';
+
 import React from 'react';
 import { AppModal } from '../Modal/Modal';
 import { coalesceVersion, fetchServerVersion } from '../../hooks/useAppVersion';
@@ -164,6 +166,8 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                         Fechar
                     </button>
                 </div>
+
+                <PodologiaFootGrid />
             </div>
         </AppModal>
     );
