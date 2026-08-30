@@ -11,13 +11,13 @@ import { formatPhone } from '../../utils/formatPhone';
 import { FaEdit } from 'react-icons/fa';
 import '../../styles/palette.css';
 import { parseDOB, calcAge } from '../../utils/dateOfBirth';
-import { useClientCardStyle } from '../clientCard/useClientCardStyle';
-import { useClientCardFocusScroll } from '../clientCard/useClientCardFocusScroll';
+import { useClientCardStyle } from './useClientCardStyle';
+import { useClientCardFocusScroll } from './useClientCardFocusScroll';
 import { useClientFutureAppointments } from '../../domain/futureAppointments';
 // (hysteresis & appointment state consolidated inside hooks)
 import { formatAppointmentDateRange } from '../../utils/agendaPresentation';
 import { openClientForm } from '../../utils/openClientForm';
-import { useNowTick } from '../../hooks/useNowTick';
+// import { useNowTick } from '../../hooks/useNowTick'; <- sem uso
 import { emit } from '../../events/bus';
 import { getAccessToken } from '../../utils/auth/session';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -106,7 +106,7 @@ function ClientCardBase({
     const { futureAppointments, loadingFuture, dynLimit } =
         useClientFutureAppointments({ client, isScheduled });
     const [pressed, setPressed] = React.useState(false);
-    const now = useNowTick(5000);
+    // const now = useNowTick(5000); <- sem uso
     // start derivado como Date não é necessário; mantemos ISO para o snapshot
     // end derivado não é necessário para estilização; snapshot usa ISO strings
     // Idade calculada uma vez (se data válida) para exibir em linha própria

@@ -1,6 +1,6 @@
 import React from 'react';
 import styles from '../../styles/components/Main.module.css';
-import { ClientCard } from '../clientCard/ClientCard';
+import { ClientCard } from '../ClientCard/ClientCard';
 import type { FilterMode } from '../FilterBar/FilterBar';
 import type { ScheduledAppointmentLike } from '../../hooks/useAppointmentSets';
 import type { ClientBasic } from '../../types/ClientBasic';
