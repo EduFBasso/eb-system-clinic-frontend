@@ -1,7 +1,8 @@
-import { PodologiaFootGrid } from '../Podologia/PodologiaFootGrid';
-
 import React from 'react';
+
+import { PodologiaFootGrid } from '../Podologia/PodologiaFootGrid';
 import { OdontoToothGrid } from '../OdontoToothGrid/OdontoToothGrid';
+
 import OdontoProcedureCard from './OdontoProcedureCard';
 import { formatMoney, ORDERED_TEETH } from '../../pages/odontoArcadeHelpers';
 import type {
