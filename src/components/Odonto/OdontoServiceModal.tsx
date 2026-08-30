@@ -1,5 +1,5 @@
 import React from 'react';
-import { OdontoToothGrid } from '../OdontoToothGrid/OdontoToothGrid';
+import { OdontoToothGrid } from './OdontoToothGrid/OdontoToothGrid';
 import type {
     CatalogServiceItem,
     ServiceFlowType,
