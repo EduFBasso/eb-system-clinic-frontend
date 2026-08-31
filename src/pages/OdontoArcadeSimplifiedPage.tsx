@@ -79,7 +79,7 @@ export default function OdontoArcadeSimplifiedPage() {
                 void plans.updateLockAfterPrint(settings.lockAfterPrint);
             }
         });
-    }, [plans.updateLockAfterPrint]);
+    }, [plans]);
 
     return (
         <>
