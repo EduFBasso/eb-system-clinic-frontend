@@ -1,4 +1,4 @@
-import { PodologiaFootGrid } from '../Podologia/PodologiaFootGrid';
+import { PodologyMemberGrid } from '../Podologia/PodologyMemberGrid';
 
 import React from 'react';
 import { AppModal } from '../Modal/Modal';
@@ -167,7 +167,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                     </button>
                 </div>
 
-                <PodologiaFootGrid />
+                <PodologyMemberGrid />
             </div>
         </AppModal>
     );

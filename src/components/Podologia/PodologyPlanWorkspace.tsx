@@ -1,8 +1,14 @@
 import React from 'react';
-import { PodologiaFootGrid } from './PodologiaFootGrid';
+import { PodologyMemberGrid } from './PodologyMemberGrid';
 import styles from './PodologyPlanWorkspace.module.css'; // Crie esse CSS se necessário
 
-export default function PodologyPlanWorkspace({ plan, client }) {
+export default function PodologyPlanWorkspace({
+    plan,
+    client,
+}: {
+    plan: any;
+    client: any;
+}) {
     return (
         <div className={styles.planWorkspaceContainer}>
             <header className={styles.header}>
@@ -10,13 +16,14 @@ export default function PodologyPlanWorkspace({ plan, client }) {
                 <h2>
                     Paciente: {client?.first_name} {client?.last_name}
                 </h2>
+                <p>Plano #{plan?.id}</p>
             </header>
 
             {/* Seção Exclusiva da Anatomia dos Pés e Mãos */}
             <section className={styles.sectionCard}>
                 <h2>Mapa dos Membros (Mãos e Pés)</h2>
                 {/* Aqui entra o seu componente SVG interativo que responde ao toque */}
-                <PodologiaFootGrid planId={plan?.id} />
+                <PodologyMemberGrid />
             </section>
 
             <section className={styles.sectionCard}>

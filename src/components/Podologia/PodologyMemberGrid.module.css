@@ -1,0 +1,110 @@
+.wrapper {
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+.svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.quadrantLabel {
+    font-size: 14px;
+    font-weight: 600;
+    text-anchor: middle;
+    fill: var(--color-text-light);
+}
+
+.quadrantDivider {
+    stroke: var(--color-border);
+    stroke-width: 1.2;
+    stroke-dasharray: 4 4;
+}
+
+.palmOutline {
+    fill: none;
+    stroke: var(--color-border);
+    stroke-width: 1.5;
+    stroke-dasharray: 3 5;
+    pointer-events: none;
+}
+
+/* Silhuetas anatômicas pontilhadas de pés e mãos */
+.contour {
+    fill: none;
+    stroke: var(--color-border);
+    stroke-width: 1.5;
+    stroke-dasharray: 4 4;
+    pointer-events: none;
+    transition: stroke 0.15s ease;
+}
+
+.region {
+    cursor: pointer;
+}
+
+.region circle,
+.region rect {
+    fill: none;
+    stroke: var(--color-border);
+    stroke-width: 2;
+    /* fill:none só reage no traço por padrão; "all" garante clique em toda a área. */
+    pointer-events: all;
+    transition:
+        fill 0.15s ease,
+        stroke 0.15s ease;
+}
+
+.region:hover circle,
+.region:hover rect {
+    stroke: var(--color-primary);
+}
+
+.region:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+}
+
+.regionSelected circle,
+.regionSelected rect {
+    fill: var(--color-primary);
+    stroke: var(--color-primary);
+}
+
+.regionSelected .regionLabel {
+    fill: #ffffff !important;
+    /* Linha de contorno fina dinâmica com a mesma cor do tema para contraste absoluto quando vaza */
+    stroke: var(--color-primary);
+    stroke-width: 2.2px;
+    paint-order: stroke fill;
+}
+
+/* Garante o contraste dos textos que ficam no centro dos retângulos quando não selecionados */
+.regionLabel {
+    font-size: 10px;
+    font-weight: 600;
+    text-anchor: middle;
+    fill: var(--color-text);
+    pointer-events: none;
+    user-select: none;
+    transition: fill 0.15s ease;
+}
+
+.caption {
+    margin-top: 8px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--color-text-light);
+}
+
+@media (max-width: 420px) {
+    .quadrantLabel {
+        font-size: 11px;
+    }
+
+    .regionLabel {
+        font-size: 8px;
+    }
+}
