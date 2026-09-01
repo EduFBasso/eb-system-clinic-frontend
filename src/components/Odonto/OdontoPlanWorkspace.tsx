@@ -1,9 +1,13 @@
 import React from 'react';
 import { OdontoToothGrid } from './OdontoToothGrid/OdontoToothGrid';
 import OdontoProcedureCard from './OdontoProcedureCard';
+import OdontoServiceModal from './OdontoServiceModal';
+import OdontoProductModal from './OdontoProductModal';
+import OdontoEditProcedureModal from './OdontoEditProcedureModal';
+import { useOdontoItemFlows } from '../../hooks/useOdontoItemFlows';
+import { useOdontoCatalogs } from '../../hooks/useOdontoCatalogs';
 import { formatMoney, ORDERED_TEETH } from '../../pages/odontoArcadeHelpers';
 import type {
-    ItemGroup,
     PaymentCondition,
     PlanListItem,
     TreatmentItem,
@@ -13,15 +17,12 @@ import styles from '../../styles/pages/OdontoArcadeSimplifiedPage.module.css';
 type Props = {
     plan: PlanListItem;
     items: TreatmentItem[];
-    groupedItems: ItemGroup[];
-    activeToothNumbers: Set<number>;
     isPlanLocked: boolean;
     markingPrinted: boolean;
-    hasActiveModal: boolean;
     onBack: () => void;
     onMarkPrinted: () => void;
-    onOpenService: () => void;
-    onOpenProduct: () => void;
+    /** Recarrega plano+itens após qualquer alteração feita pelos modais internos. */
+    onRefreshPlan: () => Promise<void>;
     notes: string;
     onNotesChange: (value: string) => void;
     savingPlanDetails: boolean;
@@ -37,23 +38,16 @@ type Props = {
     onFirstDueDateChange: (value: string) => void;
     installmentValue: number;
     planTotal: number;
-
-    onEditItem: (item: TreatmentItem) => void;
-    onDeleteItem: (id: number) => void;
 };
 
 export default function OdontoPlanWorkspace({
     plan,
     items,
-    groupedItems,
-    activeToothNumbers,
     isPlanLocked,
     markingPrinted,
-    hasActiveModal,
     onBack,
     onMarkPrinted,
-    onOpenService,
-    onOpenProduct,
+    onRefreshPlan,
     notes,
     onNotesChange,
     savingPlanDetails,
@@ -68,10 +62,25 @@ export default function OdontoPlanWorkspace({
     onFirstDueDateChange,
     installmentValue,
     planTotal,
-    onEditItem,
-    onDeleteItem,
 }: Props) {
     const [mapVisible, setMapVisible] = React.useState(false);
+
+    // Modais de tratamento/produto/edição são exclusivos do domínio Odonto e
+    // vivem só aqui — a página pai não conhece mais esse estado.
+    const itemFlows = useOdontoItemFlows(plan, items, onRefreshPlan);
+    const catalogs = useOdontoCatalogs(
+        itemFlows.serviceFlowOpen,
+        itemFlows.productFlowOpen,
+        itemFlows.editingItem !== null,
+    );
+    const hasActiveModal =
+        itemFlows.serviceFlowOpen ||
+        itemFlows.productFlowOpen ||
+        itemFlows.editingItem !== null;
+    const groupedItems = itemFlows.groupedItems;
+    const activeToothNumbers = itemFlows.activeToothNumbers;
+    const onEditItem = itemFlows.openEditItem;
+    const onDeleteItem = (id: number) => void itemFlows.deleteItem(id);
 
     const productParentIds = new Set(
         items
@@ -98,7 +107,7 @@ export default function OdontoPlanWorkspace({
         }))
         .filter(group => group.items.length > 0);
 
-    function renderGroups(groups: ItemGroup[]) {
+    function renderGroups(groups: typeof groupedItems) {
         return (
             <div className={styles.groupList}>
                 {groups.map(group => (
@@ -202,7 +211,7 @@ export default function OdontoPlanWorkspace({
                     <button
                         type='button'
                         className={styles.btnPrimary}
-                        onClick={onOpenService}
+                        onClick={itemFlows.openServiceFlowModal}
                         disabled={isPlanLocked}
                     >
                         Novo Tratamento
@@ -224,7 +233,7 @@ export default function OdontoPlanWorkspace({
                     <button
                         type='button'
                         className={styles.btnPrimary}
-                        onClick={onOpenProduct}
+                        onClick={itemFlows.openProductFlowModal}
                         disabled={isPlanLocked}
                     >
                         Novo Produto
@@ -371,6 +380,102 @@ export default function OdontoPlanWorkspace({
                     </button>
                 </footer>
             )}
+
+            {/* Modais exclusivos do domínio Odonto — desacoplados da página pai */}
+            <OdontoServiceModal
+                open={itemFlows.serviceFlowOpen}
+                saving={itemFlows.savingServiceFlow || catalogs.savingCatalog}
+                flowType={itemFlows.serviceFlowType}
+                serviceRows={itemFlows.serviceRows}
+                orderedTeeth={ORDERED_TEETH}
+                serviceCatalog={catalogs.serviceCatalog}
+                onClose={itemFlows.closeServiceFlowModal}
+                onSave={async catalogIndexes => {
+                    const resolvedRows =
+                        await catalogs.saveNewServicesToCatalog(
+                            itemFlows.serviceRows,
+                            catalogIndexes,
+                        );
+                    if (resolvedRows)
+                        await itemFlows.saveServiceFlow(resolvedRows);
+                }}
+                onFlowTypeChange={itemFlows.changeServiceFlowType}
+                onUpdateRow={itemFlows.updateServiceRow}
+                onToggleToothRow={itemFlows.toggleToothServiceRow}
+                onAddItem={itemFlows.addServiceRow}
+                onDeleteFromCatalog={serviceId =>
+                    void catalogs.deleteFromCatalog(serviceId)
+                }
+            />
+
+            <OdontoProductModal
+                open={itemFlows.productFlowOpen}
+                saving={itemFlows.savingProductFlow || catalogs.savingCatalog}
+                productRows={itemFlows.productRows}
+                productCatalog={catalogs.productCatalog}
+                onClose={itemFlows.closeProductFlowModal}
+                onSave={async catalogIndexes => {
+                    const saved = await catalogs.saveNewProductsToCatalog(
+                        itemFlows.productRows,
+                        catalogIndexes,
+                    );
+                    if (saved) await itemFlows.saveProductFlow();
+                }}
+                onRowsChange={itemFlows.setProductRows}
+            />
+
+            <OdontoEditProcedureModal
+                item={itemFlows.editingItem}
+                name={itemFlows.editingItemName}
+                value={itemFlows.editingItemValue}
+                notes={itemFlows.editingItemNotes}
+                saving={itemFlows.savingEditItem || catalogs.savingCatalog}
+                serviceCatalog={catalogs.serviceCatalog}
+                onValueChange={itemFlows.setEditingItemValue}
+                onNotesChange={itemFlows.setEditingItemNotes}
+                onClose={itemFlows.closeEditItemModal}
+                onSave={async updateCatalog => {
+                    const item = itemFlows.editingItem;
+                    if (!item) return;
+
+                    if (updateCatalog) {
+                        const saved = await catalogs.saveServicesToCatalog(
+                            [
+                                {
+                                    toothNumber:
+                                        item.dental_context?.tooth_number ??
+                                        null,
+                                    toothSurface:
+                                        item.dental_context?.tooth_surface ??
+                                        '',
+                                    scope:
+                                        item.dental_context?.scope === 'tooth'
+                                            ? 'tooth'
+                                            : item.dental_context?.scope ===
+                                                    'arch' ||
+                                                item.dental_context?.scope ===
+                                                    'full'
+                                              ? 'arch'
+                                              : 'other',
+                                    arcadeArch:
+                                        item.dental_context?.scope === 'full'
+                                            ? 'AMBAS'
+                                            : (item.dental_context
+                                                  ?.arcade_arch ?? null),
+                                    treatment: itemFlows.editingItemName,
+                                    serviceId: item.service,
+                                    value: itemFlows.editingItemValue,
+                                    notes: itemFlows.editingItemNotes,
+                                },
+                            ],
+                            [0],
+                        );
+                        if (!saved) return;
+                    }
+
+                    await itemFlows.saveEditedItem();
+                }}
+            />
         </>
     );
 }

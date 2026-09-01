@@ -26,7 +26,6 @@ import ServiceListPage from './pages/Catalog/ServiceListPage';
 import ConsultaPage from './pages/ConsultaPage';
 import OdontoArcadeSimplifiedPage from './pages/OdontoArcadeSimplifiedPage';
 import AnamnesisPublicPage from './pages/AnamnesisPublicPage';
-import { PodologyMemberGrid } from './components/Podologia/PodologyMemberGrid';
 import {
     hydrateAgendaSettings,
     resetAgendaSettings,
@@ -135,11 +134,6 @@ function App() {
                     <Route
                         path='/treatment/plans/:clientId'
                         element={<OdontoArcadeSimplifiedPage />}
-                    />
-                    {/* Rota temporária só para QA visual do mock, remover antes da Fase 3 */}
-                    <Route
-                        path='/dev/podology-grid'
-                        element={<PodologyMemberGrid />}
                     />
                     {/* Full-page scheduler for mobile */}
                     {/** Rota /schedule removida para unificar experiência via modais */}

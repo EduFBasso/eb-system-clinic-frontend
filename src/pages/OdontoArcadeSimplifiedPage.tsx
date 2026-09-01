@@ -2,23 +2,29 @@ import React from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import OdontoPlanCreateModal from '../components/Odonto/OdontoPlanCreateModal';
 import OdontoPrintView from '../components/Odonto/OdontoPrintView';
-import OdontoServiceModal from '../components/Odonto/OdontoServiceModal';
-import OdontoProductModal from '../components/Odonto/OdontoProductModal';
-import OdontoEditProcedureModal from '../components/Odonto/OdontoEditProcedureModal';
 import OdontoPlanListView from '../components/Odonto/OdontoPlanListView';
 import OdontoPlanWorkspace from '../components/Odonto/OdontoPlanWorkspace';
+import PodologyPlanWorkspace from '../components/Podologia/PodologyPlanWorkspace';
 import ActionPromptModal from '../components/Shared/ActionPromptModal';
 import { useOdontoTreatmentPlans } from '../hooks/useOdontoTreatmentPlans';
-import { useOdontoItemFlows } from '../hooks/useOdontoItemFlows';
-import { useOdontoCatalogs } from '../hooks/useOdontoCatalogs';
-import { ORDERED_TEETH, planDisplayName } from './odontoArcadeHelpers';
+import { planDisplayName } from './odontoArcadeHelpers';
 import { on } from '../events/bus';
+import {
+    hasPodologiaCapability,
+    readLoggedProfessionalCapabilities,
+} from '../utils/tenantCapabilities';
 import styles from '../styles/pages/OdontoArcadeSimplifiedPage.module.css';
 
 export default function OdontoArcadeSimplifiedPage() {
     const navigate = useNavigate();
     const { clientId } = useParams();
     const [searchParams, setSearchParams] = useSearchParams();
+
+    // Tenants são exclusivamente odonto OU podologia; nunca misturam as duas capabilities.
+    const isPodologia = React.useMemo(
+        () => hasPodologiaCapability(readLoggedProfessionalCapabilities()),
+        [],
+    );
 
     const canAccess = true;
     const numericClientId = React.useMemo(
@@ -34,16 +40,6 @@ export default function OdontoArcadeSimplifiedPage() {
         numericClientId,
         canAccess,
         initialPlanId,
-    );
-    const itemFlows = useOdontoItemFlows(
-        plans.plan,
-        plans.items,
-        plans.loadPlan,
-    );
-    const catalogs = useOdontoCatalogs(
-        itemFlows.serviceFlowOpen,
-        itemFlows.productFlowOpen,
-        itemFlows.editingItem !== null,
     );
     const [professionalVersion, setProfessionalVersion] = React.useState(0);
     const [printConfirmationOpen, setPrintConfirmationOpen] =
@@ -138,25 +134,33 @@ export default function OdontoArcadeSimplifiedPage() {
                 {!plans.loading &&
                     !plans.error &&
                     plans.plan &&
-                    !plans.isPlanLocked && (
+                    !plans.isPlanLocked &&
+                    (isPodologia ? (
+                        <>
+                            <div className={styles.planWorkspaceHeader}>
+                                <button
+                                    type='button'
+                                    className={styles.btn}
+                                    onClick={plans.backToPlanList}
+                                >
+                                    ← Planos
+                                </button>
+                            </div>
+                            <PodologyPlanWorkspace
+                                key={plans.plan.id}
+                                planId={plans.plan.id}
+                            />
+                        </>
+                    ) : (
                         <OdontoPlanWorkspace
                             key={plans.plan.id}
                             plan={plans.plan}
                             items={plans.items}
-                            groupedItems={itemFlows.groupedItems}
-                            activeToothNumbers={itemFlows.activeToothNumbers}
                             isPlanLocked={plans.isPlanLocked}
                             markingPrinted={plans.markingPrinted}
-                            hasActiveModal={
-                                plans.planModalOpen ||
-                                itemFlows.serviceFlowOpen ||
-                                itemFlows.productFlowOpen ||
-                                itemFlows.editingItem !== null
-                            }
                             onBack={plans.backToPlanList}
                             onMarkPrinted={handleMarkPrinted}
-                            onOpenService={itemFlows.openServiceFlowModal}
-                            onOpenProduct={itemFlows.openProductFlowModal}
+                            onRefreshPlan={plans.loadPlan}
                             notes={plans.planNotes}
                             onNotesChange={plans.setPlanNotes}
                             savingPlanDetails={plans.savingPlanDetails}
@@ -175,10 +179,8 @@ export default function OdontoArcadeSimplifiedPage() {
                             onFirstDueDateChange={plans.setFirstDueDate}
                             installmentValue={plans.installmentValue}
                             planTotal={plans.planTotal}
-                            onEditItem={itemFlows.openEditItem}
-                            onDeleteItem={id => void itemFlows.deleteItem(id)}
                         />
-                    )}
+                    ))}
 
                 {!plans.loading &&
                     !plans.error &&
@@ -281,107 +283,6 @@ export default function OdontoArcadeSimplifiedPage() {
                             onClick: () => void plans.confirmDeletePlan(),
                         },
                     ]}
-                />
-
-                <OdontoServiceModal
-                    open={itemFlows.serviceFlowOpen}
-                    saving={
-                        itemFlows.savingServiceFlow || catalogs.savingCatalog
-                    }
-                    flowType={itemFlows.serviceFlowType}
-                    serviceRows={itemFlows.serviceRows}
-                    orderedTeeth={ORDERED_TEETH}
-                    serviceCatalog={catalogs.serviceCatalog}
-                    onClose={itemFlows.closeServiceFlowModal}
-                    onSave={async catalogIndexes => {
-                        const resolvedRows =
-                            await catalogs.saveNewServicesToCatalog(
-                                itemFlows.serviceRows,
-                                catalogIndexes,
-                            );
-                        if (resolvedRows)
-                            await itemFlows.saveServiceFlow(resolvedRows);
-                    }}
-                    onFlowTypeChange={itemFlows.changeServiceFlowType}
-                    onUpdateRow={itemFlows.updateServiceRow}
-                    onToggleToothRow={itemFlows.toggleToothServiceRow}
-                    onAddItem={itemFlows.addServiceRow}
-                    onDeleteFromCatalog={serviceId =>
-                        void catalogs.deleteFromCatalog(serviceId)
-                    }
-                />
-
-                <OdontoProductModal
-                    open={itemFlows.productFlowOpen}
-                    saving={
-                        itemFlows.savingProductFlow || catalogs.savingCatalog
-                    }
-                    productRows={itemFlows.productRows}
-                    productCatalog={catalogs.productCatalog}
-                    onClose={itemFlows.closeProductFlowModal}
-                    onSave={async catalogIndexes => {
-                        const saved = await catalogs.saveNewProductsToCatalog(
-                            itemFlows.productRows,
-                            catalogIndexes,
-                        );
-                        if (saved) await itemFlows.saveProductFlow();
-                    }}
-                    onRowsChange={itemFlows.setProductRows}
-                />
-
-                <OdontoEditProcedureModal
-                    item={itemFlows.editingItem}
-                    name={itemFlows.editingItemName}
-                    value={itemFlows.editingItemValue}
-                    notes={itemFlows.editingItemNotes}
-                    saving={itemFlows.savingEditItem || catalogs.savingCatalog}
-                    serviceCatalog={catalogs.serviceCatalog}
-                    onValueChange={itemFlows.setEditingItemValue}
-                    onNotesChange={itemFlows.setEditingItemNotes}
-                    onClose={itemFlows.closeEditItemModal}
-                    onSave={async updateCatalog => {
-                        const item = itemFlows.editingItem;
-                        if (!item) return;
-
-                        if (updateCatalog) {
-                            const saved = await catalogs.saveServicesToCatalog(
-                                [
-                                    {
-                                        toothNumber:
-                                            item.dental_context?.tooth_number ??
-                                            null,
-                                        toothSurface:
-                                            item.dental_context
-                                                ?.tooth_surface ?? '',
-                                        scope:
-                                            item.dental_context?.scope ===
-                                            'tooth'
-                                                ? 'tooth'
-                                                : item.dental_context?.scope ===
-                                                        'arch' ||
-                                                    item.dental_context
-                                                        ?.scope === 'full'
-                                                  ? 'arch'
-                                                  : 'other',
-                                        arcadeArch:
-                                            item.dental_context?.scope ===
-                                            'full'
-                                                ? 'AMBAS'
-                                                : (item.dental_context
-                                                      ?.arcade_arch ?? null),
-                                        treatment: itemFlows.editingItemName,
-                                        serviceId: item.service,
-                                        value: itemFlows.editingItemValue,
-                                        notes: itemFlows.editingItemNotes,
-                                    },
-                                ],
-                                [0],
-                            );
-                            if (!saved) return;
-                        }
-
-                        await itemFlows.saveEditedItem();
-                    }}
                 />
             </div>
 
