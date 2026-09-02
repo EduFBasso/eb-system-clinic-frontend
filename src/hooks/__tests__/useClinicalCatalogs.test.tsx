@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiFetch } from '../../utils/apiFetch';
-import { useOdontoCatalogs } from '../useOdontoCatalogs';
+import { useClinicalCatalogs } from '../useClinicalCatalogs';
 
 vi.mock('../../utils/apiFetch', () => ({
     apiFetch: vi.fn(),
@@ -9,7 +9,7 @@ vi.mock('../../utils/apiFetch', () => ({
 
 const apiFetchMock = vi.mocked(apiFetch);
 
-describe('useOdontoCatalogs treatment categories', () => {
+describe('useClinicalCatalogs treatment categories', () => {
     beforeEach(() => {
         apiFetchMock.mockReset();
     });
@@ -18,7 +18,7 @@ describe('useOdontoCatalogs treatment categories', () => {
         apiFetchMock
             .mockResolvedValueOnce({ id: 44 })
             .mockResolvedValueOnce([] as unknown as Record<string, unknown>);
-        const { result } = renderHook(() => useOdontoCatalogs(false, false));
+        const { result } = renderHook(() => useClinicalCatalogs(false, false));
 
         const rows = [
             {
@@ -77,7 +77,7 @@ describe('useOdontoCatalogs treatment categories', () => {
                     treatment_scopes: ['tooth', 'arch'],
                 },
             ] as unknown as Record<string, unknown>);
-        const { result } = renderHook(() => useOdontoCatalogs(true, false));
+        const { result } = renderHook(() => useClinicalCatalogs(true, false));
         await waitFor(() =>
             expect(result.current.serviceCatalog).toHaveLength(1),
         );

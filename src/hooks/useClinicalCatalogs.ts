@@ -13,7 +13,7 @@ import type {
     ServiceRow,
 } from '../pages/odontoArcadeHelpers';
 
-export function useOdontoCatalogs(
+export function useClinicalCatalogs(
     serviceFlowOpen: boolean,
     productFlowOpen: boolean,
     editItemOpen = false,

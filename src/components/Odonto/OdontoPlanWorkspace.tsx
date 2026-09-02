@@ -5,7 +5,7 @@ import OdontoServiceModal from './OdontoServiceModal';
 import OdontoProductModal from './OdontoProductModal';
 import OdontoEditProcedureModal from './OdontoEditProcedureModal';
 import { useOdontoItemFlows } from '../../hooks/useOdontoItemFlows';
-import { useOdontoCatalogs } from '../../hooks/useOdontoCatalogs';
+import { useClinicalCatalogs } from '../../hooks/useClinicalCatalogs';
 import { formatMoney, ORDERED_TEETH } from '../../pages/odontoArcadeHelpers';
 import type {
     PaymentCondition,
@@ -68,7 +68,7 @@ export default function OdontoPlanWorkspace({
     // Modais de tratamento/produto/edição são exclusivos do domínio Odonto e
     // vivem só aqui — a página pai não conhece mais esse estado.
     const itemFlows = useOdontoItemFlows(plan, items, onRefreshPlan);
-    const catalogs = useOdontoCatalogs(
+    const catalogs = useClinicalCatalogs(
         itemFlows.serviceFlowOpen,
         itemFlows.productFlowOpen,
         itemFlows.editingItem !== null,
