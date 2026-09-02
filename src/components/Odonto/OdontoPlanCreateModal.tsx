@@ -3,7 +3,7 @@ import { defaultPlanName } from '../../pages/odontoArcadeHelpers';
 import { apiFetch } from '../../utils/apiFetch';
 import { formatCnpj } from '../../utils/formatCpf';
 import { formatPhone } from '../../utils/formatPhone';
-import styles from '../../styles/pages/OdontoArcadeSimplifiedPage.module.css';
+import styles from '../../pages/TreatmentWorkspacePage.module.css';
 
 type Props = {
     open: boolean;

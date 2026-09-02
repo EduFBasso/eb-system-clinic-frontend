@@ -4,7 +4,7 @@ import type {
     CatalogServiceItem,
 } from '../../pages/odontoArcadeHelpers';
 import { normalizeMoneyInput } from '../../pages/odontoArcadeHelpers';
-import styles from '../../styles/pages/OdontoArcadeSimplifiedPage.module.css';
+import styles from '../../pages/TreatmentWorkspacePage.module.css';
 
 function parseBRPrice(value: string): number {
     return parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0;

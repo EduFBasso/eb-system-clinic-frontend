@@ -2,7 +2,7 @@ import React from 'react';
 import { PodologyMemberGrid } from './PodologyMemberGrid';
 import PodologyServiceModal from './PodologyServiceModal';
 import PodologyProductModal from './PodologyProductModal';
-import styles from '../../styles/pages/OdontoArcadeSimplifiedPage.module.css';
+import styles from '../../pages/TreatmentWorkspacePage.module.css';
 
 interface PodologyPlanWorkspaceProps {
     planId?: number;

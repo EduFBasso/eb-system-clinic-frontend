@@ -2,7 +2,6 @@ import React from 'react';
 import { AppModal } from '../Modal/Modal';
 import { coalesceVersion, fetchServerVersion } from '../../hooks/useAppVersion';
 import { useTheme, type AppTheme } from '../../contexts/ThemeContext';
-import { emit } from '../../events/bus';
 
 const THEME_OPTIONS: Array<{
     value: AppTheme;
@@ -39,7 +38,6 @@ export const AboutModal: React.FC<AboutModalProps> = ({
     backendVersion,
 }) => {
     const { theme, setTheme } = useTheme();
-    const [lockAfterPrint, setLockAfterPrint] = React.useState(true);
     const [resolvedBackendVersion, setResolvedBackendVersion] = React.useState<
         string | null
     >(backendVersion ?? null);
@@ -127,35 +125,8 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                         })}
                     </div>
                 </section>
-                <section style={{ display: 'grid', gap: 10, marginBottom: 16 }}>
-                    <label
-                        style={{
-                            display: 'flex',
-                            gap: 10,
-                            alignItems: 'flex-start',
-                        }}
-                    >
-                        <input
-                            type='checkbox'
-                            checked={lockAfterPrint}
-                            onChange={event => {
-                                const value = event.target.checked;
-                                setLockAfterPrint(value);
-                                emit('treatmentSettingsUpdated', {
-                                    lockAfterPrint: value,
-                                });
-                            }}
-                        />
-                        <span>
-                            <strong>Bloquear edição após imprimir?</strong>
-                            <small style={{ display: 'block', marginTop: 4 }}>
-                                A impressão trava o plano contra novas
-                                alterações.
-                            </small>
-                        </span>
-                    </label>
-                </section>
-                <div style={{ textAlign: 'right' }}>
+
+                <div style={{ textAlign: 'center' }}>
                     <button
                         type='button'
                         className='ui-btn ui-btn--neutral'

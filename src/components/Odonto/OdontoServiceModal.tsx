@@ -13,7 +13,7 @@ import {
     normalizeMoneyInput,
 } from '../../pages/odontoArcadeHelpers';
 import { toInputAmount } from '../../utils/currency';
-import styles from '../../styles/pages/OdontoArcadeSimplifiedPage.module.css';
+import styles from '../../pages/TreatmentWorkspacePage.module.css';
 
 type Props = {
     open: boolean;

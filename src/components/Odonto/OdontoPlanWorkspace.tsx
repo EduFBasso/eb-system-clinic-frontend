@@ -12,7 +12,7 @@ import type {
     PlanListItem,
     TreatmentItem,
 } from '../../pages/odontoArcadeHelpers';
-import styles from '../../styles/pages/OdontoArcadeSimplifiedPage.module.css';
+import styles from '../../pages/TreatmentWorkspacePage.module.css';
 
 type Props = {
     plan: PlanListItem;

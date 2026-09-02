@@ -1,4 +1,4 @@
-import styles from '../../styles/pages/OdontoArcadeSimplifiedPage.module.css';
+import styles from '../../pages/TreatmentWorkspacePage.module.css';
 
 interface ProductItemCardProps {
     name: string;

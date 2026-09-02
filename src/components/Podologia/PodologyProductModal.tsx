@@ -1,5 +1,5 @@
 import { AppModal } from '../Modal/Modal';
-import styles from '../../styles/pages/OdontoArcadeSimplifiedPage.module.css';
+import styles from '../../pages/TreatmentWorkspacePage.module.css';
 
 interface PodologyProductModalProps {
     open: boolean;

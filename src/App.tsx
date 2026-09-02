@@ -24,7 +24,7 @@ import ServiceFormPage from './pages/Catalog/ServiceFormPage';
 import ProductListPage from './pages/Catalog/ProductListPage';
 import ServiceListPage from './pages/Catalog/ServiceListPage';
 import ConsultaPage from './pages/ConsultaPage';
-import OdontoArcadeSimplifiedPage from './pages/OdontoArcadeSimplifiedPage';
+import TreatmentWorkspacePage from './pages/TreatmentWorkspacePage';
 import AnamnesisPublicPage from './pages/AnamnesisPublicPage';
 import {
     hydrateAgendaSettings,
@@ -129,11 +129,11 @@ function App() {
                     />
                     <Route
                         path='/odonto/arcada/:clientId'
-                        element={<OdontoArcadeSimplifiedPage />}
+                        element={<TreatmentWorkspacePage />}
                     />
                     <Route
                         path='/treatment/plans/:clientId'
-                        element={<OdontoArcadeSimplifiedPage />}
+                        element={<TreatmentWorkspacePage />}
                     />
                     {/* Full-page scheduler for mobile */}
                     {/** Rota /schedule removida para unificar experiência via modais */}

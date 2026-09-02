@@ -13,9 +13,9 @@ import {
     hasPodologiaCapability,
     readLoggedProfessionalCapabilities,
 } from '../utils/tenantCapabilities';
-import styles from '../styles/pages/OdontoArcadeSimplifiedPage.module.css';
+import styles from './TreatmentWorkspacePage.module.css';
 
-export default function OdontoArcadeSimplifiedPage() {
+export default function TreatmentWorkspacePage() {
     const navigate = useNavigate();
     const { clientId } = useParams();
     const [searchParams, setSearchParams] = useSearchParams();

@@ -1,6 +1,6 @@
 import type { TreatmentItem } from '../../pages/odontoArcadeHelpers';
 import { formatMoney } from '../../pages/odontoArcadeHelpers';
-import styles from '../../styles/pages/OdontoArcadeSimplifiedPage.module.css';
+import styles from '../../pages/TreatmentWorkspacePage.module.css';
 
 type Props = {
     item: TreatmentItem;
