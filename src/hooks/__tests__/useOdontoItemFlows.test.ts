@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ServiceRow } from '../../pages/odontoArcadeHelpers';
+import type { ServiceRow } from '../../components/Odonto/OdontoAnatomyHelpers';
 import { dentalContextFromServiceRow } from '../useOdontoItemFlows';
 
 function serviceRow(patch: Partial<ServiceRow>): ServiceRow {

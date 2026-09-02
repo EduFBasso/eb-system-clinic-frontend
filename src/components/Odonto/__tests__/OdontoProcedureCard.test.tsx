@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { TreatmentItem } from '../../../pages/odontoArcadeHelpers';
+import type { TreatmentItem } from '../../../utils/TreatmentHelpers';
 import OdontoProcedureCard from '../OdontoProcedureCard';
 
 function treatmentItem(

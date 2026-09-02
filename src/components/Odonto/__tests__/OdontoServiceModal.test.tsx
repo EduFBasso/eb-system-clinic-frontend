@@ -3,10 +3,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { describe, expect, it, vi } from 'vitest';
 import OdontoServiceModal from '../OdontoServiceModal';
-import {
-    filterServiceCatalog,
-    type CatalogServiceItem,
-} from '../../../pages/odontoArcadeHelpers';
+import type { CatalogServiceItem } from '../../../utils/TreatmentHelpers';
+import { filterServiceCatalog } from '../OdontoAnatomyHelpers';
 
 describe('OdontoServiceModal catalog selection', () => {
     it('shows only services indexed for the active treatment category', () => {

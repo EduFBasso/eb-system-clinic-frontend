@@ -8,7 +8,7 @@ import ActionPromptModal from '../../components/Shared/ActionPromptModal';
 import { emit } from '../../events/bus';
 import { useLocation, useNavigate } from 'react-router-dom';
 import formStyles from '../../styles/pages/Client.module.css';
-import type { ServiceFlowType } from '../odontoArcadeHelpers';
+import type { ServiceFlowType } from '../../components/Odonto/OdontoAnatomyHelpers';
 
 type Service = {
     id: number;

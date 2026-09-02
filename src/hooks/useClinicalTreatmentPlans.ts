@@ -6,14 +6,14 @@ import {
     asList,
     computePlanTotal,
     todayISODate,
-} from '../pages/odontoArcadeHelpers';
+} from '../utils/TreatmentHelpers';
 import type {
     PaymentCondition,
     PlanListItem,
     TreatmentItem,
-} from '../pages/odontoArcadeHelpers';
+} from '../utils/TreatmentHelpers';
 
-export function useOdontoTreatmentPlans(
+export function useClinicalTreatmentPlans(
     numericClientId: number,
     canAccess: boolean,
     initialPlanId: number | null = null,

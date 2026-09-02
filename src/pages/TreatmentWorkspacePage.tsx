@@ -1,13 +1,13 @@
 import React from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import OdontoPlanCreateModal from '../components/Odonto/OdontoPlanCreateModal';
-import OdontoPrintView from '../components/Odonto/OdontoPrintView';
+import ClinicalPrintView from '../components/Shared/ClinicalPrintView/ClinicalPrintView';
 import OdontoPlanListView from '../components/Odonto/OdontoPlanListView';
 import OdontoPlanWorkspace from '../components/Odonto/OdontoPlanWorkspace';
 import PodologyPlanWorkspace from '../components/Podologia/PodologyPlanWorkspace';
 import ActionPromptModal from '../components/Shared/ActionPromptModal';
-import { useOdontoTreatmentPlans } from '../hooks/useOdontoTreatmentPlans';
-import { planDisplayName } from './odontoArcadeHelpers';
+import { useClinicalTreatmentPlans } from '../hooks/useClinicalTreatmentPlans';
+import { planDisplayName } from '../utils/TreatmentHelpers';
 import { on } from '../events/bus';
 import {
     hasPodologiaCapability,
@@ -36,7 +36,7 @@ export default function TreatmentWorkspacePage() {
         const value = Number(searchParams.get('plan'));
         return Number.isInteger(value) && value > 0 ? value : null;
     }, [searchParams]);
-    const plans = useOdontoTreatmentPlans(
+    const plans = useClinicalTreatmentPlans(
         numericClientId,
         canAccess,
         initialPlanId,
@@ -208,7 +208,7 @@ export default function TreatmentWorkspacePage() {
                                 </button>
                             </div>
                             <div data-screen-only='odonto-quote-preview'>
-                                <OdontoPrintView
+                                <ClinicalPrintView
                                     plan={plans.plan}
                                     items={plans.items}
                                     clientName={plans.clientName}
@@ -286,7 +286,7 @@ export default function TreatmentWorkspacePage() {
                 />
             </div>
 
-            <OdontoPrintView
+            <ClinicalPrintView
                 plan={plans.plan}
                 items={plans.items}
                 clientName={plans.clientName}

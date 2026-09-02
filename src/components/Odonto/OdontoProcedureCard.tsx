@@ -1,5 +1,5 @@
-import type { TreatmentItem } from '../../pages/odontoArcadeHelpers';
-import { formatMoney } from '../../pages/odontoArcadeHelpers';
+import type { TreatmentItem } from '../../utils/TreatmentHelpers';
+import { formatMoney } from '../../utils/TreatmentHelpers';
 import styles from '../../pages/TreatmentWorkspacePage.module.css';
 
 type Props = {

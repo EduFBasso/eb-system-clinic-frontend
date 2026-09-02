@@ -11,7 +11,7 @@ import {
     getCatalogFlashScope,
     queueFlashMessage,
 } from '../../utils/flashMessage';
-import type { ServiceFlowType } from '../odontoArcadeHelpers';
+import type { ServiceFlowType } from '../../components/Odonto/OdontoAnatomyHelpers';
 
 type Service = {
     id: number;

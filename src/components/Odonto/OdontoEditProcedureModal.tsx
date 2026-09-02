@@ -2,8 +2,8 @@ import React from 'react';
 import type {
     TreatmentItem,
     CatalogServiceItem,
-} from '../../pages/odontoArcadeHelpers';
-import { normalizeMoneyInput } from '../../pages/odontoArcadeHelpers';
+} from '../../utils/TreatmentHelpers';
+import { normalizeMoneyInput } from '../../utils/TreatmentHelpers';
 import styles from '../../pages/TreatmentWorkspacePage.module.css';
 
 function parseBRPrice(value: string): number {

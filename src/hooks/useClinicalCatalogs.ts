@@ -4,14 +4,16 @@ import { emit } from '../events/bus';
 import { API_BASE } from '../config/api';
 import { apiFetch } from '../utils/apiFetch';
 import { parseAmount } from '../utils/currency';
-import { asList } from '../pages/odontoArcadeHelpers';
+import { asList } from '../utils/TreatmentHelpers';
 import type {
     CatalogProductItem,
     CatalogServiceItem,
     ProductRow,
+} from '../utils/TreatmentHelpers';
+import type {
     ServiceFlowType,
     ServiceRow,
-} from '../pages/odontoArcadeHelpers';
+} from '../components/Odonto/OdontoAnatomyHelpers';
 
 export function useClinicalCatalogs(
     serviceFlowOpen: boolean,

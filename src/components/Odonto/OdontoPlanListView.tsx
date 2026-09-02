@@ -1,4 +1,4 @@
-import type { PlanListItem } from '../../pages/odontoArcadeHelpers';
+import type { PlanListItem } from '../../utils/TreatmentHelpers';
 import OdontoPlanCard from './OdontoPlanCard';
 import styles from '../../pages/TreatmentWorkspacePage.module.css';
 

@@ -7,16 +7,18 @@ import {
     eventDateISO,
     formatDate,
     todayISODate,
-} from '../pages/odontoArcadeHelpers';
+} from '../utils/TreatmentHelpers';
 import type {
-    DentalContext,
     ItemGroup,
     PlanListItem,
     ProductRow,
+    TreatmentItem,
+} from '../utils/TreatmentHelpers';
+import type {
+    DentalContext,
     ServiceFlowType,
     ServiceRow,
-    TreatmentItem,
-} from '../pages/odontoArcadeHelpers';
+} from '../components/Odonto/OdontoAnatomyHelpers';
 
 function dateKeyFromItem(item: TreatmentItem): string {
     const d = eventDateISO(item);

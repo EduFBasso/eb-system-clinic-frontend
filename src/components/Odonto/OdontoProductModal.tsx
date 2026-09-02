@@ -2,11 +2,11 @@ import React from 'react';
 import type {
     CatalogProductItem,
     ProductRow,
-} from '../../pages/odontoArcadeHelpers';
+} from '../../utils/TreatmentHelpers';
 import {
     normalizeMoneyInput,
     normalizeSearchText,
-} from '../../pages/odontoArcadeHelpers';
+} from '../../utils/TreatmentHelpers';
 import { toInputAmount } from '../../utils/currency';
 import styles from '../../pages/TreatmentWorkspacePage.module.css';
 

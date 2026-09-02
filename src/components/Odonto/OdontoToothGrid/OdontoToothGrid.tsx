@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ToothItem } from '../../../pages/odontoArcadeHelpers';
+import type { ToothItem } from '../OdontoAnatomyHelpers';
 import styles from './OdontoToothGrid.module.css';
 
 interface OdontoToothGridProps {

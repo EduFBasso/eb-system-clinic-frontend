@@ -1,17 +1,17 @@
 import React from 'react';
 import { OdontoToothGrid } from './OdontoToothGrid/OdontoToothGrid';
+import type { CatalogServiceItem } from '../../utils/TreatmentHelpers';
+import { normalizeMoneyInput } from '../../utils/TreatmentHelpers';
 import type {
-    CatalogServiceItem,
     ServiceFlowType,
     ServiceRow,
     ToothItem,
-} from '../../pages/odontoArcadeHelpers';
+} from './OdontoAnatomyHelpers';
 import {
     ARCH_OPTIONS,
     filterServiceCatalog,
     SURFACE_OPTIONS,
-    normalizeMoneyInput,
-} from '../../pages/odontoArcadeHelpers';
+} from './OdontoAnatomyHelpers';
 import { toInputAmount } from '../../utils/currency';
 import styles from '../../pages/TreatmentWorkspacePage.module.css';
 

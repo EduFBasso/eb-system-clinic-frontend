@@ -3,15 +3,15 @@ import type {
     PaymentCondition,
     PlanListItem,
     TreatmentItem,
-} from '../../pages/odontoArcadeHelpers';
+} from '../../../utils/TreatmentHelpers';
 import {
     planDisplayName,
     formatMoney,
     formatDate,
-} from '../../pages/odontoArcadeHelpers';
-import { formatCnpj } from '../../utils/formatCpf';
-import { formatPhone } from '../../utils/formatPhone';
-import styles from './OdontoPrintView.module.css';
+} from '../../../utils/TreatmentHelpers';
+import { formatCnpj } from '../../../utils/formatCpf';
+import { formatPhone } from '../../../utils/formatPhone';
+import styles from './ClinicalPrintView.module.css';
 
 type Professional = {
     first_name?: string;
@@ -71,7 +71,7 @@ type Props = {
     printable?: boolean;
 };
 
-export default function OdontoPrintView({
+export default function ClinicalPrintView({
     plan,
     items,
     clientName,
@@ -98,7 +98,7 @@ export default function OdontoPrintView({
     const clinicName =
         prof.display_name ||
         [prof.first_name, prof.last_name].filter(Boolean).join(' ') ||
-        'Consultório Odontológico';
+        'Consultório Clínico';
     const addressLine = [prof.address || prof.street, prof.number]
         .filter(Boolean)
         .join(', ');
@@ -165,7 +165,7 @@ export default function OdontoPrintView({
                                 )}
                                 {prof.register_number && (
                                     <p className={styles.profDetail}>
-                                        CRO {prof.register_number}
+                                        Registro {prof.register_number}
                                     </p>
                                 )}
                                 {formattedPhone && (
@@ -190,9 +190,7 @@ export default function OdontoPrintView({
                             </p>
                         </div>
 
-                        <h1 className={styles.printTitle}>
-                            Orçamento Odontológico
-                        </h1>
+                        <h1 className={styles.printTitle}>Orçamento Clínico</h1>
 
                         <section className={styles.printSection}>
                             <h2 className={styles.printSubtitle}>

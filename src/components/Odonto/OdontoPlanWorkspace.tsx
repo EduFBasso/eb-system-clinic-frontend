@@ -6,12 +6,13 @@ import OdontoProductModal from './OdontoProductModal';
 import OdontoEditProcedureModal from './OdontoEditProcedureModal';
 import { useOdontoItemFlows } from '../../hooks/useOdontoItemFlows';
 import { useClinicalCatalogs } from '../../hooks/useClinicalCatalogs';
-import { formatMoney, ORDERED_TEETH } from '../../pages/odontoArcadeHelpers';
+import { formatMoney } from '../../utils/TreatmentHelpers';
 import type {
     PaymentCondition,
     PlanListItem,
     TreatmentItem,
-} from '../../pages/odontoArcadeHelpers';
+} from '../../utils/TreatmentHelpers';
+import { ORDERED_TEETH } from './OdontoAnatomyHelpers';
 import styles from '../../pages/TreatmentWorkspacePage.module.css';
 
 type Props = {

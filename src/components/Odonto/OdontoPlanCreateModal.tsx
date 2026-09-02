@@ -1,5 +1,5 @@
 import React from 'react';
-import { defaultPlanName } from '../../pages/odontoArcadeHelpers';
+import { defaultPlanName } from '../../utils/TreatmentHelpers';
 import { apiFetch } from '../../utils/apiFetch';
 import { formatCnpj } from '../../utils/formatCpf';
 import { formatPhone } from '../../utils/formatPhone';

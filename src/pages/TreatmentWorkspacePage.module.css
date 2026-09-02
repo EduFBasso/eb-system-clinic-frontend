@@ -1234,7 +1234,7 @@
     }
 }
 
-/* ── Print: hide everything except OdontoPrintView ───────────────────────── */
+/* ── Print: hide everything except ClinicalPrintView ───────────────────────── */
 @media print {
     .page,
     .headerCard,

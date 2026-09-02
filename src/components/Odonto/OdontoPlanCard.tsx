@@ -1,6 +1,6 @@
 import React from 'react';
-import type { PlanListItem } from '../../pages/odontoArcadeHelpers';
-import { planDisplayName } from '../../pages/odontoArcadeHelpers';
+import type { PlanListItem } from '../../utils/TreatmentHelpers';
+import { planDisplayName } from '../../utils/TreatmentHelpers';
 import { formatAmount } from '../../utils/currency';
 import styles from './OdontoPlanCard.module.css';
 
