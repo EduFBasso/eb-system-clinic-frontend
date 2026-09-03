@@ -2,6 +2,7 @@ import React from 'react';
 import type { PodologyScope } from './PodologyAnatomyHelpers';
 import { REGIONS, PLANTAR_LABELS } from './PodologyAnatomyHelpers';
 import styles from './PodologyMemberGrid.module.css';
+import useIsMobile from '../../hooks/useIsMobile';
 
 interface PodologyMemberGridProps {
     /** Controlled selection. Falls back to internal state when omitted. */
@@ -16,6 +17,10 @@ export function PodologyMemberGrid({
     onToggleRegion,
     readOnly = false,
 }: PodologyMemberGridProps = {}) {
+    const isMobile = useIsMobile(480); // Foca em mobiles estritos/smartphones
+    const [activeTab, setActiveTab] = React.useState<
+        'all' | 'pe_esquerdo' | 'pe_direito' | 'mao_esquerda' | 'mao_direita'
+    >('all');
     const [internalSelectedIds, setInternalSelectedIds] = React.useState<
         number[]
     >([]);
@@ -34,13 +39,73 @@ export function PodologyMemberGrid({
         );
     }
 
+    // Coordenadas dinâmicas viewBox (zoom inteligente na Solução A)
+    const getViewBox = () => {
+        if (!isMobile || activeTab === 'all') {
+            return '0 0 500 550';
+        }
+        switch (activeTab) {
+            case 'pe_esquerdo':
+                return '70 30 180 230'; // Zoom focado no Pé Esquerdo
+            case 'pe_direito':
+                return '250 30 180 230'; // Zoom focado no Pé Direito
+            case 'mao_esquerda':
+                return '70 290 180 230'; // Zoom focado na Mão Esquerda
+            case 'mao_direita':
+                return '250 290 180 230'; // Zoom focado na Mão Direita
+            default:
+                return '0 0 500 550';
+        }
+    };
+
     return (
         <div
             className={`${styles.wrapper} ${readOnly ? styles.wrapperReadOnly : ''}`}
         >
+            {/* Abas de navegação somente para mobile / telas estreitas */}
+            {isMobile && !readOnly && (
+                <div className={styles.mobileTabs}>
+                    <button
+                        type='button'
+                        className={`${styles.tabButton} ${activeTab === 'all' ? styles.tabButtonActive : ''}`}
+                        onClick={() => setActiveTab('all')}
+                    >
+                        Ver Geral
+                    </button>
+                    <button
+                        type='button'
+                        className={`${styles.tabButton} ${activeTab === 'pe_esquerdo' ? styles.tabButtonActive : ''}`}
+                        onClick={() => setActiveTab('pe_esquerdo')}
+                    >
+                        Pé Esq.
+                    </button>
+                    <button
+                        type='button'
+                        className={`${styles.tabButton} ${activeTab === 'pe_direito' ? styles.tabButtonActive : ''}`}
+                        onClick={() => setActiveTab('pe_direito')}
+                    >
+                        Pé Dir.
+                    </button>
+                    <button
+                        type='button'
+                        className={`${styles.tabButton} ${activeTab === 'mao_esquerda' ? styles.tabButtonActive : ''}`}
+                        onClick={() => setActiveTab('mao_esquerda')}
+                    >
+                        Mão Esq.
+                    </button>
+                    <button
+                        type='button'
+                        className={`${styles.tabButton} ${activeTab === 'mao_direita' ? styles.tabButtonActive : ''}`}
+                        onClick={() => setActiveTab('mao_direita')}
+                    >
+                        Mão Dir.
+                    </button>
+                </div>
+            )}
+
             <svg
                 className={styles.svg}
-                viewBox='0 0 500 550'
+                viewBox={getViewBox()}
                 role='img'
                 aria-label='Podograma e quiropodograma interativo'
             >
