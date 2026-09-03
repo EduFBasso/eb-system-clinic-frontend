@@ -136,21 +136,34 @@ export default function TreatmentWorkspacePage() {
                     plans.plan &&
                     !plans.isPlanLocked &&
                     (isPodologia ? (
-                        <>
-                            <div className={styles.planWorkspaceHeader}>
-                                <button
-                                    type='button'
-                                    className={styles.btn}
-                                    onClick={plans.backToPlanList}
-                                >
-                                    ← Planos
-                                </button>
-                            </div>
-                            <PodologyPlanWorkspace
-                                key={plans.plan.id}
-                                planId={plans.plan.id}
-                            />
-                        </>
+                        <PodologyPlanWorkspace
+                            key={plans.plan.id}
+                            plan={plans.plan}
+                            items={plans.items}
+                            isPlanLocked={plans.isPlanLocked}
+                            markingPrinted={plans.markingPrinted}
+                            onBack={plans.backToPlanList}
+                            onMarkPrinted={handleMarkPrinted}
+                            onRefreshPlan={plans.loadPlan}
+                            notes={plans.planNotes}
+                            onNotesChange={plans.setPlanNotes}
+                            savingPlanDetails={plans.savingPlanDetails}
+                            planDetailsDirty={plans.isPlanDetailsDirty}
+                            onCancelPlanDetails={plans.cancelPlanDetails}
+                            onSavePlanDetails={() =>
+                                void plans.savePlanDetails()
+                            }
+                            paymentCondition={plans.paymentCondition}
+                            onPaymentConditionChange={plans.setPaymentCondition}
+                            installmentsCount={plans.installmentsCount}
+                            onInstallmentsCountChange={
+                                plans.setInstallmentsCount
+                            }
+                            firstDueDate={plans.firstDueDate}
+                            onFirstDueDateChange={plans.setFirstDueDate}
+                            installmentValue={plans.installmentValue}
+                            planTotal={plans.planTotal}
+                        />
                     ) : (
                         <OdontoPlanWorkspace
                             key={plans.plan.id}

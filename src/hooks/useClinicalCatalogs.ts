@@ -10,10 +10,26 @@ import type {
     CatalogServiceItem,
     ProductRow,
 } from '../utils/TreatmentHelpers';
-import type {
-    ServiceFlowType,
-    ServiceRow,
-} from '../components/Odonto/OdontoAnatomyHelpers';
+
+/** Minimal shape needed to sync a service row with the general catalog —
+ * structurally compatible with both Odonto's ServiceRow and Podology's
+ * PodologyServiceRow, so this hook stays domain-agnostic. */
+type CatalogServiceRowLike = {
+    treatment: string;
+    value: string;
+    notes: string;
+    scope: string;
+    serviceId: number | null;
+};
+
+/** Service.treatment_scopes only accepts these choices on the backend (Odonto's
+ * tooth/arch/other categorization). Other domains' scopes (e.g. Podologia's
+ * pe_esquerdo, mao_direita) are simply not recorded there. */
+const CATALOG_TREATMENT_SCOPES = new Set(['tooth', 'arch', 'other']);
+
+function asCatalogTreatmentScope(scope: string): string | null {
+    return CATALOG_TREATMENT_SCOPES.has(scope) ? scope : null;
+}
 
 export function useClinicalCatalogs(
     serviceFlowOpen: boolean,
@@ -37,7 +53,7 @@ export function useClinicalCatalogs(
                 base_price: number | string | null;
                 description?: string;
                 default_notes?: string;
-                treatment_scopes?: ServiceFlowType[];
+                treatment_scopes?: string[];
             }>(response);
             setServiceCatalog(
                 services.map(s => ({
@@ -88,11 +104,11 @@ export function useClinicalCatalogs(
         void loadProductCatalog();
     }, [productFlowOpen, loadProductCatalog]);
 
-    async function saveServicesToCatalog(
-        rows: ServiceRow[],
+    async function saveServicesToCatalog<T extends CatalogServiceRowLike>(
+        rows: T[],
         indexes: number[],
     ): Promise<boolean> {
-        const selectedRows = new Map<string, ServiceRow>();
+        const selectedRows = new Map<string, T>();
         for (const index of indexes) {
             const row = rows[index];
             const name = row?.treatment.trim();
@@ -112,14 +128,17 @@ export function useClinicalCatalogs(
                     const priceValue = row.value.trim()
                         ? parseAmount(row.value)
                         : null;
+                    const scope = asCatalogTreatmentScope(row.scope);
 
                     if (existingItem) {
-                        const treatmentScopes = Array.from(
-                            new Set([
-                                ...existingItem.treatment_scopes,
-                                row.scope,
-                            ]),
-                        );
+                        const treatmentScopes = scope
+                            ? Array.from(
+                                  new Set([
+                                      ...existingItem.treatment_scopes,
+                                      scope,
+                                  ]),
+                              )
+                            : existingItem.treatment_scopes;
                         return apiFetch(
                             `${API_BASE}/inventory/services/${existingItem.id}/`,
                             {
@@ -143,7 +162,7 @@ export function useClinicalCatalogs(
                             base_price: priceValue ?? 0,
                             description: row.notes.trim(),
                             default_notes: row.notes.trim(),
-                            treatment_scopes: [row.scope],
+                            treatment_scopes: scope ? [scope] : [],
                         },
                     });
                 }),
@@ -161,14 +180,11 @@ export function useClinicalCatalogs(
         }
     }
 
-    async function saveNewServicesToCatalog(
-        rows: ServiceRow[],
+    async function saveNewServicesToCatalog<T extends CatalogServiceRowLike>(
+        rows: T[],
         indexes: number[],
-    ): Promise<ServiceRow[] | null> {
-        const selectedRows = new Map<
-            string,
-            { index: number; row: ServiceRow }
-        >();
+    ): Promise<T[] | null> {
+        const selectedRows = new Map<string, { index: number; row: T }>();
         for (const index of indexes) {
             const row = rows[index];
             const name = row?.treatment.trim();
@@ -190,14 +206,17 @@ export function useClinicalCatalogs(
                         item =>
                             item.name.trim().toLowerCase() === normalizedName,
                     );
+                    const scope = asCatalogTreatmentScope(row.scope);
 
                     if (existingItem) {
-                        const treatmentScopes = Array.from(
-                            new Set([
-                                ...existingItem.treatment_scopes,
-                                row.scope,
-                            ]),
-                        );
+                        const treatmentScopes = scope
+                            ? Array.from(
+                                  new Set([
+                                      ...existingItem.treatment_scopes,
+                                      scope,
+                                  ]),
+                              )
+                            : existingItem.treatment_scopes;
                         await apiFetch(
                             `${API_BASE}/inventory/services/${existingItem.id}/`,
                             {
@@ -218,7 +237,7 @@ export function useClinicalCatalogs(
                                 base_price: priceValue ?? 0,
                                 description: row.notes.trim(),
                                 default_notes: row.notes.trim(),
-                                treatment_scopes: [row.scope],
+                                treatment_scopes: scope ? [scope] : [],
                             },
                         },
                     );

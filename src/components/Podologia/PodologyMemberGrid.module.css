@@ -4,6 +4,11 @@
     margin: 0 auto;
 }
 
+.wrapperReadOnly .region {
+    cursor: default;
+    pointer-events: none;
+}
+
 .svg {
     display: block;
     width: 100%;

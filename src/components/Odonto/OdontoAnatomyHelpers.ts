@@ -24,6 +24,11 @@ export type ServiceRow = {
     notes: string;
 };
 
+export type ToothItem = {
+    international_number: number;
+    sequence: number;
+};
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const INTERNATIONAL_NUMBERS = [

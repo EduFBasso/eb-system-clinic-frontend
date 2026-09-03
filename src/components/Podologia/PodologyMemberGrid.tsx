@@ -1,11 +1,6 @@
 import React from 'react';
+import type { PodologyScope } from './PodologyAnatomyHelpers';
 import styles from './PodologyMemberGrid.module.css';
-
-type PodologyScope =
-    | 'pe_direito'
-    | 'pe_esquerdo'
-    | 'mao_direita'
-    | 'mao_esquerda';
 
 type RegionShape =
     | { kind: 'circle'; cx: number; cy: number; r: number }
@@ -193,11 +188,45 @@ const PLANTAR_LABELS: Record<number, string> = {
     16: 'Retropé',
 };
 
-export function PodologyMemberGrid() {
-    const [selectedIds, setSelectedIds] = React.useState<number[]>([]);
+/** Lightweight id → scope/label lookup, reused by the item-flow hook and modals. */
+export interface PodologyRegionMeta {
+    id: number;
+    scope: PodologyScope;
+    label: string;
+}
+export const PODOLOGY_REGIONS: PodologyRegionMeta[] = REGIONS.map(
+    ({ id, scope, label }) => ({
+        id,
+        scope,
+        label: PLANTAR_LABELS[id] ?? label,
+    }),
+);
 
-    function toggleRegion(id: number) {
-        setSelectedIds(previous =>
+interface PodologyMemberGridProps {
+    /** Controlled selection. Falls back to internal state when omitted. */
+    selectedIds?: number[];
+    onToggleRegion?: (id: number, scope: PodologyScope) => void;
+    /** Disables clicks — used for the read-only summary shown in the workspace. */
+    readOnly?: boolean;
+}
+
+export function PodologyMemberGrid({
+    selectedIds: controlledSelectedIds,
+    onToggleRegion,
+    readOnly = false,
+}: PodologyMemberGridProps = {}) {
+    const [internalSelectedIds, setInternalSelectedIds] = React.useState<
+        number[]
+    >([]);
+    const selectedIds = controlledSelectedIds ?? internalSelectedIds;
+
+    function toggleRegion(id: number, scope: PodologyScope) {
+        if (readOnly) return;
+        if (onToggleRegion) {
+            onToggleRegion(id, scope);
+            return;
+        }
+        setInternalSelectedIds(previous =>
             previous.includes(id)
                 ? previous.filter(existing => existing !== id)
                 : [...previous, id],
@@ -205,7 +234,9 @@ export function PodologyMemberGrid() {
     }
 
     return (
-        <div className={styles.wrapper}>
+        <div
+            className={`${styles.wrapper} ${readOnly ? styles.wrapperReadOnly : ''}`}
+        >
             <svg
                 className={styles.svg}
                 viewBox='0 0 500 550'
@@ -283,17 +314,20 @@ export function PodologyMemberGrid() {
                             key={region.id}
                             className={className}
                             role='button'
-                            tabIndex={0}
+                            tabIndex={readOnly ? -1 : 0}
                             aria-pressed={selected}
+                            aria-disabled={readOnly}
                             aria-label={`${region.label} — ${region.scope}`}
-                            onClick={() => toggleRegion(region.id)}
+                            onClick={() =>
+                                toggleRegion(region.id, region.scope)
+                            }
                             onKeyDown={event => {
                                 if (
                                     event.key === 'Enter' ||
                                     event.key === ' '
                                 ) {
                                     event.preventDefault();
-                                    toggleRegion(region.id);
+                                    toggleRegion(region.id, region.scope);
                                 }
                             }}
                         >
@@ -336,10 +370,12 @@ export function PodologyMemberGrid() {
                     );
                 })}
             </svg>
-            <p className={styles.caption}>
-                Componente mockado — clique nas unhas, dedos ou blocos de pés e
-                mãos.
-            </p>
+            {!readOnly && (
+                <p className={styles.caption}>
+                    Toque nas unhas, dedos ou blocos de pés e mãos para
+                    selecionar a região do procedimento.
+                </p>
+            )}
         </div>
     );
 }
