@@ -9,6 +9,7 @@ import { emit } from '../../events/bus';
 import { useLocation, useNavigate } from 'react-router-dom';
 import formStyles from '../../styles/pages/Client.module.css';
 import type { ServiceFlowType } from '../../components/Odonto/OdontoAnatomyHelpers';
+import { readLoggedProfessionalCapabilities, hasOdontoCapability } from '../../utils/tenantCapabilities';
 
 type Service = {
     id: number;
@@ -41,6 +42,8 @@ export default function TreatmentListPage() {
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const capabilities = useMemo(readLoggedProfessionalCapabilities, []);
+    const isOdonto = hasOdontoCapability(capabilities);
     const navigate = useNavigate();
     const location = useLocation();
     const returnTo =
@@ -300,32 +303,34 @@ export default function TreatmentListPage() {
                                                 service.default_notes?.trim()}
                                         </p>
                                     )}
-                                    <div
-                                        className={formStyles.catalogScopeList}
-                                    >
-                                        {(service.treatment_scopes ?? [])
-                                            .length > 0 ? (
-                                            service.treatment_scopes?.map(
-                                                scope => (
-                                                    <span key={scope}>
-                                                        {
-                                                            TREATMENT_SCOPE_LABELS[
-                                                                scope
-                                                            ]
-                                                        }
-                                                    </span>
-                                                ),
-                                            )
-                                        ) : (
-                                            <span
-                                                className={
-                                                    formStyles.catalogScopeMissing
-                                                }
-                                            >
-                                                Sem subcategoria
-                                            </span>
-                                        )}
-                                    </div>
+                                    {isOdonto && (
+                                        <div
+                                            className={formStyles.catalogScopeList}
+                                        >
+                                            {(service.treatment_scopes ?? [])
+                                                .length > 0 ? (
+                                                service.treatment_scopes?.map(
+                                                    scope => (
+                                                        <span key={scope}>
+                                                            {
+                                                                TREATMENT_SCOPE_LABELS[
+                                                                    scope
+                                                                ]
+                                                            }
+                                                        </span>
+                                                    ),
+                                                )
+                                            ) : (
+                                                <span
+                                                    className={
+                                                        formStyles.catalogScopeMissing
+                                                    }
+                                                >
+                                                    Sem subcategoria
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
                                     <div
                                         className='mt-4 self-start text-sm font-bold'
                                         style={{

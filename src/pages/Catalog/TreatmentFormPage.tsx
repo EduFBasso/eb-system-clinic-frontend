@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { API_BASE } from '../../config/api';
 import { apiFetch, ApiError } from '../../utils/apiFetch';
@@ -12,6 +12,7 @@ import {
     queueFlashMessage,
 } from '../../utils/flashMessage';
 import type { ServiceFlowType } from '../../components/Odonto/OdontoAnatomyHelpers';
+import { readLoggedProfessionalCapabilities, hasOdontoCapability } from '../../utils/tenantCapabilities';
 
 type Service = {
     id: number;
@@ -58,6 +59,14 @@ export default function TreatmentFormPage() {
     const [treatmentScopes, setTreatmentScopes] = useState<ServiceFlowType[]>(
         [],
     );
+    const capabilities = useMemo(() => readLoggedProfessionalCapabilities(), []);
+    const isOdonto = useMemo(() => hasOdontoCapability(capabilities), [capabilities]);
+    
+    // Lista de opções disponíveis baseadas no ecossistema ativo (Solução OU Geral/Automática)
+    const availableOptions = useMemo(() => {
+        return isOdonto ? TREATMENT_SCOPE_OPTIONS : [];
+    }, [isOdonto]);
+
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -99,7 +108,7 @@ export default function TreatmentFormPage() {
             setError('Informe o nome do serviço.');
             return;
         }
-        if (treatmentScopes.length === 0) {
+        if (availableOptions.length > 0 && treatmentScopes.length === 0) {
             setError('Selecione ao menos uma subcategoria de tratamento.');
             return;
         }
@@ -186,54 +195,56 @@ export default function TreatmentFormPage() {
                     }}
                     placeholder='0,00'
                 />
-                <fieldset
-                    aria-label='Subcategorias do tratamento'
-                    style={{
-                        border: '1px solid var(--color-border)',
-                        borderRadius: 8,
-                        padding: 12,
-                        margin: 0,
-                    }}
-                >
-                    <div
+                {availableOptions.length > 0 && (
+                    <fieldset
+                        aria-label='Subcategorias do tratamento'
                         style={{
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            gap: 16,
+                            border: '1px solid var(--color-border)',
+                            borderRadius: 8,
+                            padding: 12,
+                            margin: 0,
                         }}
                     >
-                        {TREATMENT_SCOPE_OPTIONS.map(option => (
-                            <label
-                                key={option.value}
-                                style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 7,
-                                    cursor: 'pointer',
-                                }}
-                            >
-                                <input
-                                    type='checkbox'
-                                    checked={treatmentScopes.includes(
-                                        option.value,
-                                    )}
-                                    onChange={event =>
-                                        setTreatmentScopes(current =>
-                                            event.target.checked
-                                                ? [...current, option.value]
-                                                : current.filter(
-                                                      scope =>
-                                                          scope !==
-                                                          option.value,
-                                                  ),
-                                        )
-                                    }
-                                />
-                                {option.label}
-                            </label>
-                        ))}
-                    </div>
-                </fieldset>
+                        <div
+                            style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: 16,
+                            }}
+                        >
+                            {availableOptions.map((option: { value: ServiceFlowType; label: string }) => (
+                                <label
+                                    key={option.value}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 7,
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    <input
+                                        type='checkbox'
+                                        checked={treatmentScopes.includes(
+                                            option.value,
+                                        )}
+                                        onChange={event =>
+                                            setTreatmentScopes(current =>
+                                                event.target.checked
+                                                    ? [...current, option.value]
+                                                    : current.filter(
+                                                          scope =>
+                                                              scope !==
+                                                              option.value,
+                                                      ),
+                                            )
+                                        }
+                                    />
+                                    {option.label}
+                                </label>
+                            ))}
+                        </div>
+                    </fieldset>
+                )}
                 {error && (
                     <div style={{ color: 'crimson', fontSize: 13 }}>
                         {error}
