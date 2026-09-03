@@ -241,7 +241,7 @@ export default function PodologyPlanWorkspace({
                         onClick={itemFlows.openServiceFlowModal}
                         disabled={isPlanLocked}
                     >
-                        Novo Procedimento
+                        Novo Tratamento
                     </button>
                 </div>
                 {treatmentGroups.length === 0 ? (

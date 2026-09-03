@@ -826,7 +826,6 @@
     resize: vertical;
     font-size: 16px; /* Impede zoom automatico do iOS Safari ao focar */
 }
-}
 
 .modalActions {
     display: flex;

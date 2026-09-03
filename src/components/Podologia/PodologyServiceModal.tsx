@@ -87,7 +87,7 @@ export default function PodologyServiceModal({
                 role='dialog'
                 onClick={event => event.stopPropagation()}
             >
-                <h3 className={styles.sectionTitle}>Novo Procedimento</h3>
+                <h3 className={styles.sectionTitle}>Novo Tratamento</h3>
 
                 <div className={styles.modalToothSelector}>
                     <PodologyMemberGrid
