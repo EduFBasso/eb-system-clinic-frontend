@@ -14,6 +14,7 @@ import { useIosKeyboard } from '../../hooks/useIosKeyboard';
 import type { FilterMode } from '../FilterBar/FilterBar';
 import { MainContentHeader } from './MainContentHeader';
 import { MainContentList } from './MainContentList';
+import { cacheClientName } from '../../hooks/useAgendaModals';
 
 // Normaliza texto para comparação: remove acentos, espaços extras e ignora caixa
 function normalizeText(s: string) {
@@ -935,10 +936,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                                 // Confirm: continuar fluxo, voltar à Agenda com client
                                 const label =
                                     `${confirmClient.first_name} ${confirmClient.last_name}`.trim();
-                                localStorage.setItem(
-                                    `client.name.${confirmClient.id}`,
-                                    label,
-                                );
+                                cacheClientName(confirmClient.id, label);
                                 const ret =
                                     returnUrl ||
                                     localStorage.getItem('agenda.returnUrl') ||

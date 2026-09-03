@@ -15,8 +15,39 @@ import { getAccessToken } from '../utils/auth/session';
 // ---------------------------------------------------------------------------
 // Helper: resolve basic client info (cached in localStorage)
 // ---------------------------------------------------------------------------
+export function clientNameCacheKey(id: number): string {
+    let scope = 'unknown';
+    try {
+        const stored = localStorage.getItem('loggedProfessional');
+        const professional = stored ? (JSON.parse(stored) as Record<string, unknown>) : {};
+        const tenant = professional.tenant;
+        const tenantId =
+            professional.tenant_id ??
+            professional.clinic_id ??
+            (tenant && typeof tenant === 'object'
+                ? (tenant as Record<string, unknown>).id
+                : undefined);
+        scope = String(tenantId ?? professional.id ?? 'active');
+    } catch {
+        /* noop */
+    }
+    return `clinic:${scope}:client.name.${id}`;
+}
+
+export function readCachedClientName(id: number): string | null {
+    return localStorage.getItem(clientNameCacheKey(id));
+}
+
+export function cacheClientName(id: number, name: string): void {
+    try {
+        localStorage.setItem(clientNameCacheKey(id), name);
+    } catch {
+        /* noop */
+    }
+}
+
 export async function ensureClientBasic(id: number): Promise<ClientBasic> {
-    const cached = localStorage.getItem(`client.name.${id}`);
+    const cached = readCachedClientName(id);
     if (cached) {
         const [first_name, ...rest] = cached.split(' ');
         const last_name = rest.join(' ');
@@ -50,14 +81,7 @@ export async function ensureClientBasic(id: number): Promise<ClientBasic> {
                 phone: data.phone || '',
                 email: data.email || '',
             };
-            try {
-                localStorage.setItem(
-                    `client.name.${id}`,
-                    `${cb.first_name} ${cb.last_name}`.trim(),
-                );
-            } catch {
-                /* noop */
-            }
+            cacheClientName(id, `${cb.first_name} ${cb.last_name}`.trim());
             return cb;
         }
     } catch {

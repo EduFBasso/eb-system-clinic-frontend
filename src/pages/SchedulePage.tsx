@@ -2,6 +2,7 @@ import React from 'react';
 import type { ClientBasic } from '../types/ClientBasic';
 import type { Appointment } from '../hooks/useAppointments';
 import ScheduleEditorCore from '../components/ScheduleEditorCore';
+import { readCachedClientName } from '../hooks/useAgendaModals';
 
 export default function SchedulePage() {
     const [client, setClient] = React.useState<ClientBasic | undefined>(
@@ -26,7 +27,7 @@ export default function SchedulePage() {
                     if (!isNaN(d.getTime())) setDefaultDate(d);
                 }
                 if (cid) {
-                    const cached = localStorage.getItem(`client.name.${cid}`);
+                    const cached = readCachedClientName(Number(cid));
                     if (cached) {
                         const [first_name, ...rest] = cached.split(' ');
                         const last_name = rest.join(' ');

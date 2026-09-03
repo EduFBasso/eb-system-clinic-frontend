@@ -3,7 +3,10 @@ import type {
     CatalogProductItem,
     ProductRow,
 } from '../../utils/TreatmentHelpers';
-import { normalizeMoneyInput, normalizeSearchText } from '../../utils/TreatmentHelpers';
+import {
+    normalizeMoneyInput,
+    normalizeSearchText,
+} from '../../utils/TreatmentHelpers';
 import { toInputAmount } from '../../utils/currency';
 import styles from '../../pages/TreatmentWorkspacePage.module.css';
 
