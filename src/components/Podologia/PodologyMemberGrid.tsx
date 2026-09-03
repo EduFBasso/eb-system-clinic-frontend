@@ -379,7 +379,7 @@ export function PodologyMemberGrid({
                             >
                                 {isPlantar
                                     ? PLANTAR_LABELS[region.id]
-                                    : region.id}
+                                    : region.label.replace(/\D/g, '')}
                             </text>
                         </g>
                     );
