@@ -64,6 +64,37 @@ export const ARCH_OPTIONS: Array<{ value: string; label: string }> = [
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
+export function dentalContextFromServiceRow(
+    row: ServiceRow,
+): DentalContext | null {
+    if (row.scope === 'other') return null;
+
+    if (row.scope === 'arch') {
+        if (row.arcadeArch === 'AMBAS') {
+            return {
+                scope: 'full',
+                tooth_number: null,
+                tooth_surface: '',
+                arcade_arch: null,
+            };
+        }
+
+        return {
+            scope: 'arch',
+            tooth_number: null,
+            tooth_surface: '',
+            arcade_arch: row.arcadeArch,
+        };
+    }
+
+    return {
+        scope: 'tooth',
+        tooth_number: row.toothNumber,
+        tooth_surface: row.toothSurface,
+        arcade_arch: null,
+    };
+}
+
 export function filterServiceCatalog(
     catalog: CatalogServiceItem[],
     searchRaw: string,
