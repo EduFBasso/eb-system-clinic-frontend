@@ -1,16 +1,16 @@
 // Owns the Odonto-specific service creation flow and composes useClinicalItemFlows.
 import React from 'react';
-import { emit } from '../events/bus';
-import { ApiError, apiFetch } from '../utils/apiFetch';
-import { parseAmount, validateAmount } from '../utils/currency';
-import { todayISODate } from '../utils/TreatmentHelpers';
-import type { PlanListItem, TreatmentItem } from '../utils/TreatmentHelpers';
+import { emit } from '../../events/bus';
+import { ApiError, apiFetch } from '../../utils/apiFetch';
+import { parseAmount, validateAmount } from '../../utils/currency';
+import { todayISODate } from '../../utils/TreatmentHelpers';
+import type { PlanListItem, TreatmentItem } from '../../utils/TreatmentHelpers';
 import type {
     ServiceFlowType,
     ServiceRow,
-} from '../components/Odonto/OdontoAnatomyHelpers';
-import { dentalContextFromServiceRow } from '../components/Odonto/OdontoAnatomyHelpers';
-import { useClinicalItemFlows } from './useClinicalItemFlows';
+} from './OdontoAnatomyHelpers';
+import { dentalContextFromServiceRow } from './OdontoAnatomyHelpers';
+import { useClinicalItemFlows } from '../../hooks/useClinicalItemFlows';
 
 export { dentalContextFromServiceRow };
 

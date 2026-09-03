@@ -4,7 +4,7 @@ import OdontoProcedureCard from './OdontoProcedureCard';
 import OdontoServiceModal from './OdontoServiceModal';
 import OdontoProductModal from './OdontoProductModal';
 import OdontoEditProcedureModal from './OdontoEditProcedureModal';
-import { useOdontoItemFlows } from '../../hooks/useOdontoItemFlows';
+import { useOdontoItemFlows } from './useOdontoItemFlows';
 import { useClinicalCatalogs } from '../../hooks/useClinicalCatalogs';
 import { formatMoney } from '../../utils/TreatmentHelpers';
 import type {

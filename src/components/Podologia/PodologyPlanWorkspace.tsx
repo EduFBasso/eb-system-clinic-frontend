@@ -13,7 +13,7 @@ export default function PodologyPlanWorkspace({
     planId,
     isPlanLocked = false,
 }: PodologyPlanWorkspaceProps) {
-    // Estado dos modais espelha o mesmo formato de useOdontoItemFlows — a
+    // Estado dos modais espelha o mesmo formato de useClinicalItemFlows — a
     // busca/gravação real dos itens de podologia é lógica de persistência da Fase 4.
     const [serviceModalOpen, setServiceModalOpen] = React.useState(false);
     const [productModalOpen, setProductModalOpen] = React.useState(false);
