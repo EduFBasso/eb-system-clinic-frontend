@@ -1,6 +1,7 @@
 import type { TreatmentItem } from '../../utils/TreatmentHelpers';
 import { normalizeMoneyInput } from '../../utils/TreatmentHelpers';
 import { PODOLOGY_SCOPE_OPTIONS } from './PodologyAnatomyHelpers';
+import { getPodologyRegionLabel } from './PodologyMemberGrid';
 import styles from '../../pages/TreatmentWorkspacePage.module.css';
 
 type Props = {
@@ -29,14 +30,9 @@ export default function PodologyEditProcedureModal({
     if (!item) return null;
 
     const ctx = item.podology_context;
-    const scopeLabel = ctx
-        ? PODOLOGY_SCOPE_OPTIONS.find(option => option.value === ctx.scope)
-              ?.label
+    const anatomicalLabel = ctx
+        ? getPodologyRegionLabel(ctx.scope, ctx.location_number)
         : null;
-    const anatomicalLabel =
-        scopeLabel && ctx?.location_number != null
-            ? `${scopeLabel} — Região ${ctx.location_number}`
-            : scopeLabel;
 
     return (
         <div

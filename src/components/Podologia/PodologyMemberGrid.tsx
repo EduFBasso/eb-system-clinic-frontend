@@ -1,5 +1,6 @@
 import React from 'react';
 import type { PodologyScope } from './PodologyAnatomyHelpers';
+import { PODOLOGY_SCOPE_OPTIONS } from './PodologyAnatomyHelpers';
 import styles from './PodologyMemberGrid.module.css';
 
 type RegionShape =
@@ -201,6 +202,20 @@ export const PODOLOGY_REGIONS: PodologyRegionMeta[] = REGIONS.map(
         label: PLANTAR_LABELS[id] ?? label,
     }),
 );
+
+export function getPodologyRegionLabel(
+    scope: PodologyScope,
+    locationNumber: number | null,
+): string {
+    if (scope === 'geral' || locationNumber == null) {
+        return 'Geral / Outros';
+    }
+    const meta = PODOLOGY_REGIONS.find(r => r.id === locationNumber);
+    const scopeOption = PODOLOGY_SCOPE_OPTIONS.find(opt => opt.value === scope);
+    const scopeLabel = scopeOption?.label ?? '';
+    const regionName = meta?.label ?? `Região ${locationNumber}`;
+    return scopeLabel ? `${scopeLabel} - ${regionName}` : regionName;
+}
 
 interface PodologyMemberGridProps {
     /** Controlled selection. Falls back to internal state when omitted. */

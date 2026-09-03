@@ -10,7 +10,7 @@ import type {
     PodologyServiceRow,
 } from './PodologyAnatomyHelpers';
 import { podologyContextFromServiceRow } from './PodologyAnatomyHelpers';
-import { PODOLOGY_REGIONS } from './PodologyMemberGrid';
+import { PODOLOGY_REGIONS, getPodologyRegionLabel } from './PodologyMemberGrid';
 import { useClinicalItemFlows } from '../../hooks/useClinicalItemFlows';
 
 function buildGeneralRow(): PodologyServiceRow {
@@ -62,13 +62,12 @@ export function usePodologyItemFlows(
             const exists = previous.some(row => row.locationNumber === id);
             if (exists)
                 return previous.filter(row => row.locationNumber !== id);
-            const meta = PODOLOGY_REGIONS.find(region => region.id === id);
             return [
                 ...previous,
                 {
                     scope,
                     locationNumber: id,
-                    regionLabel: meta?.label ?? `Região ${id}`,
+                    regionLabel: getPodologyRegionLabel(scope, id),
                     treatment: '',
                     serviceId: null,
                     value: '',
