@@ -1,6 +1,6 @@
 import type { PlanListItem } from '../../../utils/TreatmentHelpers';
 import TreatmentPlanCard from './TreatmentPlanCard';
-import styles from '../../../pages/TreatmentWorkspacePage.module.css';
+import styles from '../TreatmentWorkspacePage/TreatmentWorkspacePage.module.css';
 
 type Props = {
     allPlans: PlanListItem[];

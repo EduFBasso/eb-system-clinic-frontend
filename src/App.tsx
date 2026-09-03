@@ -24,7 +24,7 @@ import TreatmentFormPage from './pages/Catalog/TreatmentFormPage';
 import ProductListPage from './pages/Catalog/ProductListPage';
 import TreatmentListPage from './pages/Catalog/TreatmentListPage';
 import ConsultaPage from './pages/ConsultaPage';
-import TreatmentWorkspacePage from './pages/TreatmentWorkspacePage';
+import TreatmentWorkspacePage from './components/Shared/TreatmentWorkspacePage/TreatmentWorkspacePage';
 import AnamnesisPublicPage from './pages/AnamnesisPublicPage';
 import {
     hydrateAgendaSettings,

@@ -8,7 +8,7 @@ import {
     normalizeSearchText,
 } from '../../utils/TreatmentHelpers';
 import { toInputAmount } from '../../utils/currency';
-import styles from '../../pages/TreatmentWorkspacePage.module.css';
+import styles from '../Shared/TreatmentWorkspacePage/TreatmentWorkspacePage.module.css';
 
 interface PodologyProductModalProps {
     open: boolean;

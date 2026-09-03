@@ -13,7 +13,7 @@ import type {
     PlanListItem,
     TreatmentItem,
 } from '../../utils/TreatmentHelpers';
-import styles from '../../pages/TreatmentWorkspacePage.module.css';
+import styles from '../Shared/TreatmentWorkspacePage/TreatmentWorkspacePage.module.css';
 
 type Props = {
     plan: PlanListItem;

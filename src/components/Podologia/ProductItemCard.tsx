@@ -1,4 +1,4 @@
-import styles from '../../pages/TreatmentWorkspacePage.module.css';
+import styles from '../Shared/TreatmentWorkspacePage/TreatmentWorkspacePage.module.css';
 
 interface ProductItemCardProps {
     name: string;

@@ -13,7 +13,7 @@ import type {
     TreatmentItem,
 } from '../../utils/TreatmentHelpers';
 import { ORDERED_TEETH } from './OdontoAnatomyHelpers';
-import styles from '../../pages/TreatmentWorkspacePage.module.css';
+import styles from '../Shared/TreatmentWorkspacePage/TreatmentWorkspacePage.module.css';
 
 type Props = {
     plan: PlanListItem;

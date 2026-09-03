@@ -1,18 +1,18 @@
 import React from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import TreatmentPlanCreateModal from '../components/Shared/TreatmentPlanCreateModal/TreatmentPlanCreateModal';
-import ClinicalPrintView from '../components/Shared/ClinicalPrintView/ClinicalPrintView';
-import TreatmentPlanListView from '../components/Shared/TreatmentPlanListView/TreatmentPlanListView';
-import OdontoPlanWorkspace from '../components/Odonto/OdontoPlanWorkspace';
-import PodologyPlanWorkspace from '../components/Podologia/PodologyPlanWorkspace';
-import ActionPromptModal from '../components/Shared/ActionPromptModal';
-import { useClinicalTreatmentPlans } from '../hooks/useClinicalTreatmentPlans';
-import { planDisplayName } from '../utils/TreatmentHelpers';
-import { on } from '../events/bus';
+import TreatmentPlanCreateModal from '../TreatmentPlanCreateModal/TreatmentPlanCreateModal';
+import ClinicalPrintView from '../ClinicalPrintView/ClinicalPrintView';
+import TreatmentPlanListView from '../TreatmentPlanListView/TreatmentPlanListView';
+import OdontoPlanWorkspace from '../../Odonto/OdontoPlanWorkspace';
+import PodologyPlanWorkspace from '../../Podologia/PodologyPlanWorkspace';
+import ActionPromptModal from '../ActionPromptModal';
+import { useClinicalTreatmentPlans } from '../../../hooks/useClinicalTreatmentPlans';
+import { planDisplayName } from '../../../utils/TreatmentHelpers';
+import { on } from '../../../events/bus';
 import {
     hasPodologiaCapability,
     readLoggedProfessionalCapabilities,
-} from '../utils/tenantCapabilities';
+} from '../../../utils/tenantCapabilities';
 import styles from './TreatmentWorkspacePage.module.css';
 
 export default function TreatmentWorkspacePage() {

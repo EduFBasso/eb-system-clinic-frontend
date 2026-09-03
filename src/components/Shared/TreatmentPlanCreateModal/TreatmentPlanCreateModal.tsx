@@ -3,7 +3,7 @@ import { defaultPlanName } from '../../../utils/TreatmentHelpers';
 import { apiFetch } from '../../../utils/apiFetch';
 import { formatCnpj } from '../../../utils/formatCpf';
 import { formatPhone } from '../../../utils/formatPhone';
-import styles from '../../../pages/TreatmentWorkspacePage.module.css';
+import styles from '../TreatmentWorkspacePage/TreatmentWorkspacePage.module.css';
 
 type Props = {
     open: boolean;

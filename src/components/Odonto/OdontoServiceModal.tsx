@@ -13,7 +13,7 @@ import {
     SURFACE_OPTIONS,
 } from './OdontoAnatomyHelpers';
 import { toInputAmount } from '../../utils/currency';
-import styles from '../../pages/TreatmentWorkspacePage.module.css';
+import styles from '../Shared/TreatmentWorkspacePage/TreatmentWorkspacePage.module.css';
 
 type Props = {
     open: boolean;

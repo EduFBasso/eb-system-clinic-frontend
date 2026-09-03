@@ -1,6 +1,6 @@
 import type { TreatmentItem } from '../../utils/TreatmentHelpers';
 import { formatMoney } from '../../utils/TreatmentHelpers';
-import styles from '../../pages/TreatmentWorkspacePage.module.css';
+import styles from '../Shared/TreatmentWorkspacePage/TreatmentWorkspacePage.module.css';
 
 type Props = {
     item: TreatmentItem;

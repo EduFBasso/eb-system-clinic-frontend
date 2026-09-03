@@ -4,7 +4,7 @@ import type {
     CatalogServiceItem,
 } from '../../utils/TreatmentHelpers';
 import { normalizeMoneyInput } from '../../utils/TreatmentHelpers';
-import styles from '../../pages/TreatmentWorkspacePage.module.css';
+import styles from '../Shared/TreatmentWorkspacePage/TreatmentWorkspacePage.module.css';
 
 function parseBRPrice(value: string): number {
     return parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0;
