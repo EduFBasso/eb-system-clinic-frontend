@@ -11,7 +11,7 @@ function isMobileDevice() {
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AboutModal } from '../AboutModal/AboutModal';
-import OdontoPlanCreateModal from '../Odonto/OdontoPlanCreateModal';
+import TreatmentPlanCreateModal from '../Shared/TreatmentPlanCreateModal/TreatmentPlanCreateModal';
 import { SessionExpiredModal } from '../SessionExpiredModal/SessionExpiredModal';
 import { API_BASE } from '../../config/api';
 import { openClientForm } from '../../utils/openClientForm';
@@ -792,7 +792,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                 onClose={() => setCreateProfOpen(false)}
             />
             {createPortal(
-                <OdontoPlanCreateModal
+                <TreatmentPlanCreateModal
                     open={clinicProfileOpen}
                     saving={false}
                     profileOnly

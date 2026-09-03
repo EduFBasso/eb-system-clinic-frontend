@@ -1,8 +1,8 @@
 import React from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import OdontoPlanCreateModal from '../components/Odonto/OdontoPlanCreateModal';
+import TreatmentPlanCreateModal from '../components/Shared/TreatmentPlanCreateModal/TreatmentPlanCreateModal';
 import ClinicalPrintView from '../components/Shared/ClinicalPrintView/ClinicalPrintView';
-import OdontoPlanListView from '../components/Odonto/OdontoPlanListView';
+import TreatmentPlanListView from '../components/Shared/TreatmentPlanListView/TreatmentPlanListView';
 import OdontoPlanWorkspace from '../components/Odonto/OdontoPlanWorkspace';
 import PodologyPlanWorkspace from '../components/Podologia/PodologyPlanWorkspace';
 import ActionPromptModal from '../components/Shared/ActionPromptModal';
@@ -122,7 +122,7 @@ export default function TreatmentWorkspacePage() {
 
                 {/* ── A: Plan list view (no plan selected) ────────────────── */}
                 {!plans.loading && !plans.error && !plans.plan && (
-                    <OdontoPlanListView
+                    <TreatmentPlanListView
                         allPlans={plans.allPlans}
                         onSelect={id => void plans.selectPlan(id)}
                         onDelete={id => void plans.deletePlan(id)}
@@ -226,7 +226,7 @@ export default function TreatmentWorkspacePage() {
                     )}
 
                 {/* ── Modals ───────────────────────────────────────────────── */}
-                <OdontoPlanCreateModal
+                <TreatmentPlanCreateModal
                     open={plans.planModalOpen}
                     saving={plans.savingCreatePlan}
                     onClose={() => plans.setPlanModalOpen(false)}

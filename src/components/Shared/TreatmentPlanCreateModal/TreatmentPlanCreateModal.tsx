@@ -1,9 +1,9 @@
 import React from 'react';
-import { defaultPlanName } from '../../utils/TreatmentHelpers';
-import { apiFetch } from '../../utils/apiFetch';
-import { formatCnpj } from '../../utils/formatCpf';
-import { formatPhone } from '../../utils/formatPhone';
-import styles from '../../pages/TreatmentWorkspacePage.module.css';
+import { defaultPlanName } from '../../../utils/TreatmentHelpers';
+import { apiFetch } from '../../../utils/apiFetch';
+import { formatCnpj } from '../../../utils/formatCpf';
+import { formatPhone } from '../../../utils/formatPhone';
+import styles from '../../../pages/TreatmentWorkspacePage.module.css';
 
 type Props = {
     open: boolean;
@@ -16,7 +16,7 @@ type Props = {
 
 type ProfessionalProfile = Record<string, string | undefined>;
 
-export default function OdontoPlanCreateModal({
+export default function TreatmentPlanCreateModal({
     open,
     saving,
     onClose,

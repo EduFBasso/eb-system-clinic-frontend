@@ -1,6 +1,6 @@
-import type { PlanListItem } from '../../utils/TreatmentHelpers';
-import OdontoPlanCard from './OdontoPlanCard';
-import styles from '../../pages/TreatmentWorkspacePage.module.css';
+import type { PlanListItem } from '../../../utils/TreatmentHelpers';
+import TreatmentPlanCard from './TreatmentPlanCard';
+import styles from '../../../pages/TreatmentWorkspacePage.module.css';
 
 type Props = {
     allPlans: PlanListItem[];
@@ -9,7 +9,7 @@ type Props = {
     onCreateClick: () => void;
 };
 
-export default function OdontoPlanListView({
+export default function TreatmentPlanListView({
     allPlans,
     onSelect,
     onDelete,
@@ -36,7 +36,7 @@ export default function OdontoPlanListView({
             ) : (
                 <div className={styles.planList}>
                     {allPlans.map(p => (
-                        <OdontoPlanCard
+                        <TreatmentPlanCard
                             key={p.id}
                             plan={p}
                             onSelect={id => onSelect(id)}

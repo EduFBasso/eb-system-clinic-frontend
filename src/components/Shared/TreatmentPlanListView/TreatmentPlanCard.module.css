@@ -98,13 +98,3 @@
     opacity: 0.55;
     transition: opacity 100ms ease, background 100ms ease;
 }
-
-.deleteBtn svg {
-    width: 15px;
-    height: 15px;
-}
-
-.deleteBtn:hover {
-    opacity: 1;
-    background: color-mix(in oklab, var(--color-danger, #ef4444) 10%, transparent);
-}

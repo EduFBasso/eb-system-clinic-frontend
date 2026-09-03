@@ -5,10 +5,7 @@ import { ApiError, apiFetch } from '../../utils/apiFetch';
 import { parseAmount, validateAmount } from '../../utils/currency';
 import { todayISODate } from '../../utils/TreatmentHelpers';
 import type { PlanListItem, TreatmentItem } from '../../utils/TreatmentHelpers';
-import type {
-    ServiceFlowType,
-    ServiceRow,
-} from './OdontoAnatomyHelpers';
+import type { ServiceFlowType, ServiceRow } from './OdontoAnatomyHelpers';
 import { dentalContextFromServiceRow } from './OdontoAnatomyHelpers';
 import { useClinicalItemFlows } from '../../hooks/useClinicalItemFlows';
 

@@ -1,8 +1,8 @@
 import React from 'react';
-import type { PlanListItem } from '../../utils/TreatmentHelpers';
-import { planDisplayName } from '../../utils/TreatmentHelpers';
-import { formatAmount } from '../../utils/currency';
-import styles from './OdontoPlanCard.module.css';
+import type { PlanListItem } from '../../../utils/TreatmentHelpers';
+import { planDisplayName } from '../../../utils/TreatmentHelpers';
+import { formatAmount } from '../../../utils/currency';
+import styles from './TreatmentPlanCard.module.css';
 
 type Props = {
     plan: PlanListItem;
@@ -39,7 +39,7 @@ function StatusBadge({
     );
 }
 
-export default function OdontoPlanCard({ plan, onSelect, onDelete }: Props) {
+export default function TreatmentPlanCard({ plan, onSelect, onDelete }: Props) {
     const isArchived = plan.status === 'archived';
     const isInstallments = plan.payment_condition === 'aprazo';
     const installments = Math.max(1, plan.installments_count ?? 1);
