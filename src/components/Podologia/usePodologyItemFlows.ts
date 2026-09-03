@@ -11,7 +11,6 @@ import type {
 } from './PodologyAnatomyHelpers';
 import {
     podologyContextFromServiceRow,
-    PODOLOGY_REGIONS,
     getPodologyRegionLabel,
 } from './PodologyAnatomyHelpers';
 import { useClinicalItemFlows } from '../../hooks/useClinicalItemFlows';
