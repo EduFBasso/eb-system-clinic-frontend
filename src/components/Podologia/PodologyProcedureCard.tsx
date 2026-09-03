@@ -1,7 +1,6 @@
 import type { TreatmentItem } from '../../utils/TreatmentHelpers';
 import { formatMoney } from '../../utils/TreatmentHelpers';
-import { PODOLOGY_SCOPE_OPTIONS } from './PodologyAnatomyHelpers';
-import { getPodologyRegionLabel } from './PodologyMemberGrid';
+import { PODOLOGY_SCOPE_OPTIONS, getPodologyRegionLabel } from './PodologyAnatomyHelpers';
 import styles from '../../pages/TreatmentWorkspacePage.module.css';
 
 type Props = {

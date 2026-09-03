@@ -9,8 +9,11 @@ import type {
     PodologyScope,
     PodologyServiceRow,
 } from './PodologyAnatomyHelpers';
-import { podologyContextFromServiceRow } from './PodologyAnatomyHelpers';
-import { PODOLOGY_REGIONS, getPodologyRegionLabel } from './PodologyMemberGrid';
+import {
+    podologyContextFromServiceRow,
+    PODOLOGY_REGIONS,
+    getPodologyRegionLabel,
+} from './PodologyAnatomyHelpers';
 import { useClinicalItemFlows } from '../../hooks/useClinicalItemFlows';
 
 function buildGeneralRow(): PodologyServiceRow {
