@@ -802,6 +802,7 @@
     color: #212529;
     padding: 0 10px;
     box-sizing: border-box;
+    font-size: 16px; /* Impede zoom automatico do iOS Safari ao focar */
 }
 
 .input:focus,
@@ -823,6 +824,8 @@
     padding: 10px;
     box-sizing: border-box;
     resize: vertical;
+    font-size: 16px; /* Impede zoom automatico do iOS Safari ao focar */
+}
 }
 
 .modalActions {

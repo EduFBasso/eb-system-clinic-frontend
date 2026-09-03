@@ -280,6 +280,35 @@ export default function OdontoServiceModal({
                                                                         onMouseDown={event =>
                                                                             event.preventDefault()
                                                                         }
+                                                                        onPointerDown={event => {
+                                                                            event.preventDefault();
+                                                                            onUpdateRow(
+                                                                                index,
+                                                                                {
+                                                                                    treatment:
+                                                                                        item.name,
+                                                                                    serviceId:
+                                                                                        item.id,
+                                                                                    ...(item.base_price !=
+                                                                                        null &&
+                                                                                        !row.value.trim() && {
+                                                                                            value: toInputAmount(
+                                                                                                item.base_price,
+                                                                                            ),
+                                                                                        }),
+                                                                                    ...(!row.notes.trim() &&
+                                                                                        (item.description ??
+                                                                                            item.default_notes) && {
+                                                                                            notes:
+                                                                                                item.description ??
+                                                                                                item.default_notes,
+                                                                                        }),
+                                                                                },
+                                                                            );
+                                                                            setOpenDropdownIndex(
+                                                                                null,
+                                                                            );
+                                                                        }}
                                                                         onClick={() => {
                                                                             onUpdateRow(
                                                                                 index,
@@ -339,6 +368,12 @@ export default function OdontoServiceModal({
                                                                         onMouseDown={event =>
                                                                             event.preventDefault()
                                                                         }
+                                                                        onPointerDown={event => {
+                                                                            event.preventDefault();
+                                                                            onDeleteFromCatalog(
+                                                                                item.id,
+                                                                            );
+                                                                        }}
                                                                         onClick={() =>
                                                                             onDeleteFromCatalog(
                                                                                 item.id,

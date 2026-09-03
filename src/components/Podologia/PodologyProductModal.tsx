@@ -196,6 +196,27 @@ export default function PodologyProductModal({
                                                                     onMouseDown={event =>
                                                                         event.preventDefault()
                                                                     }
+                                                                    onPointerDown={event => {
+                                                                        event.preventDefault();
+                                                                        updateRow(
+                                                                            index,
+                                                                            {
+                                                                                name: item.name,
+                                                                                ...(item.price !=
+                                                                                    null && {
+                                                                                    value: toInputAmount(
+                                                                                        item.price,
+                                                                                    ),
+                                                                                }),
+                                                                                notes:
+                                                                                    item.description ??
+                                                                                    '',
+                                                                            },
+                                                                        );
+                                                                        setOpenDropdownIndex(
+                                                                            null,
+                                                                        );
+                                                                    }}
                                                                     onClick={() => {
                                                                         updateRow(
                                                                             index,
