@@ -19,7 +19,9 @@ export function clientNameCacheKey(id: number): string {
     let scope = 'unknown';
     try {
         const stored = localStorage.getItem('loggedProfessional');
-        const professional = stored ? (JSON.parse(stored) as Record<string, unknown>) : {};
+        const professional = stored
+            ? (JSON.parse(stored) as Record<string, unknown>)
+            : {};
         const tenant = professional.tenant;
         const tenantId =
             professional.tenant_id ??
