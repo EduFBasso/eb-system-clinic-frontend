@@ -32,7 +32,7 @@ function format2DecimalsBR(value: number): string {
     });
 }
 
-export default function ServiceListPage() {
+export default function TreatmentListPage() {
     const [items, setItems] = useState<Service[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -148,9 +148,12 @@ export default function ServiceListPage() {
     return (
         <>
             <div data-screen-only style={{ display: 'contents' }}>
-                <FormPage title='Serviços' onSubmit={e => e.preventDefault()}>
+                <FormPage
+                    title='Tratamentos'
+                    onSubmit={e => e.preventDefault()}
+                >
                     <FormSection
-                        title='Lista'
+                        title='Lista de tratamentos'
                         onClose={handleClose}
                         closeTitle='Fechar'
                     >

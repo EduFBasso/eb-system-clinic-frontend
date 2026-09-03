@@ -45,7 +45,7 @@ function parseBRToNumber(str: string): number {
     return Number.isFinite(n) ? n : 0;
 }
 
-export default function ServiceFormPage() {
+export default function TreatmentFormPage() {
     const navigate = useNavigate();
     const location = useLocation();
     const { id } = useParams<{ id: string }>();
@@ -148,10 +148,10 @@ export default function ServiceFormPage() {
 
     return (
         <FormPage
-            title={id ? 'Editar Serviço' : 'Novo Serviço'}
+            title={id ? 'Editar Tratamento' : 'Novo Tratamento'}
             onSubmit={onSubmit}
         >
-            <FormSection title='Dados do serviço'>
+            <FormSection title='Dados do Tratamento'>
                 {loading && <div style={{ marginBottom: 8 }}>Carregando…</div>}
                 <InputField
                     label='Nome'

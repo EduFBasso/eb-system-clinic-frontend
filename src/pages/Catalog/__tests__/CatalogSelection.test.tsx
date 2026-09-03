@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiFetch } from '../../../utils/apiFetch';
 import ProductListPage from '../ProductListPage';
-import ServiceListPage from '../ServiceListPage';
+import TreatmentListPage from '../TreatmentListPage';
 
 vi.mock('../../../utils/apiFetch', () => ({
     apiFetch: vi.fn(),
@@ -94,7 +94,7 @@ describe('catalog selection mode', () => {
         ] as unknown as Record<string, unknown>);
         apiFetchMock.mockResolvedValue(null);
 
-        renderPage(<ServiceListPage />);
+        renderPage(<TreatmentListPage />);
 
         await screen.findByRole('button', { name: 'Apagar' });
         fireEvent.click(screen.getByRole('button', { name: 'Apagar' }));
