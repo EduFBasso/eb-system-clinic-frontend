@@ -7,6 +7,7 @@ import { CatalogPrintView } from '../../components/CatalogPrintView/CatalogPrint
 import ActionPromptModal from '../../components/Shared/ActionPromptModal';
 import { emit } from '../../events/bus';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { consumeFlashMessage } from '../../utils/flashMessage';
 import formStyles from '../../styles/pages/Client.module.css';
 import type { ServiceFlowType } from '../../components/Odonto/OdontoAnatomyHelpers';
 import {
@@ -64,6 +65,17 @@ export default function TreatmentListPage() {
         },
         [cameFromConsulta, navigate],
     );
+
+    useEffect(() => {
+        const flashed = consumeFlashMessage('catalog-services');
+        if (flashed) {
+            emit('systemMessage', {
+                text: flashed.text,
+                type: flashed.type || 'success',
+                autoCloseMs: flashed.autoCloseMs || 4000,
+            });
+        }
+    }, []);
 
     useEffect(() => {
         let mounted = true;

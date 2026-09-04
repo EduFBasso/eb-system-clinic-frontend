@@ -7,6 +7,7 @@ import { CatalogPrintView } from '../../components/CatalogPrintView/CatalogPrint
 import ActionPromptModal from '../../components/Shared/ActionPromptModal';
 import { emit } from '../../events/bus';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { consumeFlashMessage } from '../../utils/flashMessage';
 import formStyles from '../../styles/pages/Client.module.css';
 
 type Product = {
@@ -50,6 +51,17 @@ export default function ProductListPage() {
         },
         [cameFromConsulta, navigate],
     );
+
+    useEffect(() => {
+        const flashed = consumeFlashMessage('catalog-products');
+        if (flashed) {
+            emit('systemMessage', {
+                text: flashed.text,
+                type: flashed.type || 'success',
+                autoCloseMs: flashed.autoCloseMs || 4000,
+            });
+        }
+    }, []);
 
     useEffect(() => {
         let mounted = true;

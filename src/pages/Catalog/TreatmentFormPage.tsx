@@ -11,6 +11,7 @@ import {
     getCatalogFlashScope,
     queueFlashMessage,
 } from '../../utils/flashMessage';
+import { emit } from '../../events/bus';
 import type { ServiceFlowType } from '../../components/Odonto/OdontoAnatomyHelpers';
 import {
     readLoggedProfessionalCapabilities,
@@ -149,6 +150,14 @@ export default function TreatmentFormPage() {
                         : 'Serviço salvo com sucesso.',
                     type: 'success',
                     autoCloseMs: 6000,
+                });
+            } else {
+                emit('systemMessage', {
+                    text: id
+                        ? 'Serviço atualizado com sucesso.'
+                        : 'Serviço salvo com sucesso.',
+                    type: 'success',
+                    autoCloseMs: 4000,
                 });
             }
             if (returnTo === '/consulta') {

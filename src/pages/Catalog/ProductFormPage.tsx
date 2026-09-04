@@ -11,6 +11,7 @@ import {
     getCatalogFlashScope,
     queueFlashMessage,
 } from '../../utils/flashMessage';
+import { emit } from '../../events/bus';
 
 export default function ProductFormPage() {
     const navigate = useNavigate();
@@ -112,6 +113,14 @@ export default function ProductFormPage() {
                         : 'Produto salvo com sucesso.',
                     type: 'success',
                     autoCloseMs: 6000,
+                });
+            } else {
+                emit('systemMessage', {
+                    text: id
+                        ? 'Produto atualizado com sucesso.'
+                        : 'Produto salvo com sucesso.',
+                    type: 'success',
+                    autoCloseMs: 4000,
                 });
             }
             if (returnTo === '/consulta') {
