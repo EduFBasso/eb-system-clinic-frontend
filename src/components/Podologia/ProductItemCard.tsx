@@ -23,13 +23,13 @@ export default function ProductItemCard({
     locked = false,
 }: ProductItemCardProps) {
     return (
-        <div className={styles.groupCard}>
+        <div className={styles.productItem}>
             <strong>{name}</strong>
             <span className={styles.textMuted}>
                 {quantity}x — R$ {value.toFixed(2)}
             </span>
             {!locked && (onEdit || onDelete) && (
-                <div>
+                <div className={styles.productActions}>
                     {onEdit && (
                         <button
                             type='button'

@@ -860,6 +860,18 @@
     gap: 8px;
 }
 
+.productItem {
+    display: grid;
+    gap: 8px;
+    padding-bottom: 5px;
+}
+
+.productActions {
+    display: flex;
+    gap: 5px;
+    padding-bottom: 5px;
+}
+
 .groupDate {
     color: var(--color-primary);
     font-size: 13px;
