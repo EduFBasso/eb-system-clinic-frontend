@@ -45,33 +45,55 @@ describe('podologyContextFromServiceRow', () => {
 describe('getPodologyRegionLabel', () => {
     it('returns Geral / Outros for general scope or null location', () => {
         expect(getPodologyRegionLabel('geral', null)).toBe('Geral / Outros');
-        expect(getPodologyRegionLabel('pe_esquerdo', null)).toBe('Geral / Outros');
+        expect(getPodologyRegionLabel('pe_esquerdo', null)).toBe(
+            'Geral / Outros',
+        );
     });
 
     it('returns mapped and concatenated labels for valid locations', () => {
         // Dedo 1 has id: 9 in pé esquerdo
-        expect(getPodologyRegionLabel('pe_esquerdo', 9)).toBe('Pé Esquerdo - Dedo 1');
+        expect(getPodologyRegionLabel('pe_esquerdo', 9)).toBe(
+            'Pé Esquerdo - Dedo 1',
+        );
         // Antepé has id: 6 in pé direito
-        expect(getPodologyRegionLabel('pe_direito', 6)).toBe('Pé Direito - Antepé');
+        expect(getPodologyRegionLabel('pe_direito', 6)).toBe(
+            'Pé Direito - Antepé',
+        );
         // Unha 1 has id: 17 in mão direita
-        expect(getPodologyRegionLabel('mao_direita', 17)).toBe('Mão Direita - Unha 1');
+        expect(getPodologyRegionLabel('mao_direita', 17)).toBe(
+            'Mão Direita - Unha 1',
+        );
     });
 
     it('handles fallback for custom out of range region IDs', () => {
-        expect(getPodologyRegionLabel('pe_esquerdo', 99)).toBe('Pé Esquerdo - Região 99');
+        expect(getPodologyRegionLabel('pe_esquerdo', 99)).toBe(
+            'Pé Esquerdo - Região 99',
+        );
     });
 });
 
 describe('filterPodologyServiceCatalog', () => {
     it('ranks and filters services inside catalog without scope constraint', () => {
         const catalog: CatalogServiceItem[] = [
-            { id: 1, name: 'Corte de Unhas', base_price: 60 },
-            { id: 2, name: 'Tratamento de Calo', base_price: 100 },
-            { id: 3, name: 'Lixamento', base_price: 45 },
+            {
+                id: 1,
+                name: 'Corte de Unhas',
+                base_price: 60,
+                treatment_scopes: [],
+            },
+            {
+                id: 2,
+                name: 'Tratamento de Calo',
+                base_price: 100,
+                treatment_scopes: [],
+            },
+            { id: 3, name: 'Lixamento', base_price: 45, treatment_scopes: [] },
         ];
 
         expect(
-            filterPodologyServiceCatalog(catalog, 'unha').map(item => item.name),
+            filterPodologyServiceCatalog(catalog, 'unha').map(
+                item => item.name,
+            ),
         ).toEqual(['Corte de Unhas']);
 
         expect(

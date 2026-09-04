@@ -13,20 +13,24 @@ describe('PodologyServiceModal catalog selection', () => {
                 id: 1,
                 name: 'Corte de Unhas',
                 base_price: 60,
+                treatment_scopes: [],
             },
             {
                 id: 2,
                 name: 'Desbaste',
                 base_price: 150,
+                treatment_scopes: [],
             },
         ];
 
         expect(
-            filterPodologyServiceCatalog(catalog, 'Desbaste').map(item => item.name),
+            filterPodologyServiceCatalog(catalog, 'Desbaste').map(
+                item => item.name,
+            ),
         ).toEqual(['Desbaste']);
-        expect(
-            filterPodologyServiceCatalog(catalog, 'Inexistente'),
-        ).toEqual([]);
+        expect(filterPodologyServiceCatalog(catalog, 'Inexistente')).toEqual(
+            [],
+        );
     });
 
     it('submits only checked rows that do not already exist in the catalog', () => {
@@ -62,6 +66,7 @@ describe('PodologyServiceModal catalog selection', () => {
                         name: 'Tratamento de Fissuras',
                         base_price: 150,
                         default_notes: 'Serviço cadastrado.',
+                        treatment_scopes: [],
                     },
                 ]}
                 onClose={vi.fn()}
@@ -77,9 +82,7 @@ describe('PodologyServiceModal catalog selection', () => {
         expect(screen.getAllByRole('checkbox')).toHaveLength(1);
         expect(screen.getByRole('checkbox')).toBeChecked();
 
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Salvar' }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
 
         expect(onSave).toHaveBeenCalledWith([1]);
     });
