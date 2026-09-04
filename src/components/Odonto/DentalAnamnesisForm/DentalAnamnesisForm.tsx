@@ -12,20 +12,10 @@ import {
     Typography,
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material/Select';
-
-export type ToothBrushingFrequency =
-    | ''
-    | '1 vez'
-    | '2 vezes'
-    | '3 ou mais vezes';
-
-export interface DentalAnamnesisValues {
-    gum_bleeding: boolean;
-    floss_usage: boolean;
-    bruxism_clenching: boolean;
-    tooth_brushing_frequency: ToothBrushingFrequency;
-    chief_dental_complaint: string;
-}
+import {
+    type ToothBrushingFrequency,
+    type DentalAnamnesisValues,
+} from './dentalAnamnesisModel';
 
 interface Props {
     values: DentalAnamnesisValues;
@@ -35,7 +25,7 @@ interface Props {
     ) => void;
 }
 
-export default function DentalAnamnesisForm({ values, onChange }: Props) {
+export function DentalAnamnesisForm({ values, onChange }: Props) {
     const handleFrequencyChange = (event: SelectChangeEvent) => {
         onChange(
             'tooth_brushing_frequency',

@@ -11,10 +11,11 @@ import { formatDOBWithAge } from '../../utils/dateOfBirth';
 import { formatCpf, formatCnpj, formatCep } from '../../utils/formatCpf';
 import { useTheme } from '../../contexts/ThemeContext';
 import {
-    hasOdontoCapability,
-    hasPodologiaCapability,
     readLoggedProfessionalCapabilities,
+    resolveClinicSpecialty,
 } from '../../utils/tenantCapabilities';
+import { ODONTO_ANAMNESIS_FIELDS } from '../Odonto/DentalAnamnesisForm/dentalAnamnesisModel';
+import { PODOLOGY_ANAMNESIS_FIELDS } from '../Podologia/ClientPodologiaSection/podologiaAnamnesisModel';
 
 interface ClientViewProps {
     client: ClientData & {
@@ -25,18 +26,6 @@ interface ClientViewProps {
     };
     openToken?: number;
 }
-
-const odontoFields: Array<{ key: string; label: string; isBool?: boolean }> = [
-    { key: 'gum_bleeding', label: 'Gengiva sangra ao escovar', isBool: true },
-    { key: 'floss_usage', label: 'Usa fio dental diariamente', isBool: true },
-    {
-        key: 'bruxism_clenching',
-        label: 'Ranger/Apertar dentes (Bruxismo)',
-        isBool: true,
-    },
-    { key: 'tooth_brushing_frequency', label: 'Frequência de escovação' },
-    { key: 'chief_dental_complaint', label: 'Queixa principal bucal' },
-];
 
 // ── label maps ──────────────────────────────────────────────────────────────
 
@@ -165,8 +154,9 @@ export const ClientView: React.FC<ClientViewProps> = ({
     const rootRef = React.useRef<HTMLDivElement | null>(null);
 
     const capabilities = React.useMemo(readLoggedProfessionalCapabilities, []);
-    const hasOdonto = hasOdontoCapability(capabilities);
-    const hasPodologia = hasPodologiaCapability(capabilities);
+    const specialty = resolveClinicSpecialty(capabilities);
+    const hasOdonto = specialty === 'odonto';
+    const hasPodologia = specialty === 'podologia';
 
     useEffect(() => {
         const node = rootRef.current;
@@ -271,82 +261,42 @@ export const ClientView: React.FC<ClientViewProps> = ({
                   label: 'Atividade esportiva',
                   value: anamneseBase.sport_activity || '-',
               },
+              {
+                  label: 'Atividade acadêmica',
+                  value: anamneseBase.academic_activity || '-',
+              },
           ].filter(row => hasValue(row.value) && row.value !== '-')
         : [];
 
     const podologiaRows: { label: string; value: string }[] = anamnesePodologia
-        ? [
-              {
-                  label: 'Calçado usado',
-                  value: anamnesePodologia.footwear_used || '-',
-              },
-              {
-                  label: 'Meia usada',
-                  value: anamnesePodologia.sock_used || '-',
-              },
-              {
-                  label: 'Vista plantar esquerda',
-                  value: anamnesePodologia.plantar_view_left || '-',
-              },
-              {
-                  label: 'Vista plantar direita',
-                  value: anamnesePodologia.plantar_view_right || '-',
-              },
-              {
-                  label: 'Patologias dermatológicas esquerda',
-                  value:
-                      anamnesePodologia.dermatological_pathologies_left || '-',
-              },
-              {
-                  label: 'Patologias dermatológicas direita',
-                  value:
-                      anamnesePodologia.dermatological_pathologies_right || '-',
-              },
-              {
-                  label: 'Alterações ungueais esquerda',
-                  value: anamnesePodologia.nail_changes_left || '-',
-              },
-              {
-                  label: 'Alterações ungueais direita',
-                  value: anamnesePodologia.nail_changes_right || '-',
-              },
-              {
-                  label: 'Deformidades esquerda',
-                  value: anamnesePodologia.deformities_left || '-',
-              },
-              {
-                  label: 'Deformidades direita',
-                  value: anamnesePodologia.deformities_right || '-',
-              },
-              {
-                  label: 'Teste de sensibilidade',
-                  value: anamnesePodologia.sensitivity_test || '-',
-              },
-              {
-                  label: 'Outros procedimentos',
-                  value: anamnesePodologia.other_procedures || '-',
-              },
-          ].filter(row => hasValue(row.value) && row.value !== '-')
+        ? PODOLOGY_ANAMNESIS_FIELDS.map(({ key, label }) => {
+              const rawValue = (anamnesePodologia as Record<string, unknown>)[
+                  key
+              ];
+              const value =
+                  rawValue === null || rawValue === undefined
+                      ? '-'
+                      : String(rawValue);
+              return { label, value };
+          }).filter(row => hasValue(row.value) && row.value !== '-')
         : [];
 
     const odontoRows: { label: string; value: string }[] = anamneseOdontologia
-        ? odontoFields
-              .map(({ key, label, isBool }) => {
-                  const rawValue = (
-                      anamneseOdontologia as Record<string, unknown>
-                  )[key];
-                  if (rawValue === null || rawValue === undefined) return null;
+        ? ODONTO_ANAMNESIS_FIELDS.map(({ key, label, isBool }) => {
+              const rawValue = (anamneseOdontologia as Record<string, unknown>)[
+                  key
+              ];
+              if (rawValue === null || rawValue === undefined) return null;
 
-                  const value = isBool
-                      ? rawValue === true
-                          ? 'Sim'
-                          : 'Não'
-                      : String(rawValue);
+              const value = isBool
+                  ? rawValue === true
+                      ? 'Sim'
+                      : 'Não'
+                  : String(rawValue);
 
-                  if (!hasValue(value)) return null;
-                  return { label, value };
-              })
-              .filter((row): row is { label: string; value: string } => !!row)
+              if (!hasValue(value)) return null;
+              return { label, value };
+          }).filter((row): row is { label: string; value: string } => !!row)
         : [];
 
     return (

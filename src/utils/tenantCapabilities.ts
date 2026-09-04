@@ -1,4 +1,5 @@
 export type TenantCapabilities = Record<string, unknown>;
+export type ClinicSpecialty = 'odonto' | 'podologia' | 'none';
 
 export function hasOdontoCapability(value: unknown): boolean {
     if (!value || typeof value !== 'object') return false;
@@ -22,6 +23,13 @@ export function hasPodologiaCapability(value: unknown): boolean {
         typeof modules === 'object' &&
         (modules as TenantCapabilities).podologia === true
     );
+}
+
+export function resolveClinicSpecialty(value: unknown): ClinicSpecialty {
+    const hasOdonto = hasOdontoCapability(value);
+    const hasPodologia = hasPodologiaCapability(value);
+    if (hasOdonto === hasPodologia) return 'none';
+    return hasOdonto ? 'odonto' : 'podologia';
 }
 
 export function readLoggedProfessionalCapabilities(): TenantCapabilities {

@@ -3,7 +3,7 @@ import { API_BASE } from '../../config/api';
 import { apiFetch, ApiError } from '../../utils/apiFetch';
 import FormPage from '../../components/FormKit/FormPage';
 import FormSection from '../../components/FormKit/FormSection';
-import CatalogPrintView from '../../components/Catalog/CatalogPrintView';
+import { CatalogPrintView } from '../../components/CatalogPrintView/CatalogPrintView';
 import ActionPromptModal from '../../components/Shared/ActionPromptModal';
 import { emit } from '../../events/bus';
 import { useLocation, useNavigate } from 'react-router-dom';

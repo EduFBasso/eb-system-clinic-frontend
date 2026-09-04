@@ -57,7 +57,7 @@ function paginateItems(items: CatalogPrintItem[]): CatalogPrintItem[][] {
     return pages;
 }
 
-export default function CatalogPrintView({ title, items }: Props) {
+export function CatalogPrintView({ title, items }: Props) {
     const professional = React.useMemo(loadProfessional, []);
     const clinicName =
         professional.display_name ||

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { ThemeProvider } from '../../../contexts/ThemeContext';
-import ClientAnamnesisForm from '../ClientAnamnesisForm';
-import type { AnamneseBaseData } from '../../../types/ClientData';
+import { ThemeProvider } from '../../../../contexts/ThemeContext';
+import { ClientAnamnesisForm } from '../ClientAnamnesisForm';
+import type { AnamneseBaseData } from '../../../../types/ClientData';
 
 const initialBase: AnamneseBaseData = {
     takes_medication: '',
@@ -12,6 +12,7 @@ const initialBase: AnamneseBaseData = {
     pain_sensitivity: '',
     clinical_history: '',
     sport_activity: '',
+    academic_activity: '',
 };
 
 function Harness({

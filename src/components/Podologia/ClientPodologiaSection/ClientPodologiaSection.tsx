@@ -1,4 +1,4 @@
-import type { AnamnesePodologiaData } from '../../types/ClientData';
+import type { AnamnesePodologiaData } from '../../../types/ClientData';
 import styles from './ClientPodologiaSection.module.css';
 
 interface Props {
@@ -86,7 +86,7 @@ const sections: Array<{
     },
 ];
 
-export default function ClientPodologiaSection({ values, onChange }: Props) {
+export function ClientPodologiaSection({ values, onChange }: Props) {
     return (
         <div className={styles.podologiaGrid}>
             {sections.map(section => (

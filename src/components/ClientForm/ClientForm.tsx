@@ -1,19 +1,12 @@
 import { API_BASE } from '../../config/api';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { formatDOBToBR, normalizeDOBForApi } from '../../utils/dateOfBirth';
-import type {
-    AnamneseBaseData,
-    AnamnesePodologiaData,
-    ClientData,
-} from '../../types/ClientData';
+import type { AnamneseBaseData, ClientData } from '../../types/ClientData';
 import ClientPersonalDataForm from '../ClientPersonalDataForm/ClientPersonalDataForm';
 import ClientAddressForm from '../ClientAddressForm/ClientAddressForm';
-import ClientAnamnesisForm from '../ClientAnamnesisForm/ClientAnamnesisForm';
-import ClientPodologiaSection from './ClientPodologiaSection';
-import DentalAnamnesisForm, {
-    type DentalAnamnesisValues,
-    type ToothBrushingFrequency,
-} from '../DentalAnamnesisForm/DentalAnamnesisForm';
+import { ClientAnamnesisForm } from './ClientAnamnesisForm/ClientAnamnesisForm';
+import { SpecialtyAnamnesisSection } from './SpecialtyAnamnesisSection';
+import { useSpecialtyAnamnesis } from './useSpecialtyAnamnesis';
 import styles from './ClientForm.module.css';
 import useUnsavedChangesGuard from '../../hooks/useUnsavedChangesGuard';
 import { useClientDelete } from '../../hooks/useClientDelete';
@@ -25,11 +18,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import type { AppTheme } from '../../contexts/ThemeContext';
 import { getAccessToken } from '../../utils/auth/session';
 import { SmartSection } from '../SmartSection/SmartSection';
-import {
-    hasOdontoCapability,
-    hasPodologiaCapability,
-    readLoggedProfessionalCapabilities,
-} from '../../utils/tenantCapabilities';
+import { readLoggedProfessionalCapabilities } from '../../utils/tenantCapabilities';
 
 interface ClientFormProps {
     cliente?: Partial<ClientData>;
@@ -88,51 +77,17 @@ function buildDefaultAnamneseBase(
             nested.pain_sensitivity ?? legacy.pain_sensitivity ?? 'Moderada',
         clinical_history: clinicalHistory || 'Sem histórico relevante',
         sport_activity: nested.sport_activity ?? legacy.sport_activity ?? 'Não',
+        academic_activity:
+            nested.academic_activity ?? legacy.academic_activity ?? 'Não',
     };
 }
 
-function buildDefaultPodologia(
-    cliente?: Partial<ClientData>,
-): AnamnesePodologiaData {
-    const podologia = cliente?.anamnese_podologia ?? {};
-    return {
-        footwear_used: podologia.footwear_used ?? '',
-        sock_used: podologia.sock_used ?? '',
-        plantar_view_left: podologia.plantar_view_left ?? '',
-        plantar_view_right: podologia.plantar_view_right ?? '',
-        dermatological_pathologies_left:
-            podologia.dermatological_pathologies_left ?? '',
-        dermatological_pathologies_right:
-            podologia.dermatological_pathologies_right ?? '',
-        nail_changes_left: podologia.nail_changes_left ?? '',
-        nail_changes_right: podologia.nail_changes_right ?? '',
-        deformities_left: podologia.deformities_left ?? '',
-        deformities_right: podologia.deformities_right ?? '',
-        sensitivity_test: podologia.sensitivity_test ?? '',
-        other_procedures: podologia.other_procedures ?? '',
-    };
-}
-
-function buildDefaultDentalAnamnesis(
-    cliente?: Partial<ClientData>,
-): DentalAnamnesisValues {
-    const odontologia = cliente?.anamnese_odontologia ?? {};
-    const frequency = odontologia.tooth_brushing_frequency ?? '';
-    const toothBrushingFrequency: ToothBrushingFrequency = [
-        '',
-        '1 vez',
-        '2 vezes',
-        '3 ou mais vezes',
-    ].includes(frequency)
-        ? (frequency as ToothBrushingFrequency)
-        : '';
-    return {
-        gum_bleeding: odontologia.gum_bleeding ?? false,
-        floss_usage: odontologia.floss_usage ?? false,
-        bruxism_clenching: odontologia.bruxism_clenching ?? false,
-        tooth_brushing_frequency: toothBrushingFrequency,
-        chief_dental_complaint: odontologia.chief_dental_complaint ?? '',
-    };
+function buildFormSnapshot(
+    formData: ClientData,
+    anamneseBase: AnamneseBaseData,
+    specialtySnapshot: unknown,
+): string {
+    return JSON.stringify({ formData, anamneseBase, specialtySnapshot });
 }
 
 export function ClientForm({
@@ -157,28 +112,14 @@ export function ClientForm({
     const [anamneseBase, setAnamneseBase] = useState<AnamneseBaseData>(() =>
         buildDefaultAnamneseBase(cliente),
     );
-    const [anamnesePodologia, setAnamnesePodologia] =
-        useState<AnamnesePodologiaData>(() => buildDefaultPodologia(cliente));
-    const [dentalAnamnesisValues, setDentalAnamnesisValues] =
-        useState<DentalAnamnesisValues>(() =>
-            buildDefaultDentalAnamnesis(cliente),
-        );
 
     const capabilities = useMemo(readLoggedProfessionalCapabilities, []);
-    const hasOdonto = hasOdontoCapability(capabilities);
-    const hasPodologia = hasPodologiaCapability(capabilities);
-
-    const initialSnapshot = useMemo(
-        () =>
-            JSON.stringify({
-                formData,
-                anamneseBase,
-                anamnesePodologia,
-                dentalAnamnesisValues,
-            }),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [cliente?.id],
-    );
+    const specialty = useSpecialtyAnamnesis({
+        capabilities,
+        cliente,
+        enabled: !isPublicMode,
+    });
+    const isEdit = !!cliente?.id;
 
     const quickModeRef = useRef(false);
     const formRef = useRef<HTMLFormElement | null>(null);
@@ -186,38 +127,38 @@ export function ClientForm({
         quickModeRef.current = true;
     };
 
-    const initialRef = useRef(initialSnapshot);
+    const initialRef = useRef(
+        buildFormSnapshot(formData, anamneseBase, specialty.snapshot),
+    );
     const [dirty, setDirty] = useState(false);
 
     useEffect(() => {
-        const next = JSON.stringify({
+        const next = buildFormSnapshot(
             formData,
             anamneseBase,
-            anamnesePodologia,
-            dentalAnamnesisValues,
-        });
+            specialty.snapshot,
+        );
         setDirty(next !== initialRef.current);
-    }, [formData, anamneseBase, anamnesePodologia, dentalAnamnesisValues]);
+    }, [formData, anamneseBase, specialty.snapshot]);
 
     useUnsavedChangesGuard(dirty, 'Há alterações não salvas. Deseja sair?');
 
-    useEffect(() => {
-        const nextClient = buildDefaultClientData(cliente);
-        const nextBase = buildDefaultAnamneseBase(cliente);
-        const nextPodologia = buildDefaultPodologia(cliente);
+    function resetForm(nextCliente?: Partial<ClientData>) {
+        const nextClient = buildDefaultClientData(nextCliente);
+        const nextBase = buildDefaultAnamneseBase(nextCliente);
+        const nextSpecialty = specialty.reset(nextCliente);
         setFormData(nextClient);
         setAnamneseBase(nextBase);
-        setAnamnesePodologia(nextPodologia);
-        setDentalAnamnesisValues(buildDefaultDentalAnamnesis(cliente));
-
-        const snapshot = JSON.stringify({
-            formData: nextClient,
-            anamneseBase: nextBase,
-            anamnesePodologia: nextPodologia,
-            dentalAnamnesisValues: buildDefaultDentalAnamnesis(cliente),
-        });
-        initialRef.current = snapshot;
+        initialRef.current = buildFormSnapshot(
+            nextClient,
+            nextBase,
+            nextSpecialty,
+        );
         setDirty(false);
+    }
+
+    useEffect(() => {
+        resetForm(cliente);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cliente?.id]);
 
@@ -237,8 +178,6 @@ export function ClientForm({
     const toggleSection = (sectionId: string) => {
         setOpenSection(prev => (prev === sectionId ? null : sectionId));
     };
-    const withPublicClientName = (baseTitle: string) => baseTitle;
-
     function handleChange(
         fieldOrEvent:
             | keyof ClientData
@@ -261,50 +200,6 @@ export function ClientForm({
         value: AnamneseBaseData[K],
     ) {
         setAnamneseBase(prev => ({ ...prev, [key]: value }));
-    }
-
-    function handleDentalAnamnesisChange<K extends keyof DentalAnamnesisValues>(
-        key: K,
-        value: DentalAnamnesisValues[K],
-    ) {
-        setDentalAnamnesisValues(prev => ({ ...prev, [key]: value }));
-    }
-
-    function handlePodologiaChange<K extends keyof AnamnesePodologiaData>(
-        key: K,
-        value: AnamnesePodologiaData[K],
-    ) {
-        setAnamnesePodologia(prev => ({ ...prev, [key]: value }));
-    }
-
-    async function saveDentalAnamnesis(
-        clientId: number,
-        authToken: string,
-    ): Promise<void> {
-        const response = await fetch(
-            `${API_BASE}/clinic/treatment/anamnesis/`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${authToken}`,
-                },
-                body: JSON.stringify({
-                    client_id: clientId,
-                    ...dentalAnamnesisValues,
-                }),
-            },
-        );
-        if (!response.ok) {
-            let detail = 'Falha ao salvar anamnese odontológica.';
-            try {
-                const data = await response.json();
-                if (typeof data?.detail === 'string') detail = data.detail;
-            } catch {
-                /* noop */
-            }
-            throw new Error(detail);
-        }
     }
 
     function normalizeClinicalHistoryForSubmit(value: unknown): string {
@@ -356,8 +251,9 @@ export function ClientForm({
                         anamneseBase.clinical_history,
                     ) || 'Sem histórico relevante',
                 sport_activity: anamneseBase.sport_activity,
+                academic_activity: anamneseBase.academic_activity,
             },
-            ...(hasPodologia ? { anamnese_podologia: anamnesePodologia } : {}),
+            ...specialty.getNestedPayload(),
         };
     }
 
@@ -497,18 +393,14 @@ export function ClientForm({
                     return;
                 }
 
-                initialRef.current = JSON.stringify({
+                initialRef.current = buildFormSnapshot(
                     formData,
                     anamneseBase,
-                    anamnesePodologia,
-                    dentalAnamnesisValues,
-                });
+                    specialty.snapshot,
+                );
                 setDirty(false);
                 if (onPublicSubmitSuccess) {
-                    setFormData(buildDefaultClientData());
-                    setAnamneseBase(buildDefaultAnamneseBase());
-                    setAnamnesePodologia(buildDefaultPodologia());
-                    setDentalAnamnesisValues(buildDefaultDentalAnamnesis());
+                    resetForm();
                     onPublicSubmitSuccess();
                     return;
                 }
@@ -544,7 +436,6 @@ export function ClientForm({
             return;
         }
 
-        const isEdit = !!cliente?.id;
         const endpoint = isEdit
             ? `${API_BASE}/register/clients/${cliente?.id}/`
             : `${API_BASE}/register/clients/`;
@@ -589,41 +480,22 @@ export function ClientForm({
             const result = await response.json();
 
             if (result?.id) {
-                if (hasOdonto) {
-                    try {
-                        await saveDentalAnamnesis(Number(result.id), token);
-                    } catch (anamnesisErr) {
-                        setFeedback({
-                            type: 'error',
-                            message:
-                                'Cliente salvo, mas houve um erro ao salvar a anamnese odontológica: ' +
-                                (anamnesisErr instanceof Error
-                                    ? anamnesisErr.message
-                                    : 'erro desconhecido'),
-                        });
-                    }
+                try {
+                    await specialty.saveAfterClient(Number(result.id), token);
+                } catch (anamnesisErr) {
+                    throw new Error(
+                        'Cliente salvo, mas houve um erro ao salvar a anamnese da especialidade: ' +
+                            (anamnesisErr instanceof Error
+                                ? anamnesisErr.message
+                                : 'erro desconhecido'),
+                    );
                 }
             }
 
             if (!isEdit && quickModeRef.current) {
                 quickModeRef.current = false;
 
-                const nextClient = buildDefaultClientData();
-                const nextBase = buildDefaultAnamneseBase();
-                const nextPodologia = buildDefaultPodologia();
-
-                setFormData(nextClient);
-                setAnamneseBase(nextBase);
-                setAnamnesePodologia(nextPodologia);
-                setDentalAnamnesisValues(buildDefaultDentalAnamnesis());
-                const snapshot = JSON.stringify({
-                    formData: nextClient,
-                    anamneseBase: nextBase,
-                    anamnesePodologia: nextPodologia,
-                    dentalAnamnesisValues: buildDefaultDentalAnamnesis(),
-                });
-                initialRef.current = snapshot;
-                setDirty(false);
+                resetForm();
 
                 setTimeout(() => {
                     try {
@@ -643,12 +515,11 @@ export function ClientForm({
                 localStorage.setItem('newClientId', String(result.id));
             }
 
-            initialRef.current = JSON.stringify({
+            initialRef.current = buildFormSnapshot(
                 formData,
                 anamneseBase,
-                anamnesePodologia,
-                dentalAnamnesisValues,
-            });
+                specialty.snapshot,
+            );
             setDirty(false);
 
             setInfoModal({
@@ -668,7 +539,6 @@ export function ClientForm({
         }
     };
 
-    const isEdit = !!cliente?.id;
     const deleteModalTitle =
         [cliente?.first_name, cliente?.last_name]
             .filter(Boolean)
@@ -683,7 +553,7 @@ export function ClientForm({
                 data-theme={activeTheme}
             >
                 <SmartSection
-                    title={withPublicClientName('Dados pessoais')}
+                    title='Dados pessoais'
                     stickyWhenOpen
                     isOpen={openSection === 'personal'}
                     onToggle={() => toggleSection('personal')}
@@ -699,7 +569,7 @@ export function ClientForm({
                 </SmartSection>
 
                 <SmartSection
-                    title={withPublicClientName('Endereço')}
+                    title='Endereço'
                     stickyWhenOpen
                     isOpen={openSection === 'address'}
                     onToggle={() => toggleSection('address')}
@@ -713,7 +583,7 @@ export function ClientForm({
                 </SmartSection>
 
                 <SmartSection
-                    title={withPublicClientName('Anamnese geral')}
+                    title='Anamnese geral'
                     stickyWhenOpen
                     isOpen={openSection === 'anamnesis'}
                     onToggle={() => toggleSection('anamnesis')}
@@ -726,32 +596,12 @@ export function ClientForm({
                     />
                 </SmartSection>
 
-                {!isPublicMode && hasOdonto && (
-                    <SmartSection
-                        title='Anamnese Odontologia'
-                        stickyWhenOpen
-                        isOpen={openSection === 'odontologia'}
-                        onToggle={() => toggleSection('odontologia')}
-                    >
-                        <DentalAnamnesisForm
-                            values={dentalAnamnesisValues}
-                            onChange={handleDentalAnamnesisChange}
-                        />
-                    </SmartSection>
-                )}
-
-                {!isPublicMode && hasPodologia && (
-                    <SmartSection
-                        title='Anamnese Podologia'
-                        stickyWhenOpen
-                        isOpen={openSection === 'podologia'}
-                        onToggle={() => toggleSection('podologia')}
-                    >
-                        <ClientPodologiaSection
-                            values={anamnesePodologia}
-                            onChange={handlePodologiaChange}
-                        />
-                    </SmartSection>
+                {!isPublicMode && (
+                    <SpecialtyAnamnesisSection
+                        openSection={openSection}
+                        toggleSection={toggleSection}
+                        specialty={specialty.model}
+                    />
                 )}
 
                 <div className={styles.footer}>
