@@ -12,7 +12,10 @@ import {
     queueFlashMessage,
 } from '../../utils/flashMessage';
 import type { ServiceFlowType } from '../../components/Odonto/OdontoAnatomyHelpers';
-import { readLoggedProfessionalCapabilities, hasOdontoCapability } from '../../utils/tenantCapabilities';
+import {
+    readLoggedProfessionalCapabilities,
+    hasOdontoCapability,
+} from '../../utils/tenantCapabilities';
 
 type Service = {
     id: number;
@@ -59,9 +62,15 @@ export default function TreatmentFormPage() {
     const [treatmentScopes, setTreatmentScopes] = useState<ServiceFlowType[]>(
         [],
     );
-    const capabilities = useMemo(() => readLoggedProfessionalCapabilities(), []);
-    const isOdonto = useMemo(() => hasOdontoCapability(capabilities), [capabilities]);
-    
+    const capabilities = useMemo(
+        () => readLoggedProfessionalCapabilities(),
+        [],
+    );
+    const isOdonto = useMemo(
+        () => hasOdontoCapability(capabilities),
+        [capabilities],
+    );
+
     // Lista de opções disponíveis baseadas no ecossistema ativo (Solução OU Geral/Automática)
     const availableOptions = useMemo(() => {
         return isOdonto ? TREATMENT_SCOPE_OPTIONS : [];
@@ -212,36 +221,44 @@ export default function TreatmentFormPage() {
                                 gap: 16,
                             }}
                         >
-                            {availableOptions.map((option: { value: ServiceFlowType; label: string }) => (
-                                <label
-                                    key={option.value}
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: 7,
-                                        cursor: 'pointer',
-                                    }}
-                                >
-                                    <input
-                                        type='checkbox'
-                                        checked={treatmentScopes.includes(
-                                            option.value,
-                                        )}
-                                        onChange={event =>
-                                            setTreatmentScopes(current =>
-                                                event.target.checked
-                                                    ? [...current, option.value]
-                                                    : current.filter(
-                                                          scope =>
-                                                              scope !==
+                            {availableOptions.map(
+                                (option: {
+                                    value: ServiceFlowType;
+                                    label: string;
+                                }) => (
+                                    <label
+                                        key={option.value}
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 7,
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        <input
+                                            type='checkbox'
+                                            checked={treatmentScopes.includes(
+                                                option.value,
+                                            )}
+                                            onChange={event =>
+                                                setTreatmentScopes(current =>
+                                                    event.target.checked
+                                                        ? [
+                                                              ...current,
                                                               option.value,
-                                                      ),
-                                            )
-                                        }
-                                    />
-                                    {option.label}
-                                </label>
-                            ))}
+                                                          ]
+                                                        : current.filter(
+                                                              scope =>
+                                                                  scope !==
+                                                                  option.value,
+                                                          ),
+                                                )
+                                            }
+                                        />
+                                        {option.label}
+                                    </label>
+                                ),
+                            )}
                         </div>
                     </fieldset>
                 )}

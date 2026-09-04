@@ -9,7 +9,10 @@ import { emit } from '../../events/bus';
 import { useLocation, useNavigate } from 'react-router-dom';
 import formStyles from '../../styles/pages/Client.module.css';
 import type { ServiceFlowType } from '../../components/Odonto/OdontoAnatomyHelpers';
-import { readLoggedProfessionalCapabilities, hasOdontoCapability } from '../../utils/tenantCapabilities';
+import {
+    readLoggedProfessionalCapabilities,
+    hasOdontoCapability,
+} from '../../utils/tenantCapabilities';
 
 type Service = {
     id: number;
@@ -305,7 +308,9 @@ export default function TreatmentListPage() {
                                     )}
                                     {isOdonto && (
                                         <div
-                                            className={formStyles.catalogScopeList}
+                                            className={
+                                                formStyles.catalogScopeList
+                                            }
                                         >
                                             {(service.treatment_scopes ?? [])
                                                 .length > 0 ? (
