@@ -1,12 +1,20 @@
 // frontend\src\App.tsx
 
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import React, { useEffect, Suspense, lazy } from 'react';
 import Home from '../src/pages/Home';
-// DesktopAgendaPage carregado de forma lazy; se falhar import (arquivo ausente na branch remota), renderiza Home.
-import React from 'react';
 import { on } from './events/bus';
 import { SystemMessageModal } from './components/SystemMessageModal/SystemMessageModal';
-const LazyDesktopAgenda: React.ComponentType = React.lazy(async () => {
+import ensureDeviceSession from './services/sessions';
+import {
+    hydrateAgendaSettings,
+    resetAgendaSettings,
+} from './utils/agendaSettings';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { getAccessToken } from './utils/auth/session';
+
+// Rotas secundárias com Lazy Loading para reduzir o bundle inicial
+const LazyDesktopAgenda: React.ComponentType = lazy(async () => {
     try {
         return (await import('./pages/DesktopAgendaPage')) as unknown as {
             default: React.ComponentType;
@@ -15,23 +23,22 @@ const LazyDesktopAgenda: React.ComponentType = React.lazy(async () => {
         return { default: () => null } as { default: React.ComponentType };
     }
 });
-import ClientFormPage from './pages/Clients/ClientFormPage';
-import AdminPage from './pages/AdminPage';
-import { useEffect } from 'react';
-import ensureDeviceSession from './services/sessions';
-import ProductFormPage from './pages/Catalog/ProductFormPage';
-import TreatmentFormPage from './pages/Catalog/TreatmentFormPage';
-import ProductListPage from './pages/Catalog/ProductListPage';
-import TreatmentListPage from './pages/Catalog/TreatmentListPage';
-import ConsultaPage from './pages/ConsultaPage';
-import TreatmentWorkspacePage from './components/Shared/TreatmentWorkspacePage/TreatmentWorkspacePage';
-import AnamnesisPublicPage from './pages/AnamnesisPublicPage';
-import {
-    hydrateAgendaSettings,
-    resetAgendaSettings,
-} from './utils/agendaSettings';
-import { ThemeProvider } from './contexts/ThemeContext';
-import { getAccessToken } from './utils/auth/session';
+const ClientFormPage = lazy(() => import('./pages/Clients/ClientFormPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+const ProductFormPage = lazy(() => import('./pages/Catalog/ProductFormPage'));
+const TreatmentFormPage = lazy(
+    () => import('./pages/Catalog/TreatmentFormPage'),
+);
+const ProductListPage = lazy(() => import('./pages/Catalog/ProductListPage'));
+const TreatmentListPage = lazy(
+    () => import('./pages/Catalog/TreatmentListPage'),
+);
+const ConsultaPage = lazy(() => import('./pages/ConsultaPage'));
+const TreatmentWorkspacePage = lazy(
+    () =>
+        import('./components/Shared/TreatmentWorkspacePage/TreatmentWorkspacePage'),
+);
+const AnamnesisPublicPage = lazy(() => import('./pages/AnamnesisPublicPage'));
 
 function App() {
     const [sysMsg, setSysMsg] = React.useState<{
@@ -88,66 +95,67 @@ function App() {
     return (
         <ThemeProvider>
             <Router>
-                <Routes>
-                    <Route path='/' element={<Home />} />
-                    <Route path='/clients/new' element={<ClientFormPage />} />
-                    <Route
-                        path='/clients/edit/:id'
-                        element={<ClientFormPage />}
-                    />
-                    {/* AgendaPage removida: consolidamos em modais no Home */}
-                    <Route path='/agenda' element={<Home />} />
-                    <Route
-                        path='/catalog/products/new'
-                        element={<ProductFormPage />}
-                    />
-                    <Route
-                        path='/catalog/products/:id'
-                        element={<ProductFormPage />}
-                    />
-                    <Route
-                        path='/catalog/services/new'
-                        element={<TreatmentFormPage />}
-                    />
-                    <Route
-                        path='/catalog/services/:id'
-                        element={<TreatmentFormPage />}
-                    />
-                    <Route
-                        path='/catalog/products'
-                        element={<ProductListPage />}
-                    />
-                    <Route
-                        path='/catalog/services'
-                        element={<TreatmentListPage />}
-                    />
-                    <Route path='/admin' element={<AdminPage />} />
-                    <Route path='/consulta' element={<ConsultaPage />} />
-                    <Route
-                        path='/anamnesis/public'
-                        element={<AnamnesisPublicPage />}
-                    />
-                    <Route
-                        path='/odonto/arcada/:clientId'
-                        element={<TreatmentWorkspacePage />}
-                    />
-                    <Route
-                        path='/treatment/plans/:clientId'
-                        element={<TreatmentWorkspacePage />}
-                    />
-                    {/* Full-page scheduler for mobile */}
-                    {/** Rota /schedule removida para unificar experiência via modais */}
-                    {/* Rota /agenda/settings removida */}
-                    {/* Desktop unified agenda page */}
-                    <Route
-                        path='/desktop'
-                        element={
-                            <React.Suspense fallback={<div />}>
-                                <LazyDesktopAgenda />
-                            </React.Suspense>
-                        }
-                    />
-                </Routes>
+                <Suspense fallback={<div />}>
+                    <Routes>
+                        <Route path='/' element={<Home />} />
+                        <Route
+                            path='/clients/new'
+                            element={<ClientFormPage />}
+                        />
+                        <Route
+                            path='/clients/edit/:id'
+                            element={<ClientFormPage />}
+                        />
+                        {/* AgendaPage removida: consolidamos em modais no Home */}
+                        <Route path='/agenda' element={<Home />} />
+                        <Route
+                            path='/catalog/products/new'
+                            element={<ProductFormPage />}
+                        />
+                        <Route
+                            path='/catalog/products/:id'
+                            element={<ProductFormPage />}
+                        />
+                        <Route
+                            path='/catalog/services/new'
+                            element={<TreatmentFormPage />}
+                        />
+                        <Route
+                            path='/catalog/services/:id'
+                            element={<TreatmentFormPage />}
+                        />
+                        <Route
+                            path='/catalog/products'
+                            element={<ProductListPage />}
+                        />
+                        <Route
+                            path='/catalog/services'
+                            element={<TreatmentListPage />}
+                        />
+                        <Route path='/admin' element={<AdminPage />} />
+                        <Route path='/consulta' element={<ConsultaPage />} />
+                        <Route
+                            path='/anamnesis/public'
+                            element={<AnamnesisPublicPage />}
+                        />
+                        <Route
+                            path='/odonto/arcada/:clientId'
+                            element={<TreatmentWorkspacePage />}
+                        />
+                        <Route
+                            path='/treatment/plans/:clientId'
+                            element={<TreatmentWorkspacePage />}
+                        />
+                        {/* Full-page scheduler for mobile */}
+                        {/** Rota /schedule removida para unificar experiência via modais */}
+                        {/* Rota /agenda/settings removida */}
+                        {/* Desktop unified agenda page */}
+                        <Route
+                            path='/desktop'
+                            element={<LazyDesktopAgenda />}
+                        />
+                    </Routes>
+                </Suspense>
                 <SystemMessageModal
                     open={!!sysMsg}
                     message={sysMsg?.text || null}
