@@ -62,9 +62,6 @@ export const NavBar: React.FC<NavBarProps> = ({
     agendaOpeners,
 }) => {
     const navigate = useNavigate();
-    const biometricStorageKey = React.useCallback((email: string) => {
-        return `hasWebAuthn_${email.trim().toLowerCase()}`;
-    }, []);
 
     // Viewport listener removido (usado apenas pelo relógio)
     const [loginEmail, setLoginEmail] = useState<string>(
@@ -708,24 +705,6 @@ export const NavBar: React.FC<NavBarProps> = ({
                                                     'lastLoginEmail',
                                                     loginEmail,
                                                 );
-                                                if (
-                                                    !localStorage.getItem(
-                                                        biometricStorageKey(
-                                                            loginEmail,
-                                                        ),
-                                                    ) &&
-                                                    typeof PublicKeyCredential !==
-                                                        'undefined' &&
-                                                    typeof (
-                                                        PublicKeyCredential as {
-                                                            isUserVerifyingPlatformAuthenticatorAvailable?: () => Promise<boolean>;
-                                                        }
-                                                    )
-                                                        .isUserVerifyingPlatformAuthenticatorAvailable ===
-                                                        'function'
-                                                ) {
-                                                    /* empty */
-                                                }
                                             } else {
                                                 setModalMessage(
                                                     String(

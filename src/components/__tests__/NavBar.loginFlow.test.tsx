@@ -14,11 +14,6 @@ vi.mock('../../hooks/useUtcClock', () => ({
     }),
 }));
 
-vi.mock('@simplewebauthn/browser', () => ({
-    startRegistration: vi.fn(),
-    startAuthentication: vi.fn(),
-}));
-
 describe('NavBar login code flow', () => {
     function renderNavBar() {
         return render(
@@ -33,15 +28,6 @@ describe('NavBar login code flow', () => {
     beforeEach(() => {
         vi.restoreAllMocks();
         const store: Record<string, string> = {};
-        class MockPublicKeyCredential {}
-        (
-            MockPublicKeyCredential as typeof PublicKeyCredential & {
-                isUserVerifyingPlatformAuthenticatorAvailable: () => Promise<boolean>;
-            }
-        ).isUserVerifyingPlatformAuthenticatorAvailable = vi
-            .fn()
-            .mockResolvedValue(true);
-        vi.stubGlobal('PublicKeyCredential', MockPublicKeyCredential);
         // @ts-expect-error test shim
         global.localStorage = {
             getItem: (k: string) => (k in store ? store[k] : null),
@@ -55,42 +41,6 @@ describe('NavBar login code flow', () => {
                 Object.keys(store).forEach(k => delete store[k]);
             },
         };
-    });
-
-    it('exibe o botao Face ID quando um profissional e selecionado', async () => {
-        vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-            new Response(
-                JSON.stringify([
-                    {
-                        id: 1,
-                        first_name: 'Bruna',
-                        last_name: 'Dentista',
-                        email: 'brunadentista@mail.com',
-                        specialty: 'Odontologia',
-                    },
-                ]),
-                {
-                    status: 200,
-                    headers: { 'Content-Type': 'application/json' },
-                },
-            ),
-        );
-
-        renderNavBar();
-
-        const selectorButton = await screen.findByRole('button', {
-            name: /profissional/i,
-        });
-        fireEvent.click(selectorButton);
-        fireEvent.click(
-            screen.getByRole('button', { name: /Bruna Dentista/i }),
-        );
-
-        await waitFor(() => {
-            expect(
-                screen.getByRole('button', { name: /Face ID/i }),
-            ).toBeInTheDocument();
-        });
     });
 
     it('seleciona profissional e senha e autentica', async () => {
