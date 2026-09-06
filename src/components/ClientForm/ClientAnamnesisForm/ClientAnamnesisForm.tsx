@@ -22,6 +22,8 @@ export function ClientAnamnesisForm({
 }: Props) {
     const { theme } = useTheme();
     const activeTheme = themeOverride ?? theme;
+    const [isOtherHistoryPending, setIsOtherHistoryPending] =
+        React.useState(false);
 
     const yesNoOptions = ['Não', 'Sim'];
     const painOptions = ['Baixa', 'Moderada', 'Alta'];
@@ -68,8 +70,10 @@ export function ClientAnamnesisForm({
             if (!value) return;
 
             if (/^\s*Outros:\s*/.test(rawValue)) {
-                selected.add('Outros');
                 other = rawValue.replace(/^\s*Outros:\s?/, '');
+                if (other.trim()) {
+                    selected.add('Outros');
+                }
                 return;
             }
 
@@ -83,13 +87,19 @@ export function ClientAnamnesisForm({
     const serializeHistory = (selected: Set<string>, other: string) => {
         const values = historyOptions
             .filter(option => selected.has(option))
-            .concat(selected.has('Outros') ? [`Outros: ${other}`] : []);
+            .concat(
+                selected.has('Outros') && other.trim()
+                    ? [`Outros: ${other}`]
+                    : [],
+            );
         return values.join(', ');
     };
 
     const medicationState = splitYesNoDetail(anamneseBase.takes_medication);
     const surgeryState = splitYesNoDetail(anamneseBase.had_surgery);
     const historyState = parseHistory(anamneseBase.clinical_history);
+    const hasOtherHistory =
+        historyState.selected.has('Outros') || isOtherHistoryPending;
 
     const setYesNoField = (
         field: 'takes_medication' | 'had_surgery',
@@ -101,6 +111,9 @@ export function ClientAnamnesisForm({
 
     const toggleHistoryOption = (option: string, checked: boolean) => {
         const nextSelected = new Set(historyState.selected);
+        if (option === 'Outros') {
+            setIsOtherHistoryPending(checked);
+        }
         if (checked) {
             nextSelected.add(option);
         } else {
@@ -115,6 +128,7 @@ export function ClientAnamnesisForm({
     const updateHistoryOther = (other: string) => {
         const nextSelected = new Set(historyState.selected);
         nextSelected.add('Outros');
+        setIsOtherHistoryPending(true);
         onBaseChange(
             'clinical_history',
             serializeHistory(nextSelected, other) as never,
@@ -124,6 +138,7 @@ export function ClientAnamnesisForm({
     const clearHistoryOther = () => {
         const nextSelected = new Set(historyState.selected);
         nextSelected.delete('Outros');
+        setIsOtherHistoryPending(false);
         onBaseChange(
             'clinical_history',
             serializeHistory(nextSelected, '') as never,
@@ -376,7 +391,7 @@ export function ClientAnamnesisForm({
 
                                 <label
                                     className={`${styles.checkPillItem} ${
-                                        historyState.selected.has('Outros')
+                                        hasOtherHistory
                                             ? styles.checkPillSelected
                                             : ''
                                     }`}
@@ -385,9 +400,7 @@ export function ClientAnamnesisForm({
                                         className={styles.checkboxControl}
                                         type='checkbox'
                                         name='clinical_history_other'
-                                        checked={historyState.selected.has(
-                                            'Outros',
-                                        )}
+                                        checked={hasOtherHistory}
                                         onChange={e =>
                                             toggleHistoryOption(
                                                 'Outros',
@@ -399,7 +412,7 @@ export function ClientAnamnesisForm({
                                 </label>
                             </div>
 
-                            {historyState.selected.has('Outros') && (
+                            {hasOtherHistory && (
                                 <div className={styles.otherInputRow}>
                                     <input
                                         type='text'

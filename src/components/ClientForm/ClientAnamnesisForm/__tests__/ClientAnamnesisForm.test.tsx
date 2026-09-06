@@ -132,6 +132,33 @@ describe('ClientAnamnesisForm', () => {
         );
     });
 
+    it('concatena todas as opções e só persiste Outros quando há descrição', () => {
+        render(
+            <Harness
+                initialValues={{
+                    ...initialBase,
+                    clinical_history: 'Hipertensão, Outros: ',
+                }}
+            />,
+        );
+
+        expect(
+            screen.queryByPlaceholderText('Descreva outros históricos...'),
+        ).toBeNull();
+
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Diabetes' }));
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Outros' }));
+
+        const otherInput = screen.getByPlaceholderText(
+            'Descreva outros históricos...',
+        );
+        fireEvent.change(otherInput, { target: { value: 'Anemia falciforme' } });
+
+        expect(screen.getByTestId('values')).toHaveTextContent(
+            '"clinical_history":"Hipertensão, Diabetes, Outros: Anemia falciforme"',
+        );
+    });
+
     it('preserva espaço durante digitação no campo Outros', () => {
         render(<Harness />);
 

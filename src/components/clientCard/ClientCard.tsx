@@ -345,14 +345,11 @@ function ClientCardBase({
 
             const message = [
                 `Olá ${client.first_name}!`,
-                '',
                 'Para preencher ou atualizar sua ficha, toque no link abaixo:',
                 link,
-                '',
                 'Este link é válido por 1 hora.',
-                '',
                 'Se não abrir automaticamente, copie e cole o link no navegador.',
-            ].join('\n');
+            ].join('\n\n');
 
             const userAgent =
                 typeof navigator !== 'undefined' ? navigator.userAgent : '';
