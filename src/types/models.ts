@@ -18,6 +18,11 @@ export interface Professional {
     deactivated_at?: string | null;
     deactivation_reason?: string | null;
     ui_theme?: 'blue' | 'green' | 'pink';
+    tenant_id?: number;
+    tenant_slug?: string;
+    ecosystem?: 'clinic' | 'bakery';
+    role?: string;
+    capabilities?: Record<string, unknown>;
 }
 
 export interface Client {

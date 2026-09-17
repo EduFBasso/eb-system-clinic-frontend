@@ -47,6 +47,7 @@ import {
 } from '../../utils/auth/session';
 import { ProfessionalCreateModal } from '../ProfessionalCreateModal/ProfessionalCreateModal';
 import { useNavigate } from 'react-router-dom';
+import { resolveClinicTenantSlug } from '../../config/tenant';
 
 interface NavBarProps {
     openNewClientModal?: () => void;
@@ -168,11 +169,17 @@ export const NavBar: React.FC<NavBarProps> = ({
         if (loggedProfessional) {
             return;
         }
+        const tenantSlug = resolveClinicTenantSlug();
+        if (!tenantSlug) {
+            setProfessionals([]);
+            setLoadingProfessionals(false);
+            return;
+        }
         const loadProfessionals = async () => {
             setLoadingProfessionals(true);
             try {
                 const res = await fetch(
-                    `${API_BASE}/register/professionals-basic/?ecosystem=clinic`,
+                    `${API_BASE}/register/professionals-basic/?ecosystem=clinic&tenant_slug=${encodeURIComponent(tenantSlug)}`,
                 );
                 if (!res.ok) {
                     throw new Error('Falha ao carregar profissionais.');
@@ -636,6 +643,16 @@ export const NavBar: React.FC<NavBarProps> = ({
                                                 getOrCreateDeviceId(
                                                     deviceIdKey,
                                                 );
+                                            const tenantSlug =
+                                                resolveClinicTenantSlug();
+                                            if (!tenantSlug) {
+                                                setModalMessage(
+                                                    'Acesso bloqueado: domínio da clínica não reconhecido.',
+                                                );
+                                                setModalOpen(true);
+                                                setLoadingLogin(false);
+                                                return;
+                                            }
                                             const res = await fetch(
                                                 `${API_BASE}/token/`,
                                                 {
@@ -648,6 +665,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                                                         email: loginEmail,
                                                         password: loginPassword,
                                                         device_id: deviceId,
+                                                        tenant_slug: tenantSlug,
                                                     }),
                                                 },
                                             );

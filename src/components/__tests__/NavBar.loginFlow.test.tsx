@@ -27,6 +27,7 @@ describe('NavBar login code flow', () => {
 
     beforeEach(() => {
         vi.restoreAllMocks();
+        vi.stubEnv('VITE_CLINIC_TENANT_SLUG', 'consultorio-podologia-auth');
         const store: Record<string, string> = {};
         // @ts-expect-error test shim
         global.localStorage = {
