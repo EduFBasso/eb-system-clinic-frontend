@@ -6,7 +6,10 @@ import OdontoProductModal from './OdontoProductModal';
 import OdontoEditProcedureModal from './OdontoEditProcedureModal';
 import { useOdontoItemFlows } from './useOdontoItemFlows';
 import { useClinicalCatalogs } from '../../hooks/useClinicalCatalogs';
-import { formatMoney } from '../../utils/TreatmentHelpers';
+import {
+    formatMoney,
+    normalizeInstallmentsCount,
+} from '../../utils/TreatmentHelpers';
 import type {
     PaymentCondition,
     PlanListItem,
@@ -26,10 +29,6 @@ type Props = {
     onRefreshPlan: () => Promise<void>;
     notes: string;
     onNotesChange: (value: string) => void;
-    savingPlanDetails: boolean;
-    planDetailsDirty: boolean;
-    onCancelPlanDetails: () => void;
-    onSavePlanDetails: () => void;
 
     paymentCondition: PaymentCondition;
     onPaymentConditionChange: (value: PaymentCondition) => void;
@@ -51,10 +50,6 @@ export default function OdontoPlanWorkspace({
     onRefreshPlan,
     notes,
     onNotesChange,
-    savingPlanDetails,
-    planDetailsDirty,
-    onCancelPlanDetails,
-    onSavePlanDetails,
     paymentCondition,
     onPaymentConditionChange,
     installmentsCount,
@@ -309,9 +304,8 @@ export default function OdontoPlanWorkspace({
                                     value={installmentsCount}
                                     onChange={e =>
                                         onInstallmentsCountChange(
-                                            Math.max(
-                                                1,
-                                                Number(e.target.value) || 1,
+                                            normalizeInstallmentsCount(
+                                                e.target.value,
                                             ),
                                         )
                                     }
@@ -344,29 +338,6 @@ export default function OdontoPlanWorkspace({
                     </div>
                 </div>
             </section>
-
-            {!isPlanLocked && planDetailsDirty && (
-                <div className={styles.planDetailsActions}>
-                    <button
-                        type='button'
-                        className={styles.btnDanger}
-                        onClick={onCancelPlanDetails}
-                        disabled={savingPlanDetails}
-                    >
-                        Cancelar alterações
-                    </button>
-                    <button
-                        type='button'
-                        className={styles.btnPrimary}
-                        onClick={onSavePlanDetails}
-                        disabled={savingPlanDetails}
-                    >
-                        {savingPlanDetails
-                            ? 'Salvando...'
-                            : 'Salvar alterações'}
-                    </button>
-                </div>
-            )}
 
             {!hasActiveModal && (
                 <footer className={styles.planWorkspaceFooter}>

@@ -38,3 +38,7 @@ npm run dev
 npm run build
 npm run test
 ```
+
+Manual integrado de testes do Clinic e Bakery, incluindo planos, pagamentos e impressao:
+
+- [backend/docs/roteiro-teste-integrado-clinic-bakery.md](../backend/docs/roteiro-teste-integrado-clinic-bakery.md)

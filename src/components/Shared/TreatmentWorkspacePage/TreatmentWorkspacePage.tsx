@@ -44,8 +44,15 @@ export default function TreatmentWorkspacePage() {
     const [professionalVersion, setProfessionalVersion] = React.useState(0);
     const [printConfirmationOpen, setPrintConfirmationOpen] =
         React.useState(false);
+    const [printValidationMessage, setPrintValidationMessage] = React.useState<
+        string | null
+    >(null);
 
     function handleMarkPrinted() {
+        if (plans.printValidationMessage) {
+            setPrintValidationMessage(plans.printValidationMessage);
+            return;
+        }
         if (plans.lockAfterPrint && plans.plan && !plans.plan.is_printed) {
             setPrintConfirmationOpen(true);
             return;
@@ -147,12 +154,6 @@ export default function TreatmentWorkspacePage() {
                             onRefreshPlan={plans.loadPlan}
                             notes={plans.planNotes}
                             onNotesChange={plans.setPlanNotes}
-                            savingPlanDetails={plans.savingPlanDetails}
-                            planDetailsDirty={plans.isPlanDetailsDirty}
-                            onCancelPlanDetails={plans.cancelPlanDetails}
-                            onSavePlanDetails={() =>
-                                void plans.savePlanDetails()
-                            }
                             paymentCondition={plans.paymentCondition}
                             onPaymentConditionChange={plans.setPaymentCondition}
                             installmentsCount={plans.installmentsCount}
@@ -176,12 +177,6 @@ export default function TreatmentWorkspacePage() {
                             onRefreshPlan={plans.loadPlan}
                             notes={plans.planNotes}
                             onNotesChange={plans.setPlanNotes}
-                            savingPlanDetails={plans.savingPlanDetails}
-                            planDetailsDirty={plans.isPlanDetailsDirty}
-                            onCancelPlanDetails={plans.cancelPlanDetails}
-                            onSavePlanDetails={() =>
-                                void plans.savePlanDetails()
-                            }
                             paymentCondition={plans.paymentCondition}
                             onPaymentConditionChange={plans.setPaymentCondition}
                             installmentsCount={plans.installmentsCount}
@@ -271,6 +266,22 @@ export default function TreatmentWorkspacePage() {
                                 setPrintConfirmationOpen(false);
                                 void plans.markPrinted();
                             },
+                        },
+                    ]}
+                />
+
+                <ActionPromptModal
+                    open={printValidationMessage !== null}
+                    title='Não é possível imprimir ainda'
+                    message={
+                        <p style={{ margin: 0 }}>{printValidationMessage}</p>
+                    }
+                    onClose={() => setPrintValidationMessage(null)}
+                    actions={[
+                        {
+                            label: 'Entendi',
+                            variant: 'primary',
+                            onClick: () => setPrintValidationMessage(null),
                         },
                     ]}
                 />

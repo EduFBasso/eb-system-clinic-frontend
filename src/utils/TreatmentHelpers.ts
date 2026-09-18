@@ -164,6 +164,10 @@ export function computePlanTotal(items: TreatmentItem[]): number {
         );
 }
 
+export function normalizeInstallmentsCount(value: string): number {
+    return Math.max(2, Number(value) || 2);
+}
+
 /** Returns today in YYYY-MM-DD using local timezone (avoids UTC-shift at night). */
 export function todayISODate(): string {
     const d = getNow();

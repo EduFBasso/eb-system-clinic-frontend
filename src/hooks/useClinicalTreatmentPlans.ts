@@ -41,12 +41,22 @@ export function useClinicalTreatmentPlans(
     const [savingPlanDetails, setSavingPlanDetails] = React.useState(false);
     const detailsDirtyRef = React.useRef(false);
     const hydratedPlanIdRef = React.useRef<number | null>(null);
+    const saveInFlightRef = React.useRef<Promise<boolean> | null>(null);
 
     const planTotal = React.useMemo(() => computePlanTotal(items), [items]);
     const installmentValue = React.useMemo(() => {
         if (installmentsCount <= 0) return 0;
         return planTotal / installmentsCount;
     }, [planTotal, installmentsCount]);
+    const printValidationMessage = React.useMemo(() => {
+        if (planTotal <= 0) {
+            return 'Adicione pelo menos um tratamento ou produto com valor maior que zero antes de imprimir.';
+        }
+        if (paymentCondition === 'aprazo' && !firstDueDate) {
+            return 'Informe a data de vencimento da primeira parcela antes de imprimir.';
+        }
+        return null;
+    }, [firstDueDate, installmentsCount, paymentCondition, planTotal]);
     const [lockAfterPrint, setLockAfterPrint] = React.useState(true);
     const isPlanLocked = Boolean(plan?.is_printed);
 
@@ -258,57 +268,89 @@ export function useClinicalTreatmentPlans(
         }
     }
 
-    function cancelPlanDetails() {
-        if (plan) hydratePlanDetails(plan);
-    }
+    async function savePlanDetails(): Promise<boolean> {
+        if (!plan || !isPlanDetailsDirty) return true;
+        if (saveInFlightRef.current) return saveInFlightRef.current;
 
-    async function savePlanDetails() {
-        if (!plan || savingPlanDetails || !isPlanDetailsDirty) return;
-        setSavingPlanDetails(true);
-        try {
-            const updated = (await apiFetch(
-                `/clinic/treatment/plans/${plan.id}/`,
-                {
-                    method: 'PATCH',
-                    body: {
-                        payment_condition: paymentCondition,
-                        installments_count: installmentsCount,
-                        first_due_date:
-                            paymentCondition === 'aprazo' && firstDueDate
-                                ? firstDueDate
-                                : null,
-                        notes: planNotes,
+        const saveRequest = (async () => {
+            setSavingPlanDetails(true);
+            try {
+                const updated = (await apiFetch(
+                    `/clinic/treatment/plans/${plan.id}/`,
+                    {
+                        method: 'PATCH',
+                        body: {
+                            payment_condition: paymentCondition,
+                            installments_count: installmentsCount,
+                            first_due_date:
+                                paymentCondition === 'aprazo' && firstDueDate
+                                    ? firstDueDate
+                                    : null,
+                            notes: planNotes,
+                        },
                     },
-                },
-            )) as PlanListItem;
-            const persisted = { ...plan, ...updated };
-            setPlan(persisted);
-            setAllPlans(prev =>
-                prev.map(item => (item.id === persisted.id ? persisted : item)),
-            );
-            hydratePlanDetails(persisted);
-            emit('systemMessage', {
-                text: 'Condição de pagamento e observações salvas.',
-                type: 'success',
-            });
-        } catch (err) {
-            emit('systemMessage', {
-                text:
-                    err instanceof ApiError
-                        ? err.message
-                        : 'Não foi possível salvar os dados do plano.',
-                type: 'error',
-            });
+                )) as PlanListItem;
+                const persisted = { ...plan, ...updated };
+                setPlan(persisted);
+                setAllPlans(prev =>
+                    prev.map(item =>
+                        item.id === persisted.id ? persisted : item,
+                    ),
+                );
+                hydratePlanDetails(persisted);
+                return true;
+            } catch (err) {
+                emit('systemMessage', {
+                    text:
+                        err instanceof ApiError
+                            ? err.message
+                            : 'Não foi possível salvar os dados do plano.',
+                    type: 'error',
+                });
+                return false;
+            } finally {
+                setSavingPlanDetails(false);
+            }
+        })();
+        saveInFlightRef.current = saveRequest;
+        try {
+            return await saveRequest;
         } finally {
-            setSavingPlanDetails(false);
+            if (saveInFlightRef.current === saveRequest) {
+                saveInFlightRef.current = null;
+            }
         }
     }
+
+    React.useEffect(() => {
+        if (!plan || isPlanLocked || !isPlanDetailsDirty) return;
+        const timeoutId = window.setTimeout(() => {
+            void savePlanDetails();
+        }, 400);
+        return () => window.clearTimeout(timeoutId);
+    }, [
+        firstDueDate,
+        installmentsCount,
+        isPlanDetailsDirty,
+        isPlanLocked,
+        paymentCondition,
+        plan,
+        planNotes,
+    ]);
 
     async function markPrinted() {
         if (!plan || markingPrinted) {
             window.print();
             return;
         }
+        if (printValidationMessage) {
+            emit('systemMessage', {
+                text: printValidationMessage,
+                type: 'warning',
+            });
+            return;
+        }
+        if (!(await savePlanDetails())) return;
         if (plan.is_printed || !lockAfterPrint) {
             window.print();
             return;
@@ -393,11 +435,8 @@ export function useClinicalTreatmentPlans(
         setFirstDueDate,
         planNotes,
         setPlanNotes,
-        savingPlanDetails,
-        isPlanDetailsDirty,
-        cancelPlanDetails,
-        savePlanDetails,
         planTotal,
+        printValidationMessage,
         installmentValue,
         isPlanLocked,
         lockAfterPrint,
