@@ -68,8 +68,12 @@ export default function TreatmentPlanCreateModal({
                 method: 'PATCH',
                 body: profilePayload,
             })) as ProfessionalProfile;
-            localStorage.setItem('loggedProfessional', JSON.stringify(updated));
-            setProfile(updated);
+            const mergedProfile = { ...profile, ...updated };
+            localStorage.setItem(
+                'loggedProfessional',
+                JSON.stringify(mergedProfile),
+            );
+            setProfile(mergedProfile);
             setProfileSuccess('Dados profissionais salvos com sucesso.');
             onProfileSaved();
         } catch (error) {

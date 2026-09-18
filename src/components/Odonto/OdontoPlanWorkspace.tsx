@@ -429,15 +429,22 @@ export default function OdontoPlanWorkspace({
                 item={itemFlows.editingItem}
                 name={itemFlows.editingItemName}
                 value={itemFlows.editingItemValue}
+                quantity={itemFlows.editingItemQuantity}
                 notes={itemFlows.editingItemNotes}
                 saving={itemFlows.savingEditItem || catalogs.savingCatalog}
                 serviceCatalog={catalogs.serviceCatalog}
                 onValueChange={itemFlows.setEditingItemValue}
+                onQuantityChange={itemFlows.setEditingItemQuantity}
                 onNotesChange={itemFlows.setEditingItemNotes}
                 onClose={itemFlows.closeEditItemModal}
                 onSave={async updateCatalog => {
                     const item = itemFlows.editingItem;
                     if (!item) return;
+
+                    if (item.kind === 'product') {
+                        await itemFlows.saveEditedItem();
+                        return;
+                    }
 
                     if (updateCatalog) {
                         const saved = await catalogs.saveServicesToCatalog(

@@ -101,7 +101,12 @@ async function persistThemeToBackend(theme: AppTheme) {
             body: { ui_theme: theme },
         });
         if (updated && typeof updated === 'object') {
-            localStorage.setItem('loggedProfessional', JSON.stringify(updated));
+            const raw = localStorage.getItem('loggedProfessional');
+            const current = raw ? JSON.parse(raw) : {};
+            localStorage.setItem(
+                'loggedProfessional',
+                JSON.stringify({ ...current, ...updated }),
+            );
         }
     } catch {
         // Silencioso: falha de rede não deve bloquear a UI

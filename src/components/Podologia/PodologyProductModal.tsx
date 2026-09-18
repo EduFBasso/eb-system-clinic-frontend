@@ -87,6 +87,17 @@ export default function PodologyProductModal({
         );
     }
 
+    function selectCatalogProduct(index: number, item: CatalogProductItem) {
+        updateRow(index, {
+            name: item.name,
+            ...(item.price != null && {
+                value: toInputAmount(item.price),
+            }),
+            notes: item.description ?? '',
+        });
+        setOpenDropdownIndex(null);
+    }
+
     function handleSave() {
         const catalogIndexes = productRows
             .map((row, index) => ({ row, index }))
@@ -141,6 +152,9 @@ export default function PodologyProductModal({
                                             <input
                                                 className={styles.input}
                                                 value={row.name}
+                                                onPointerDown={() =>
+                                                    setOpenDropdownIndex(index)
+                                                }
                                                 onFocus={() =>
                                                     setOpenDropdownIndex(index)
                                                 }
@@ -198,45 +212,17 @@ export default function PodologyProductModal({
                                                                     }
                                                                     onPointerDown={event => {
                                                                         event.preventDefault();
-                                                                        updateRow(
+                                                                        selectCatalogProduct(
                                                                             index,
-                                                                            {
-                                                                                name: item.name,
-                                                                                ...(item.price !=
-                                                                                    null && {
-                                                                                    value: toInputAmount(
-                                                                                        item.price,
-                                                                                    ),
-                                                                                }),
-                                                                                notes:
-                                                                                    item.description ??
-                                                                                    '',
-                                                                            },
-                                                                        );
-                                                                        setOpenDropdownIndex(
-                                                                            null,
+                                                                            item,
                                                                         );
                                                                     }}
-                                                                    onClick={() => {
-                                                                        updateRow(
+                                                                    onClick={() =>
+                                                                        selectCatalogProduct(
                                                                             index,
-                                                                            {
-                                                                                name: item.name,
-                                                                                ...(item.price !=
-                                                                                    null && {
-                                                                                    value: toInputAmount(
-                                                                                        item.price,
-                                                                                    ),
-                                                                                }),
-                                                                                notes:
-                                                                                    item.description ??
-                                                                                    '',
-                                                                            },
-                                                                        );
-                                                                        setOpenDropdownIndex(
-                                                                            null,
-                                                                        );
-                                                                    }}
+                                                                            item,
+                                                                        )
+                                                                    }
                                                                 >
                                                                     {item.name}
                                                                     {item.price !=
@@ -279,6 +265,24 @@ export default function PodologyProductModal({
                                                     value: normalizeMoneyInput(
                                                         event.target.value,
                                                     ),
+                                                })
+                                            }
+                                            disabled={saving}
+                                        />
+                                    </label>
+
+                                    <label className={styles.label}>
+                                        Quantidade
+                                        <input
+                                            className={styles.input}
+                                            type='number'
+                                            min='1'
+                                            step='1'
+                                            value={row.quantity ?? '1'}
+                                            onChange={event =>
+                                                updateRow(index, {
+                                                    quantity:
+                                                        event.target.value,
                                                 })
                                             }
                                             disabled={saving}
@@ -363,7 +367,12 @@ export default function PodologyProductModal({
                         onClick={() =>
                             onRowsChange([
                                 ...productRows,
-                                { name: '', value: '', notes: '' },
+                                {
+                                    name: '',
+                                    value: '',
+                                    notes: '',
+                                    quantity: '1',
+                                },
                             ])
                         }
                         disabled={saving}

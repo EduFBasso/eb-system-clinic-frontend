@@ -40,6 +40,7 @@ export function useClinicalItemFlows(
     );
     const [editingItemName, setEditingItemName] = React.useState('');
     const [editingItemValue, setEditingItemValue] = React.useState('');
+    const [editingItemQuantity, setEditingItemQuantity] = React.useState('1');
     const [editingItemNotes, setEditingItemNotes] = React.useState('');
     const [savingEditItem, setSavingEditItem] = React.useState(false);
 
@@ -64,7 +65,7 @@ export function useClinicalItemFlows(
     }, [items]);
 
     function openProductFlowModal() {
-        setProductRows([{ name: '', value: '', notes: '' }]);
+        setProductRows([{ name: '', value: '', notes: '', quantity: '1' }]);
         setProductFlowOpen(true);
     }
 
@@ -83,6 +84,14 @@ export function useClinicalItemFlows(
             return;
         }
         for (const row of valid) {
+            const quantity = Number(row.quantity || 1);
+            if (!Number.isInteger(quantity) || quantity < 1) {
+                emit('systemMessage', {
+                    text: 'A quantidade deve ser um numero inteiro maior que zero.',
+                    type: 'warning',
+                });
+                return;
+            }
             if (row.value.trim()) {
                 const v = validateAmount(row.value);
                 if (!v.valid) {
@@ -110,6 +119,7 @@ export function useClinicalItemFlows(
             })) as { id: number };
             for (const row of valid) {
                 const amount = row.value.trim() ? parseAmount(row.value) : null;
+                const quantity = Number(row.quantity || 1);
                 await apiFetch('/clinic/treatment/items/', {
                     method: 'POST',
                     body: {
@@ -119,6 +129,7 @@ export function useClinicalItemFlows(
                         status: 'pending',
                         started_at: dateToUse,
                         patient_price: amount,
+                        quantity,
                         notes: row.notes.trim(),
                         is_active: true,
                         parent_item: parent.id,
@@ -151,6 +162,11 @@ export function useClinicalItemFlows(
             item.custom_name.trim() || item.service_name?.trim() || '',
         );
         setEditingItemValue(toInputAmount(item.patient_price ?? ''));
+        const quantity = Math.max(
+            1,
+            Math.trunc(Number(item.quantity ?? 1) || 1),
+        );
+        setEditingItemQuantity(String(quantity));
         setEditingItemNotes(item.notes ?? '');
     }
 
@@ -170,6 +186,14 @@ export function useClinicalItemFlows(
                 return;
             }
         }
+        const quantity = Number(editingItemQuantity);
+        if (!Number.isInteger(quantity) || quantity < 1) {
+            emit('systemMessage', {
+                text: 'A quantidade deve ser um numero inteiro maior que zero.',
+                type: 'warning',
+            });
+            return;
+        }
         setSavingEditItem(true);
         try {
             await apiFetch(`/clinic/treatment/items/${editingItem.id}/`, {
@@ -178,6 +202,7 @@ export function useClinicalItemFlows(
                     patient_price: editingItemValue.trim()
                         ? parseAmount(editingItemValue)
                         : null,
+                    quantity,
                     notes: editingItemNotes.trim(),
                 },
             });
@@ -247,6 +272,8 @@ export function useClinicalItemFlows(
         editingItemName,
         editingItemValue,
         setEditingItemValue,
+        editingItemQuantity,
+        setEditingItemQuantity,
         editingItemNotes,
         setEditingItemNotes,
         savingEditItem,

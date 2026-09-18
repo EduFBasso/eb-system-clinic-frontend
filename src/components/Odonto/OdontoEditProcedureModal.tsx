@@ -14,10 +14,12 @@ type Props = {
     item: TreatmentItem | null;
     name: string;
     value: string;
+    quantity: string;
     notes: string;
     saving: boolean;
     serviceCatalog: CatalogServiceItem[];
     onValueChange: (value: string) => void;
+    onQuantityChange: (value: string) => void;
     onNotesChange: (value: string) => void;
     onClose: () => void;
     onSave: (updateCatalog: boolean) => void;
@@ -31,6 +33,8 @@ export default function OdontoEditProcedureModal({
     saving,
     serviceCatalog,
     onValueChange,
+    quantity,
+    onQuantityChange,
     onNotesChange,
     onClose,
     onSave,
@@ -62,7 +66,8 @@ export default function OdontoEditProcedureModal({
 
     // Show checkbox only if either price or notes changed
     const showCatalogCheckbox =
-        priceChangedFromCatalog || notesChangedFromCatalog;
+        item.kind !== 'product' &&
+        (priceChangedFromCatalog || notesChangedFromCatalog);
 
     // Build dynamic checkbox label
     const checkboxLabel =
@@ -114,6 +119,22 @@ export default function OdontoEditProcedureModal({
                             disabled={saving}
                         />
                     </label>
+                    {item.kind === 'product' && (
+                        <label className={styles.label}>
+                            Quantidade
+                            <input
+                                className={styles.input}
+                                type='number'
+                                min='1'
+                                step='1'
+                                value={quantity}
+                                onChange={event =>
+                                    onQuantityChange(event.target.value)
+                                }
+                                disabled={saving}
+                            />
+                        </label>
+                    )}
                     <label className={styles.labelWide}>
                         Observações
                         <textarea

@@ -54,6 +54,7 @@ export type TreatmentItem = {
     custom_name: string;
     status: 'pending' | 'completed' | 'canceled';
     patient_price: number | string | null;
+    quantity?: number | string | null;
     started_at: string | null;
     completed_at: string | null;
     notes: string;
@@ -79,6 +80,7 @@ export type ProductRow = {
     name: string;
     value: string;
     notes: string;
+    quantity?: string;
 };
 
 /** Item from the core Product catalog. */
@@ -155,7 +157,11 @@ export function computePlanTotal(items: TreatmentItem[]): number {
     );
     return items
         .filter(i => i.is_active && !containerIds.has(i.id))
-        .reduce((acc, i) => acc + Number(i.patient_price ?? 0), 0);
+        .reduce(
+            (acc, i) =>
+                acc + Number(i.patient_price ?? 0) * Number(i.quantity ?? 1),
+            0,
+        );
 }
 
 /** Returns today in YYYY-MM-DD using local timezone (avoids UTC-shift at night). */

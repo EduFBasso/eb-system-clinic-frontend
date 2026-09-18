@@ -11,6 +11,7 @@ import {
 } from '../../../utils/TreatmentHelpers';
 import { formatCnpj } from '../../../utils/formatCpf';
 import { formatPhone } from '../../../utils/formatPhone';
+import { getPodologyRegionLabel } from '../../Podologia/PodologyAnatomyHelpers';
 import styles from './ClinicalPrintView.module.css';
 
 type Professional = {
@@ -38,6 +39,19 @@ type PrintableItem = {
 };
 
 const PAGE_ITEM_CAPACITY = 6;
+
+function dentalAnatomicalLabel(item: TreatmentItem): string {
+    const ctx = item.dental_context;
+    if (!ctx) return '';
+    if (ctx.scope === 'tooth' && ctx.tooth_number) {
+        return `Dente ${ctx.tooth_number}${ctx.tooth_surface ? ` — Face ${ctx.tooth_surface}` : ''}`;
+    }
+    if (ctx.scope === 'arch' && ctx.arcade_arch) {
+        return `Arcada ${ctx.arcade_arch === 'superior' ? 'Superior' : 'Inferior'}`;
+    }
+    if (ctx.scope === 'full') return 'Arcada Superior e Inferior';
+    return '';
+}
 
 function paginateItems(items: PrintableItem[]): PrintableItem[][] {
     if (items.length === 0) return [[]];
@@ -206,6 +220,24 @@ export default function ClinicalPrintView({
                                         {pageTreatments.map(item => (
                                             <tr key={item.id}>
                                                 <td>
+                                                    {dentalAnatomicalLabel(
+                                                        item,
+                                                    ) ||
+                                                        (item.podology_context
+                                                            ? `${getPodologyRegionLabel(
+                                                                  item
+                                                                      .podology_context
+                                                                      .scope,
+                                                                  item
+                                                                      .podology_context
+                                                                      .location_number,
+                                                              )}`
+                                                            : '')}
+                                                    {(dentalAnatomicalLabel(
+                                                        item,
+                                                    ) ||
+                                                        item.podology_context) &&
+                                                        ' — '}
                                                     {item.service_name ||
                                                         item.custom_name}
                                                 </td>
@@ -234,10 +266,31 @@ export default function ClinicalPrintView({
                                     <tbody>
                                         {pageProducts.map(item => (
                                             <tr key={item.id}>
-                                                <td>{item.custom_name}</td>
+                                                <td>
+                                                    <div>
+                                                        {item.custom_name}
+                                                    </div>
+                                                    <small
+                                                        className={
+                                                            styles.printItemNotes
+                                                        }
+                                                    >
+                                                        {item.quantity ?? 1}x
+                                                        {item.notes
+                                                            ? ` — ${item.notes}`
+                                                            : ''}
+                                                    </small>
+                                                </td>
                                                 <td className={styles.colValue}>
                                                     {formatMoney(
-                                                        item.patient_price,
+                                                        Number(
+                                                            item.patient_price ??
+                                                                0,
+                                                        ) *
+                                                            Number(
+                                                                item.quantity ??
+                                                                    1,
+                                                            ),
                                                     )}
                                                 </td>
                                             </tr>

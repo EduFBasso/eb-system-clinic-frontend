@@ -151,8 +151,9 @@ export default function PodologyPlanWorkspace({
                                     <ProductItemCard
                                         key={child.id}
                                         name={child.custom_name}
-                                        quantity={1}
+                                        quantity={Number(child.quantity ?? 1)}
                                         value={Number(child.patient_price ?? 0)}
+                                        notes={child.notes}
                                         onEdit={() => onEditItem(child)}
                                         onDelete={() => onDeleteItem(child.id)}
                                         locked={isPlanLocked}
@@ -231,10 +232,10 @@ export default function PodologyPlanWorkspace({
                 )}
             </section>
 
-            {/* Procedures list */}
+            {/* Treatments list */}
             <section className={styles.card}>
                 <div className={styles.sectionHeaderRow}>
-                    <h2 className={styles.sectionTitle}>Procedimentos</h2>
+                    <h2 className={styles.sectionTitle}>Tratamentos</h2>
                     <button
                         type='button'
                         className={styles.btnPrimary}
@@ -453,9 +454,11 @@ export default function PodologyPlanWorkspace({
                 item={itemFlows.editingItem}
                 name={itemFlows.editingItemName}
                 value={itemFlows.editingItemValue}
+                quantity={itemFlows.editingItemQuantity}
                 notes={itemFlows.editingItemNotes}
                 saving={itemFlows.savingEditItem}
                 onValueChange={itemFlows.setEditingItemValue}
+                onQuantityChange={itemFlows.setEditingItemQuantity}
                 onNotesChange={itemFlows.setEditingItemNotes}
                 onClose={itemFlows.closeEditItemModal}
                 onSave={() => void itemFlows.saveEditedItem()}

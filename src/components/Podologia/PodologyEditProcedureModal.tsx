@@ -7,9 +7,11 @@ type Props = {
     item: TreatmentItem | null;
     name: string;
     value: string;
+    quantity: string;
     notes: string;
     saving: boolean;
     onValueChange: (value: string) => void;
+    onQuantityChange: (value: string) => void;
     onNotesChange: (value: string) => void;
     onClose: () => void;
     onSave: () => void;
@@ -19,9 +21,11 @@ export default function PodologyEditProcedureModal({
     item,
     name,
     value,
+    quantity,
     notes,
     saving,
     onValueChange,
+    onQuantityChange,
     onNotesChange,
     onClose,
     onSave,
@@ -73,6 +77,23 @@ export default function PodologyEditProcedureModal({
                             disabled={saving}
                         />
                     </label>
+
+                    {item.kind === 'product' && (
+                        <label className={styles.label}>
+                            Quantidade
+                            <input
+                                className={styles.input}
+                                type='number'
+                                min='1'
+                                step='1'
+                                value={quantity}
+                                onChange={event =>
+                                    onQuantityChange(event.target.value)
+                                }
+                                disabled={saving}
+                            />
+                        </label>
+                    )}
 
                     <label className={styles.labelWide}>
                         Observações

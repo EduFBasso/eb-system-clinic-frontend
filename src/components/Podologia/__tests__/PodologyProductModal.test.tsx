@@ -5,6 +5,83 @@ import { describe, expect, it, vi } from 'vitest';
 import PodologyProductModal from '../PodologyProductModal';
 
 describe('PodologyProductModal catalog selection', () => {
+    it('fills name, value, and notes when selecting a catalog product', () => {
+        function TestHarness() {
+            const [rows, setRows] = React.useState([
+                { name: '', value: '', notes: '' },
+            ]);
+
+            return (
+                <PodologyProductModal
+                    open
+                    saving={false}
+                    productRows={rows}
+                    productCatalog={[
+                        {
+                            id: 11,
+                            name: 'Fungicida',
+                            price: 60,
+                            description: '20ml',
+                        },
+                    ]}
+                    onClose={vi.fn()}
+                    onSave={vi.fn()}
+                    onRowsChange={setRows}
+                />
+            );
+        }
+
+        render(<TestHarness />);
+
+        fireEvent.focus(screen.getByPlaceholderText('Ex.: Lixa descartável'));
+        fireEvent.click(screen.getByRole('button', { name: /Fungicida/ }));
+
+        expect(
+            screen.getByPlaceholderText('Ex.: Lixa descartável'),
+        ).toHaveValue('Fungicida');
+        expect(screen.getByPlaceholderText('0,00')).toHaveValue('60');
+        expect(
+            screen.getByRole('textbox', { name: 'Observações' }),
+        ).toHaveValue('20ml');
+    });
+
+    it('selects a catalog product on pointer down before the input blur', () => {
+        function TestHarness() {
+            const [rows, setRows] = React.useState([
+                { name: '', value: '', notes: '' },
+            ]);
+
+            return (
+                <PodologyProductModal
+                    open
+                    saving={false}
+                    productRows={rows}
+                    productCatalog={[
+                        {
+                            id: 11,
+                            name: 'Fungicida',
+                            price: 60,
+                            description: '20ml',
+                        },
+                    ]}
+                    onClose={vi.fn()}
+                    onSave={vi.fn()}
+                    onRowsChange={setRows}
+                />
+            );
+        }
+
+        render(<TestHarness />);
+
+        const input = screen.getByPlaceholderText('Ex.: Lixa descartável');
+        fireEvent.focus(input);
+        fireEvent.pointerDown(
+            screen.getByRole('button', { name: /Fungicida/ }),
+        );
+
+        expect(input).toHaveValue('Fungicida');
+    });
+
     it('submits only checked rows that do not already exist in the catalog', () => {
         const onSave = vi.fn();
 
