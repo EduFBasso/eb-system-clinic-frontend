@@ -1,18 +1,44 @@
 # Frontend Clinic
 
-Este repositório contém o frontend do sistema clínico, desenvolvido em **React + Vite**.  
-O backend é separado e roda em múltiplos servidores (Django + Postgres + JWT).
+Frontend do sistema Clinic, separado do domínio Bakery.
 
-## 🚀 Tecnologias
-- React + Vite
-- Deploy na Vercel conforme backend implementado aqui
-  
-## 📂 Estrutura
-- `src/` → código principal do frontend
-- `docs/` → documentação interna e guias de desenvolvimento
-- `scripts/` → utilitários (ex: geração de QRCode)
+## Stack
 
-## ▶️ Como rodar localmente
+- React + Vite + TypeScript
+- Testes com Vitest
+
+## Deploy
+
+- Projeto dedicado na Vercel para o domínio Clinic
+- Variáveis de ambiente independentes do frontend-bakery
+
+Variável importante para o fluxo "Solicitar Preenchimento via WhatsApp":
+
+- `VITE_PUBLIC_ANAMNESIS_BASE_URL`: base pública usada no link de anamnese enviado ao cliente.
+	- Exemplo local (LAN): `http://192.168.0.142:5173`
+	- Exemplo produção: URL pública do frontend-clinic
+	- Se não configurar, o sistema usa a origem atual; isso pode gerar `localhost` e quebrar em outro aparelho.
+
+## Estrutura
+
+- `src/`: código da aplicação
+- `docs/`: documentação interna
+- `public/`: assets estáticos
+
+## Rodar localmente
+
 ```bash
 npm install
 npm run dev
+```
+
+## Build e testes
+
+```bash
+npm run build
+npm run test
+```
+
+Manual integrado de testes do Clinic e Bakery, incluindo planos, pagamentos e impressao:
+
+- [backend/docs/roteiro-teste-integrado-clinic-bakery.md](../backend/docs/roteiro-teste-integrado-clinic-bakery.md)

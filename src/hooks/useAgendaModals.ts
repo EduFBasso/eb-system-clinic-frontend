@@ -9,14 +9,47 @@ import type { ClientBasic } from '../types/ClientBasic';
 import type { Appointment } from '../hooks/useAppointments';
 import { API_BASE } from '../config/api';
 import { isTokenExpired } from '../utils/jwt';
-import type { PendingReturnContext } from '../types/agendaFlow';
+import type { AppointmentReturnContext } from '../types/agendaFlow';
 import { getAccessToken } from '../utils/auth/session';
 
 // ---------------------------------------------------------------------------
 // Helper: resolve basic client info (cached in localStorage)
 // ---------------------------------------------------------------------------
+export function clientNameCacheKey(id: number): string {
+    let scope = 'unknown';
+    try {
+        const stored = localStorage.getItem('loggedProfessional');
+        const professional = stored
+            ? (JSON.parse(stored) as Record<string, unknown>)
+            : {};
+        const tenant = professional.tenant;
+        const tenantId =
+            professional.tenant_id ??
+            professional.clinic_id ??
+            (tenant && typeof tenant === 'object'
+                ? (tenant as Record<string, unknown>).id
+                : undefined);
+        scope = String(tenantId ?? professional.id ?? 'active');
+    } catch {
+        /* noop */
+    }
+    return `clinic:${scope}:client.name.${id}`;
+}
+
+export function readCachedClientName(id: number): string | null {
+    return localStorage.getItem(clientNameCacheKey(id));
+}
+
+export function cacheClientName(id: number, name: string): void {
+    try {
+        localStorage.setItem(clientNameCacheKey(id), name);
+    } catch {
+        /* noop */
+    }
+}
+
 export async function ensureClientBasic(id: number): Promise<ClientBasic> {
-    const cached = localStorage.getItem(`client.name.${id}`);
+    const cached = readCachedClientName(id);
     if (cached) {
         const [first_name, ...rest] = cached.split(' ');
         const last_name = rest.join(' ');
@@ -50,14 +83,7 @@ export async function ensureClientBasic(id: number): Promise<ClientBasic> {
                 phone: data.phone || '',
                 email: data.email || '',
             };
-            try {
-                localStorage.setItem(
-                    `client.name.${id}`,
-                    `${cb.first_name} ${cb.last_name}`.trim(),
-                );
-            } catch {
-                /* noop */
-            }
+            cacheClientName(id, `${cb.first_name} ${cb.last_name}`.trim());
             return cb;
         }
     } catch {
@@ -91,7 +117,9 @@ export interface UseAgendaModalsReturn {
     weeklyOpen: boolean;
     setWeeklyOpen: React.Dispatch<React.SetStateAction<boolean>>;
     weeklyInitialDate: Date | undefined;
-    setWeeklyInitialDate: React.Dispatch<React.SetStateAction<Date | undefined>>;
+    setWeeklyInitialDate: React.Dispatch<
+        React.SetStateAction<Date | undefined>
+    >;
     // Quick
     quickOpen: boolean;
     setQuickOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -107,9 +135,9 @@ export interface UseAgendaModalsReturn {
     setDetailsOpen: React.Dispatch<React.SetStateAction<boolean>>;
     detailsAppt: Appointment | null;
     setDetailsAppt: React.Dispatch<React.SetStateAction<Appointment | null>>;
-    detailsReturnContext: PendingReturnContext;
+    detailsReturnContext: AppointmentReturnContext;
     setDetailsReturnContext: React.Dispatch<
-        React.SetStateAction<PendingReturnContext>
+        React.SetStateAction<AppointmentReturnContext>
     >;
     // Openers / helpers
     openMonthly: (clientId: number, date?: Date) => Promise<void>;
@@ -139,9 +167,8 @@ export function useAgendaModals(): UseAgendaModalsReturn {
     const [detailsAppt, setDetailsAppt] = React.useState<Appointment | null>(
         null,
     );
-    const [detailsReturnContext, setDetailsReturnContext] = React.useState<PendingReturnContext>(
-        null,
-    );
+    const [detailsReturnContext, setDetailsReturnContext] =
+        React.useState<AppointmentReturnContext>(null);
     const [routeInitialMonth, setRouteInitialMonth] = React.useState<
         Date | undefined
     >(undefined);

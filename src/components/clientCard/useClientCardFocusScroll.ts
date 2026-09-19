@@ -5,14 +5,12 @@ export function useClientCardFocusScroll({
     cardRef,
     onSelect,
     futureAppointmentsCount,
-    isOngoing,
     isScheduled,
 }: {
     clientId: number;
     cardRef: React.RefObject<HTMLDivElement | null>;
     onSelect?: () => void;
     futureAppointmentsCount: number;
-    isOngoing: boolean;
     isScheduled: boolean;
 }) {
     React.useEffect(() => {
@@ -28,7 +26,8 @@ export function useClientCardFocusScroll({
             const el = cardRef.current;
             if (!el) return;
             const rect = el.getBoundingClientRect();
-            const vh = window.innerHeight || document.documentElement.clientHeight;
+            const vh =
+                window.innerHeight || document.documentElement.clientHeight;
             const filterEl = document.querySelector(
                 '[class*="filterContainer"]',
             ) as HTMLElement | null;
@@ -99,12 +98,5 @@ export function useClientCardFocusScroll({
             window.removeEventListener('wheel', cancelByUser);
             cleanupTimers.forEach(timerId => window.clearTimeout(timerId));
         };
-    }, [
-        cardRef,
-        clientId,
-        futureAppointmentsCount,
-        isOngoing,
-        isScheduled,
-        onSelect,
-    ]);
+    }, [cardRef, clientId, futureAppointmentsCount, isScheduled, onSelect]);
 }

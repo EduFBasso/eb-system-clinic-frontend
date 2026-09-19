@@ -38,8 +38,9 @@ export const AboutModal: React.FC<AboutModalProps> = ({
     backendVersion,
 }) => {
     const { theme, setTheme } = useTheme();
-    const [resolvedBackendVersion, setResolvedBackendVersion] =
-        React.useState<string | null>(backendVersion ?? null);
+    const [resolvedBackendVersion, setResolvedBackendVersion] = React.useState<
+        string | null
+    >(backendVersion ?? null);
 
     React.useEffect(() => {
         if (!open) return;
@@ -65,7 +66,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
     return (
         <AppModal open={open} onClose={onClose}>
             <div style={{ padding: 8, maxWidth: 420 }}>
-                <h3 style={{ marginTop: 0 }}>Sobre o Sistema</h3>
+                <h3 style={{ marginTop: 0 }}>Configurações</h3>
                 <section style={{ marginBottom: 12 }}>
                     <strong>Versão / Build</strong>
                     <div style={{ fontSize: 13 }}>
@@ -94,7 +95,11 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                                 <button
                                     key={option.value}
                                     type='button'
-                                    className={selected ? 'ui-btn ui-btn--theme' : 'ui-btn ui-btn--neutral'}
+                                    className={
+                                        selected
+                                            ? 'ui-btn ui-btn--theme'
+                                            : 'ui-btn ui-btn--neutral'
+                                    }
                                     onClick={() => setTheme(option.value)}
                                     aria-pressed={selected}
                                     aria-label={`Aplicar tema ${option.label}`}
@@ -120,7 +125,8 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                         })}
                     </div>
                 </section>
-                <div style={{ textAlign: 'right' }}>
+
+                <div style={{ textAlign: 'center' }}>
                     <button
                         type='button'
                         className='ui-btn ui-btn--neutral'
@@ -133,4 +139,3 @@ export const AboutModal: React.FC<AboutModalProps> = ({
         </AppModal>
     );
 };
-

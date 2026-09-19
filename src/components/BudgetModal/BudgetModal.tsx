@@ -7,9 +7,6 @@ import {
     formatBRL,
 } from '../../utils/messages';
 import { apiFetch, ApiError } from '../../utils/apiFetch';
-import { API_BASE } from '../../config/api';
-import { buildPixCopiaCola } from '../../utils/pix';
-import { getAccessToken } from '../../utils/auth/session';
 
 // no extra phone helpers here; we'll normalize inline when sending
 
@@ -46,17 +43,12 @@ export function BudgetModal({
     const [priceDrafts, setPriceDrafts] = React.useState<string[]>([]);
     const [notes, setNotes] = React.useState('');
     const [busy, setBusy] = React.useState(false);
-    const [sendPix, setSendPix] = React.useState(false);
-    const [pixKeyType, setPixKeyType] = React.useState<string>('');
-    const [pixKeyValue, setPixKeyValue] = React.useState<string>('');
-    const [profFirstName, setProfFirstName] = React.useState<string>('');
-    const [profLastName, setProfLastName] = React.useState<string>('');
     const [services, setServices] = React.useState<Service[]>([]);
     const [products, setProducts] = React.useState<Product[]>([]);
     const [selServiceId, setSelServiceId] = React.useState<string>('');
     const [selProductId, setSelProductId] = React.useState<string>('');
 
-    // Load on open: reset, fetch services/products, load professional + PIX settings
+    // Carrega o catálogo ao abrir o orçamento.
     React.useEffect(() => {
         if (!open) return;
         setBusy(false);
@@ -67,7 +59,6 @@ export function BudgetModal({
         setProducts([]);
         setSelServiceId('');
         setSelProductId('');
-        setSendPix(false);
 
         (async () => {
             try {
@@ -93,111 +84,7 @@ export function BudgetModal({
                 }
             }
         })();
-
-        try {
-            const stored = localStorage.getItem('loggedProfessional');
-            if (stored) {
-                const prof = JSON.parse(stored) as {
-                    first_name?: string;
-                    last_name?: string;
-                };
-                setProfFirstName(prof.first_name || '');
-                setProfLastName(prof.last_name || '');
-            }
-        } catch {
-            /* noop */
-        }
-
-        (async () => {
-            try {
-                const token = getAccessToken();
-                if (!token) return;
-                const res = await fetch(
-                    `${API_BASE}/register/professionals/settings/`,
-                    {
-                        method: 'GET',
-                        headers: { Authorization: `Bearer ${token}` },
-                    },
-                );
-                if (!res.ok) return; // silencioso se indisponível
-                const data = (await res.json()) as {
-                    pix_key_type?: string;
-                    pix_key_value?: string;
-                };
-                setPixKeyType(data.pix_key_type || '');
-                setPixKeyValue(data.pix_key_value || '');
-            } catch {
-                /* noop */
-            }
-        })();
     }, [open]);
-
-    // Efeito: ao marcar "Enviar PIX", injeta/remove:
-    // 1) linha de título ("Título PIX … — Nome")
-    // 2) linha da chave ("Chave PIX (Label): valor")
-    React.useEffect(() => {
-        const title = (() => {
-            const parts: string[] = [];
-            if (pixKeyType && pixKeyValue) {
-                const label =
-                    pixKeyType === 'cpf'
-                        ? 'CPF'
-                        : pixKeyType === 'telefone'
-                        ? 'Telefone'
-                        : pixKeyType === 'email'
-                        ? 'E-mail'
-                        : 'Chave';
-                parts.push(`PIX ${label}: ${pixKeyValue}`);
-            } else {
-                parts.push('PIX');
-            }
-            const fullname = [profFirstName, profLastName]
-                .filter(Boolean)
-                .join(' ');
-            if (fullname) parts.push(`— ${fullname}`);
-            return `Título ${parts.join(' ')}`;
-        })();
-        const chaveLine = (() => {
-            const label =
-                pixKeyType === 'cpf'
-                    ? 'CPF'
-                    : pixKeyType === 'telefone'
-                    ? 'Telefone'
-                    : pixKeyType === 'email'
-                    ? 'E-mail'
-                    : 'Chave';
-            return `Chave PIX (${label}): ${pixKeyValue || ''}`.trim();
-        })();
-
-        const nl = '\n';
-        const cleanNotes = (notes || '').split(nl).filter(Boolean);
-        const idxTitle = cleanNotes.findIndex(l => /^título\s+pix/i.test(l));
-        const idxChave = cleanNotes.findIndex(l => /^chave\s+pix/i.test(l));
-        if (sendPix) {
-            if (idxTitle >= 0) cleanNotes[idxTitle] = title;
-            else cleanNotes.unshift(title);
-            if (chaveLine) {
-                if (idxChave >= 0) cleanNotes[idxChave] = chaveLine;
-                else cleanNotes.splice(1, 0, chaveLine);
-            }
-            setNotes(cleanNotes.join(nl));
-        } else {
-            let changed = false;
-            if (idxTitle >= 0) {
-                cleanNotes.splice(idxTitle, 1);
-                changed = true;
-            }
-            const newIdxChave = cleanNotes.findIndex(l =>
-                /^chave\s+pix/i.test(l),
-            );
-            if (newIdxChave >= 0) {
-                cleanNotes.splice(newIdxChave, 1);
-                changed = true;
-            }
-            if (changed) setNotes(cleanNotes.join(nl));
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sendPix, pixKeyType, pixKeyValue, profFirstName, profLastName]);
 
     // Budget (🧾) deve abrir WhatsApp com a mensagem preenchida, sem amarrar em um número.
     // O ícone do WhatsApp no ClientCard continua abrindo direto no número do cliente.
@@ -241,36 +128,6 @@ export function BudgetModal({
         if (busy) return;
         setBusy(true);
         try {
-            // Se o usuário marcou Enviar PIX e temos chave, copia o "copia e cola" antes de abrir o WhatsApp
-            if (sendPix && pixKeyValue) {
-                try {
-                    const pixText = buildPixCopiaCola({
-                        key: pixKeyValue,
-                        amount: total > 0 ? total : undefined,
-                        merchantName: [profFirstName, profLastName]
-                            .filter(Boolean)
-                            .join(' '),
-                        merchantCity: 'BRASIL',
-                        description: 'ORCAMENTO',
-                        txid: 'ORCAMENTO',
-                    });
-                    await navigator.clipboard.writeText(pixText);
-                    try {
-                        window.dispatchEvent(
-                            new CustomEvent('systemMessage', {
-                                detail: {
-                                    text: 'PIX (copia e cola) copiado. Agora abriremos o WhatsApp.',
-                                    type: 'success',
-                                },
-                            }),
-                        );
-                    } catch {
-                        /* noop */
-                    }
-                } catch {
-                    // Se não conseguir copiar, apenas segue com o envio
-                }
-            }
             const { text } = buildBudgetMessage({
                 clientName,
                 professionalName,
@@ -294,8 +151,8 @@ export function BudgetModal({
                                 result === 'shared'
                                     ? 'Orçamento enviado pelo compartilhamento.'
                                     : result === 'opened-wa'
-                                    ? 'Abrimos o WhatsApp com o orçamento.'
-                                    : 'Orçamento copiado para a área de transferência.',
+                                      ? 'Abrimos o WhatsApp com o orçamento.'
+                                      : 'Orçamento copiado para a área de transferência.',
                             type: 'success',
                         },
                     }),
@@ -526,47 +383,6 @@ export function BudgetModal({
                             >
                                 Orçamento
                             </div>
-                            {sendPix && pixKeyValue && (
-                                <div
-                                    style={{
-                                        marginTop: 6,
-                                        padding: '10px 12px',
-                                        background: 'var(--color-success-bg)',
-                                        border: '1px solid var(--color-success-dark)',
-                                        borderRadius: 8,
-                                    }}
-                                >
-                                    <div
-                                        style={{
-                                            color: 'var(--color-success-dark)',
-                                            fontWeight: 700,
-                                            marginBottom: 4,
-                                        }}
-                                    >
-                                        Chave PIX (confira)
-                                    </div>
-                                    <div
-                                        style={{
-                                            fontSize: 18,
-                                            fontWeight: 800,
-                                            color: '#111827',
-                                            wordBreak: 'break-all',
-                                        }}
-                                    >
-                                        {(() => {
-                                            const label =
-                                                pixKeyType === 'cpf'
-                                                    ? 'CPF'
-                                                    : pixKeyType === 'telefone'
-                                                    ? 'Telefone'
-                                                    : pixKeyType === 'email'
-                                                    ? 'E-mail'
-                                                    : 'Chave';
-                                            return `${label}: ${pixKeyValue}`;
-                                        })()}
-                                    </div>
-                                </div>
-                            )}
                             <div
                                 style={{
                                     display: 'grid',
@@ -688,42 +504,13 @@ export function BudgetModal({
                             </div>
                             {/* Espaço em branco entre Total e Observações */}
                             <div style={{ height: 8 }} />
-                            {/* Enviar PIX + Observações */}
-                            <div
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'auto 1fr',
-                                    gap: 10,
-                                    alignItems: 'start',
-                                }}
-                            >
-                                <label
-                                    style={{
-                                        display: 'inline-flex',
-                                        gap: 6,
-                                        alignItems: 'center',
-                                        whiteSpace: 'nowrap',
-                                        userSelect: 'none',
-                                        paddingTop: 4,
-                                    }}
-                                >
-                                    <input
-                                        type='checkbox'
-                                        checked={sendPix}
-                                        onChange={e =>
-                                            setSendPix(e.target.checked)
-                                        }
-                                    />
-                                    <span>Enviar PIX</span>
-                                </label>
-                                <textarea
-                                    placeholder='Observações (opcional)'
-                                    rows={3}
-                                    value={notes}
-                                    onChange={e => setNotes(e.target.value)}
-                                    style={{ padding: 6, width: '100%' }}
-                                />
-                            </div>
+                            <textarea
+                                placeholder='Observações (opcional)'
+                                rows={3}
+                                value={notes}
+                                onChange={e => setNotes(e.target.value)}
+                                style={{ padding: 6, width: '100%' }}
+                            />
                         </>
                     )}
                 </div>

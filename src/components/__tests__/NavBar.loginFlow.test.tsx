@@ -14,11 +14,6 @@ vi.mock('../../hooks/useUtcClock', () => ({
     }),
 }));
 
-vi.mock('@simplewebauthn/browser', () => ({
-    startRegistration: vi.fn(),
-    startAuthentication: vi.fn(),
-}));
-
 describe('NavBar login code flow', () => {
     function renderNavBar() {
         return render(
@@ -32,16 +27,8 @@ describe('NavBar login code flow', () => {
 
     beforeEach(() => {
         vi.restoreAllMocks();
+        vi.stubEnv('VITE_CLINIC_TENANT_SLUG', 'consultorio-podologia-auth');
         const store: Record<string, string> = {};
-        class MockPublicKeyCredential {}
-        (
-            MockPublicKeyCredential as typeof PublicKeyCredential & {
-                isUserVerifyingPlatformAuthenticatorAvailable: () => Promise<boolean>;
-            }
-        ).isUserVerifyingPlatformAuthenticatorAvailable = vi
-            .fn()
-            .mockResolvedValue(true);
-        vi.stubGlobal('PublicKeyCredential', MockPublicKeyCredential);
         // @ts-expect-error test shim
         global.localStorage = {
             getItem: (k: string) => (k in store ? store[k] : null),
@@ -57,21 +44,7 @@ describe('NavBar login code flow', () => {
         };
     });
 
-    it('exibe o botao Face ID quando o email esta preenchido mesmo sem marcador local', async () => {
-        renderNavBar();
-
-        fireEvent.change(screen.getByPlaceholderText('E-mail'), {
-            target: { value: 'brunadentista@mail.com' },
-        });
-
-        await waitFor(() => {
-            expect(
-                screen.getByRole('button', { name: /Face ID/i }),
-            ).toBeInTheDocument();
-        });
-    });
-
-    it('preenche email e código TOTP e autentica', async () => {
+    it('seleciona profissional e senha e autentica', async () => {
         const professionalEmail = 'pro1@example.com';
 
         vi.spyOn(globalThis, 'fetch').mockImplementation(
@@ -83,7 +56,30 @@ describe('NavBar login code flow', () => {
                           ? input.toString()
                           : (input as Request).url;
 
-                if (/totp\/verify\//.test(url) && init?.method === 'POST') {
+                if (
+                    /professionals-basic\//.test(url) &&
+                    (!init || !init.method || init.method === 'GET')
+                ) {
+                    return Promise.resolve(
+                        new Response(
+                            JSON.stringify([
+                                {
+                                    id: 1,
+                                    first_name: 'Ana',
+                                    last_name: 'Silva',
+                                    email: professionalEmail,
+                                    specialty: 'Podologia',
+                                },
+                            ]),
+                            {
+                                status: 200,
+                                headers: { 'Content-Type': 'application/json' },
+                            },
+                        ),
+                    );
+                }
+
+                if (/\/token\//.test(url) && init?.method === 'POST') {
                     return Promise.resolve(
                         new Response(
                             JSON.stringify({
@@ -114,13 +110,15 @@ describe('NavBar login code flow', () => {
 
         renderNavBar();
 
-        // Preenche email
-        const emailInput = screen.getByPlaceholderText('E-mail');
-        fireEvent.change(emailInput, { target: { value: professionalEmail } });
+        fireEvent.click(
+            await screen.findByRole('button', {
+                name: /Selecionar profissional|Carregando profissionais/i,
+            }),
+        );
+        fireEvent.click(screen.getByRole('button', { name: /Ana Silva/i }));
 
-        // Preenche código TOTP (6 dígitos)
-        const codeInput = screen.getByPlaceholderText('Código (6 dígitos)');
-        fireEvent.change(codeInput, { target: { value: '123456' } });
+        const passwordInput = screen.getByPlaceholderText('Senha');
+        fireEvent.change(passwordInput, { target: { value: 'Senha123' } });
 
         // Botão Entrar deve estar habilitado
         const enterBtn = screen.getByRole('button', { name: /Entrar/i });

@@ -14,6 +14,7 @@ import { useIosKeyboard } from '../../hooks/useIosKeyboard';
 import type { FilterMode } from '../FilterBar/FilterBar';
 import { MainContentHeader } from './MainContentHeader';
 import { MainContentList } from './MainContentList';
+import { cacheClientName } from '../../hooks/useAgendaModals';
 
 // Normaliza texto para comparação: remove acentos, espaços extras e ignora caixa
 function normalizeText(s: string) {
@@ -61,8 +62,6 @@ export const MainContent: React.FC<MainContentProps> = ({
     const [filterMode, setFilterMode] = useState<FilterMode>('all');
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
     const {
-        pendingIds: pendingClientIds,
-        pendingAppts: pendingClientAppts,
         tomorrowIds: tomorrowClientIds,
         tomorrowAppts: tomorrowClientAppts,
     } = useAppointmentSets(clients.length);
@@ -645,51 +644,17 @@ export const MainContent: React.FC<MainContentProps> = ({
             .sort(sortByPeriodThenTime);
     }, [clients, tomorrowClientIds, sortByPeriodThenTime]);
 
-    // Clientes com compromisso pendente.
-    // Fonte de verdade: backend (status='pending' + resumo no payload de clientes).
-    // A lista scheduled abaixo é usada somente para o bloco de "amanhã".
-
-    const pendingClients = React.useMemo(() => {
-        return clients
-            .filter(c => pendingClientIds.has(c.id))
-            .sort((a, b) => {
-                const ta = a.last_appointment_start_at
-                    ? new Date(a.last_appointment_start_at).getTime()
-                    : 0;
-                const tb = b.last_appointment_start_at
-                    ? new Date(b.last_appointment_start_at).getTime()
-                    : 0;
-                return ta - tb;
-            });
-    }, [clients, pendingClientIds]);
-
-    const pendingCount = pendingClients.length;
     const todayCount = todayClients.length;
     const tomorrowCount = tomorrowClients.length;
-
-    // Clientes em atendimento agora: status 'ongoing' vem do servidor.
-    const ongoingClients = React.useMemo(() => {
-        return clients.filter(c => c.next_appointment_status === 'ongoing');
-    }, [clients]);
-    const ongoingCount = ongoingClients.length;
 
     // Fase 2: estado de fade suave (mantido para compatibilidade visual)
     const [isResettingFilter] = React.useState(false);
 
     const displayedClients = React.useMemo(() => {
-        if (filterMode === 'pending') return pendingClients;
         if (filterMode === 'today') return todayClients;
         if (filterMode === 'tomorrow') return tomorrowClients;
-        if (filterMode === 'ongoing') return ongoingClients;
         return filteredClients;
-    }, [
-        filterMode,
-        pendingClients,
-        todayClients,
-        tomorrowClients,
-        ongoingClients,
-        filteredClients,
-    ]);
+    }, [filterMode, todayClients, tomorrowClients, filteredClients]);
 
     // Ao mudar filterMode: reseta contagem e volta ao topo
     React.useEffect(() => {
@@ -887,10 +852,8 @@ export const MainContent: React.FC<MainContentProps> = ({
             <MainContentHeader
                 filter={filter}
                 filterMode={filterMode}
-                pendingCount={pendingCount}
                 todayCount={todayCount}
                 tomorrowCount={tomorrowCount}
-                ongoingCount={ongoingCount}
                 mobileFiltersOpen={mobileFiltersOpen}
                 mobileFiltersMenuStyle={mobileFiltersMenuStyle}
                 mobileFiltersButtonRef={mobileFiltersButtonRef}
@@ -917,8 +880,6 @@ export const MainContent: React.FC<MainContentProps> = ({
                 filterMode={filterMode}
                 isResettingFilter={isResettingFilter}
                 tomorrowClientAppts={tomorrowClientAppts}
-                pendingClientIds={pendingClientIds}
-                pendingClientAppts={pendingClientAppts}
                 onSelectClient={handleSelectClient}
                 onViewClient={handleView}
                 onCardRef={handleCardRef}
@@ -975,10 +936,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                                 // Confirm: continuar fluxo, voltar à Agenda com client
                                 const label =
                                     `${confirmClient.first_name} ${confirmClient.last_name}`.trim();
-                                localStorage.setItem(
-                                    `client.name.${confirmClient.id}`,
-                                    label,
-                                );
+                                cacheClientName(confirmClient.id, label);
                                 const ret =
                                     returnUrl ||
                                     localStorage.getItem('agenda.returnUrl') ||

@@ -1,6 +1,5 @@
 // frontend/src/pages/ConsultaPage.tsx
 // Página isolada para registrar atendimento (serviços e produtos usados + pagamento).
-// Funciona standalone para testes; será linkada via PendingActionsModal depois.
 
 import React, { useEffect, useState } from 'react';
 import { API_BASE } from '../config/api';
@@ -11,8 +10,8 @@ import { useNavigate } from 'react-router-dom';
 import { useConsultaPageContext } from '../hooks/useConsultaPageContext';
 import { useConsultaItems } from '../hooks/useConsultaItems';
 import { useConsultaRegister } from '../hooks/useConsultaRegister';
-import ItemsTable from '../components/consulta/ItemsTable';
-import SelectedItemsTable from '../components/consulta/SelectedItemsTable';
+import ItemsTable from '../components/Consulta/ItemsTable';
+import SelectedItemsTable from '../components/Consulta/SelectedItemsTable';
 import type { Service, Product, SelectedItem } from '../types/consulta';
 
 const linkBtnStyle: React.CSSProperties = {
@@ -49,7 +48,18 @@ export default function ConsultaPage() {
 
     // Sync items and notes from persisted appointment context (e.g. returning from catalog)
     useEffect(() => {
-        setSelectedItems(apptState.chargeItems ?? []);
+        const sourceItems = apptState.chargeItems ?? [];
+        const expandedItems = sourceItems.flatMap(item =>
+            Array.from(
+                { length: Math.max(1, Math.round(item.quantity || 1)) },
+                (_, index) => ({
+                    ...item,
+                    key: `${item.key}-${index}`,
+                    quantity: 1,
+                }),
+            ),
+        );
+        setSelectedItems(expandedItems);
         setNotes(apptState.chargeNotes ?? '');
     }, [apptState.chargeItems, apptState.chargeNotes]);
 
@@ -105,10 +115,16 @@ export default function ConsultaPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const { addItem, removeItem, updateQty, togglePaid, updatePaidAt, total } =
-        useConsultaItems({ selectedItems, setSelectedItems });
+    const { addItem, removeItem, total } = useConsultaItems({
+        selectedItems,
+        setSelectedItems,
+    });
 
-    const { saving, error: saveError, handleRegister } = useConsultaRegister({
+    const {
+        saving,
+        error: saveError,
+        handleRegister,
+    } = useConsultaRegister({
         apptState,
         selectedItems,
         notes,
@@ -125,7 +141,6 @@ export default function ConsultaPage() {
             title='Registrar Atendimento'
             onSubmit={e => e.preventDefault()}
         >
-            {/* Contexto do agendamento quando vindo do PendingActionsModal */}
             {apptState.clientName && (
                 <div
                     style={{
@@ -299,9 +314,6 @@ export default function ConsultaPage() {
                     items={selectedItems}
                     total={total}
                     onRemove={removeItem}
-                    onUpdateQty={updateQty}
-                    onTogglePaid={togglePaid}
-                    onUpdatePaidAt={updatePaidAt}
                 />
 
                 {/* Observações */}

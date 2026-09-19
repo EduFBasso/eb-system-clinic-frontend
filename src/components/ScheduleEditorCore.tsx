@@ -125,9 +125,13 @@ export default function ScheduleEditorCore({
     }, [agendaSettings.slotInterval, selectedDay, workTimes]);
     const [hour, setHour] = React.useState<number>(initialHM.h);
     const [minute, setMinute] = React.useState<number>(initialHM.m);
-    const [visitType, setVisitType] = React.useState<
-        'consulta' | 'avaliacao' | 'retorno' | 'procedimento' | 'outro'
-    >(() => agendaSettings.defaultVisitType);
+    const [visitType, setVisitType] = React.useState<Appointment['visit_type']>(
+        () =>
+            agendaSettings.defaultVisitType === 'retorno' ||
+            agendaSettings.defaultVisitType === 'outro'
+                ? agendaSettings.defaultVisitType
+                : 'consulta',
+    );
     const [notes, setNotes] = React.useState<string>('');
     const [editingId, setEditingId] = React.useState<number | null>(null);
     const [prevHover, setPrevHover] = React.useState(false);
@@ -291,9 +295,7 @@ export default function ScheduleEditorCore({
                         style={{ padding: '6px 8px', minWidth: 140 }}
                     >
                         <option value='consulta'>Consulta</option>
-                        <option value='avaliacao'>Avaliação</option>
                         <option value='retorno'>Retorno</option>
-                        <option value='procedimento'>Serviço</option>
                         <option value='outro'>Outro</option>
                     </select>
                 </label>

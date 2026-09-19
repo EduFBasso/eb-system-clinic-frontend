@@ -76,18 +76,13 @@ export function useConflictFlow({
             0,
         );
         const rangeEnd = new Date(baseDate);
-        rangeEnd.setHours(
-            Math.floor(endMinutes / 60),
-            endMinutes % 60,
-            0,
-            0,
-        );
+        rangeEnd.setHours(Math.floor(endMinutes / 60), endMinutes % 60, 0, 0);
         const rangeStartMs = rangeStart.getTime();
         const rangeEndMs = rangeEnd.getTime();
         return dayAppointments
             .filter(appt => {
                 if (currentEdit?.id === appt.id) return false;
-                if (appt.status !== 'scheduled' && appt.status !== 'ongoing') {
+                if (appt.status !== 'scheduled') {
                     return false;
                 }
                 const apptStartMs = new Date(appt.start_at).getTime();

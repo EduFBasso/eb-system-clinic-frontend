@@ -1,11 +1,11 @@
 import React from 'react';
 import { emit } from '../events/bus';
 import type { Appointment } from './useAppointments';
-import type { PendingReturnContext } from '../types/agendaFlow';
+import type { AppointmentReturnContext } from '../types/agendaFlow';
 
 export function useAppointmentDetailsModal<T extends Appointment>() {
     const openDetails = React.useCallback(
-        (appt: T, returnContext?: PendingReturnContext) => {
+        (appt: T, returnContext?: AppointmentReturnContext) => {
             emit('openAppointmentDetails', {
                 appointment: appt,
                 returnContext,

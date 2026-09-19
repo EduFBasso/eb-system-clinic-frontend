@@ -7,17 +7,14 @@ import {
 import { useAppointmentDetailsModal } from '../../hooks/useAppointmentDetailsModal';
 import type { ClientBasic } from '../../types/ClientBasic';
 import { matchesStatusFilter } from '../../utils/appointments/agendaHelpers';
-import { openPendingActionsForAppointment } from '../../utils/appointments/openPendingActions';
 import { enrichList, deriveStatus } from '../../utils/appointments/status';
-import ClientCardRow from '../shared/ClientCardRow';
-// PendingActionsModal é global (Home)
-import StickyModalHeader from '../shared/StickyModalHeader';
+import ClientCardRow from '../Shared/ClientCardRow';
+import StickyModalHeader from '../Shared/StickyModalHeader';
 import { FaArrowLeft, FaArrowRight } from 'react-icons/fa';
 import FloatingDatePicker from '../FloatingDatePicker';
 import { cancelAppointment } from '../../services/appointments';
 import { dispatchers } from '../../events/dispatchers';
-import { useAgendaFinalizeAction } from '../../hooks/useAgendaFinalizeAction';
-import type { PendingReturnContext } from '../../types/agendaFlow';
+import type { AppointmentReturnContext } from '../../types/agendaFlow';
 import QuickScheduleModal from '../QuickScheduleModal/QuickScheduleModal';
 import { makeClientBasic } from '../../utils/appointments/agendaHelpers';
 import { toISODate } from '../../utils/date';
@@ -34,7 +31,7 @@ function parseISODateLocal(iso: string) {
     return new Date(y, (m || 1) - 1, d || 1, 0, 0, 0, 0);
 }
 
-type StatusFilter = 'all' | 'active' | 'ongoing' | 'past' | 'done' | 'canceled';
+type StatusFilter = 'all' | 'active' | 'done' | 'canceled';
 
 function groupByDay(items: Appointment[]) {
     const out: Record<string, Appointment[]> = {};
@@ -69,7 +66,7 @@ export function MonthlyAgendaModal({
 
     const monthStart = React.useMemo(() => startOfMonth(month), [month]);
     const buildReturnContext = React.useCallback(
-        (): PendingReturnContext => ({
+        (): AppointmentReturnContext => ({
             kind: 'monthly-agenda',
             clientId: client.id,
             monthISO: toISODate(monthStart),
@@ -83,8 +80,6 @@ export function MonthlyAgendaModal({
         client?.id,
         reloadKey,
     );
-
-    // PendingActions é global — sem estado local
 
     // Removido listener local — Home coordena
     const { detailsModal, openDetails } =
@@ -100,9 +95,6 @@ export function MonthlyAgendaModal({
         setQsEdit(null);
         setQsClient(null);
     }, []);
-    const { handleFinalize } = useAgendaFinalizeAction(() => {
-        setReloadKey(x => x + 1);
-    });
 
     const filteredItems = React.useMemo(() => {
         return enrichList(items, effectiveNowRef).filter(a => {
@@ -353,8 +345,6 @@ export function MonthlyAgendaModal({
                                             a,
                                             now,
                                         );
-                                        const isPending =
-                                            derivedStatus === 'past';
                                         return (
                                             <div
                                                 key={a.id}
@@ -374,8 +364,7 @@ export function MonthlyAgendaModal({
                                                     showEditAction={false}
                                                     onEdit={
                                                         derivedStatus ===
-                                                            'scheduled' &&
-                                                        !isPending
+                                                        'scheduled'
                                                             ? appt => {
                                                                   const client =
                                                                       makeClientBasic(
@@ -400,23 +389,8 @@ export function MonthlyAgendaModal({
                                                         // Garante que nome + pill não quebrem em layout estreito
                                                         minWidth: 0,
                                                     }}
-                                                    onClick={
-                                                        isPending
-                                                            ? () =>
-                                                                  openPendingActionsForAppointment(
-                                                                      a,
-                                                                      buildReturnContext(),
-                                                                  )
-                                                            : undefined
-                                                    }
-                                                    onResolvePending={appt =>
-                                                        openPendingActionsForAppointment(
-                                                            appt as Appointment,
-                                                            buildReturnContext(),
-                                                        )
-                                                    }
                                                     onDetails={
-                                                        a.status === 'done'
+                                                        derivedStatus === 'done'
                                                             ? appt =>
                                                                   openDetails(
                                                                       appt as Appointment,
@@ -425,11 +399,8 @@ export function MonthlyAgendaModal({
                                                             : undefined
                                                     }
                                                     onCancel={
-                                                        (derivedStatus ===
-                                                            'scheduled' ||
-                                                            derivedStatus ===
-                                                                'ongoing') &&
-                                                        !isPending
+                                                        derivedStatus ===
+                                                        'scheduled'
                                                             ? async appt => {
                                                                   try {
                                                                       setCancelError(
@@ -479,13 +450,6 @@ export function MonthlyAgendaModal({
                                                               }
                                                             : undefined
                                                     }
-                                                    onFinalize={
-                                                        derivedStatus ===
-                                                        'ongoing'
-                                                            ? handleFinalize
-                                                            : undefined
-                                                    }
-                                                    finalizeRequestContext={buildReturnContext()}
                                                     cardContainerStyle={{
                                                         // Evita que o stripe + conteúdo comprimam o closed pill
                                                         minWidth: 0,
@@ -531,7 +495,6 @@ export function MonthlyAgendaModal({
                     </div>
                 )}
 
-                {/* PendingActionsModal é global (Home) */}
                 {detailsModal}
                 {qsOpen && qsClient && (
                     <QuickScheduleModal

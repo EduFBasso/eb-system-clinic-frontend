@@ -1,4 +1,4 @@
-// Poll the server periodically only when likely ongoing appointments exist.
+// Poll the server periodically while the agenda is active.
 // Strategy:
 // - While visible, every pollIntervalMs, dispatch a local event 'appointments:maybeRefresh'.
 // - Components that already fetch (useClients/useAppointmentsRange) can listen to 'appointments:maybeRefresh'

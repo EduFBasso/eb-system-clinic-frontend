@@ -16,6 +16,10 @@
 
 /* ── Print / Salvar como PDF ─────────────────────────────── */
 @media print {
+    [data-screen-only] {
+        display: none !important;
+    }
+
     /* Visibility hack: oculta tudo, mostra só o card */
     body * {
         visibility: hidden !important;
@@ -30,6 +34,8 @@
         position: absolute !important;
         top: 0 !important;
         left: 0 !important;
+        display: block !important;
+        visibility: visible !important;
         margin: 0 !important;
         max-width: 100% !important;
         width: 100% !important;
@@ -39,9 +45,20 @@
         padding: 24px 28px !important;
         background: #fff !important;
         color: #000 !important;
+        font-family: 'Poppins', sans-serif !important;
         font-size: 11pt !important;
         overflow: visible !important;
         gap: 10px !important;
+    }
+    [data-print-card][data-print-layout='odonto-quote'],
+    [data-print-card][data-print-layout='catalog'] {
+        position: static !important;
+        padding: 0 !important;
+        gap: 0 !important;
+        overflow: visible !important;
+    }
+    [data-print-card] * {
+        font-family: 'Poppins', sans-serif !important;
     }
     /* ── Formulário de cadastro (modo edição) ── */
     [data-print-form] {

@@ -1,12 +1,12 @@
 import React from 'react';
 import { useStickyHeaderHeight } from '../../hooks/useStickyHeaderHeight';
 import { AppModal } from '../Modal/Modal';
-import StickyModalHeader from '../shared/StickyModalHeader';
+import StickyModalHeader from '../Shared/StickyModalHeader';
 import { AgendaMonthlyGrid } from '../AgendaMonthlyGrid/AgendaMonthlyGrid';
 import FloatingDatePicker from '../FloatingDatePicker';
-import DateControlsHeader from '../shared/DateControlsHeader';
+import DateControlsHeader from '../Shared/DateControlsHeader';
 // AppointmentCard replaced by ClientCardRow for consistency with Daily agenda
-import ClientCardRow from '../shared/ClientCardRow';
+import ClientCardRow from '../Shared/ClientCardRow';
 import { deriveStatus } from '../../utils/appointments/status';
 import { toISODate } from '../../utils/date';
 import {
@@ -15,11 +15,9 @@ import {
 } from '../../hooks/useAppointments';
 import { useAppointmentDetailsModal } from '../../hooks/useAppointmentDetailsModal';
 import { useNowTick } from '../../hooks/useNowTick';
-import { openPendingActionsForAppointment } from '../../utils/appointments/openPendingActions';
 import { cancelAppointment } from '../../services/appointments';
 import { dispatchers } from '../../events/dispatchers';
-import { useAgendaFinalizeAction } from '../../hooks/useAgendaFinalizeAction';
-import type { PendingReturnContext } from '../../types/agendaFlow';
+import type { AppointmentReturnContext } from '../../types/agendaFlow';
 import QuickScheduleModal from '../QuickScheduleModal/QuickScheduleModal';
 import { makeClientBasic } from '../../utils/appointments/agendaHelpers';
 import type { ClientBasic } from '../../types/ClientBasic';
@@ -78,7 +76,7 @@ function WeeklyAgendaContent({
         [anchorDate],
     );
     const buildReturnContext = React.useCallback(
-        (): PendingReturnContext => ({
+        (): AppointmentReturnContext => ({
             kind: 'weekly-agenda',
             dateISO: toISODate(anchorDate),
         }),
@@ -99,9 +97,6 @@ function WeeklyAgendaContent({
         reloadKey,
     );
     const effectiveNowRef = useNowTick(30_000);
-    const { handleFinalize } = useAgendaFinalizeAction(() => {
-        setReloadKey(x => x + 1);
-    });
     const handleCancel = React.useCallback(async (appt: Appointment) => {
         const res = await cancelAppointment(appt.id);
         if (!res.ok) {
@@ -309,7 +304,6 @@ function WeeklyAgendaContent({
 
     const { detailsModal, openDetails } =
         useAppointmentDetailsModal<Appointment>();
-    // PendingActions é global — nenhum estado local necessário
 
     // QuickSchedule: abrir em modo edição ao tocar no cartão
     const [qsOpen, setQsOpen] = React.useState(false);
@@ -559,15 +553,8 @@ function WeeklyAgendaContent({
                                                     onClick={() =>
                                                         setSelected(iso, 'user')
                                                     }
-                                                    onResolvePending={appt => {
-                                                        openPendingActionsForAppointment(
-                                                            appt,
-                                                            buildReturnContext(),
-                                                        );
-                                                    }}
-                                                    finalizeRequestContext={buildReturnContext()}
                                                     onDetails={
-                                                        a.status === 'done'
+                                                        derivedStatus === 'done'
                                                             ? appt =>
                                                                   openDetails(
                                                                       appt as Appointment,
@@ -577,16 +564,8 @@ function WeeklyAgendaContent({
                                                     }
                                                     onCancel={
                                                         derivedStatus ===
-                                                            'scheduled' ||
-                                                        derivedStatus ===
-                                                            'ongoing'
+                                                        'scheduled'
                                                             ? handleCancel
-                                                            : undefined
-                                                    }
-                                                    onFinalize={
-                                                        derivedStatus ===
-                                                        'ongoing'
-                                                            ? handleFinalize
                                                             : undefined
                                                     }
                                                 />
@@ -614,7 +593,6 @@ function WeeklyAgendaContent({
             />
 
             {detailsModal}
-            {/* PendingActionsModal é global (Home) */}
             {qsOpen && qsClient && (
                 <QuickScheduleModal
                     open={qsOpen}

@@ -6,6 +6,7 @@
 import { API_BASE } from '../config/api';
 import { emit } from '../events/bus';
 import { getOrCreateDeviceId } from './device';
+import { clearStoredAuth } from './auth/session';
 
 // Custom error shape so callers can differentiate
 export class ApiError extends Error {
@@ -84,9 +85,7 @@ function shouldTriggerDeviceLogout(status: number, bodyText: string) {
 
 function performLocalLogout(reason: string) {
     try {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('loggedProfessional');
-        localStorage.removeItem('newClientId');
+        clearStoredAuth();
     } catch {
         // ignore storage errors (quota, disabled cookies, etc.)
     }
@@ -161,7 +160,11 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
     } catch (e) {
         requestSignal.cleanup();
         if (requestSignal.didTimeout()) {
-            throw new ApiError('Tempo limite da requisicao excedido.', 0, 'timeout');
+            throw new ApiError(
+                'Tempo limite da requisicao excedido.',
+                0,
+                'timeout',
+            );
         }
         const message = e instanceof Error ? e.message : 'Network error';
         throw new ApiError(message, 0);

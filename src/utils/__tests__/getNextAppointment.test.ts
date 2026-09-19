@@ -34,8 +34,8 @@ describe('getNextAppointment', () => {
         expect(getNextAppointment([b, a], now)?.id).toBe(1);
     });
 
-    it('includes ongoing if includeOngoing=true (default)', () => {
-        const ongoing = ap({
+    it('skips appointments that have already started', () => {
+        const started = ap({
             id: 3,
             start_at: '2025-01-01T11:30:00.000Z',
             end_at: '2025-01-01T12:30:00.000Z',
@@ -45,25 +45,7 @@ describe('getNextAppointment', () => {
             start_at: '2025-01-01T12:45:00.000Z',
             end_at: '2025-01-01T13:15:00.000Z',
         });
-        expect(getNextAppointment([future, ongoing], now)?.id).toBe(3);
-    });
-
-    it('skips ongoing if includeOngoing=false', () => {
-        const ongoing = ap({
-            id: 5,
-            start_at: '2025-01-01T11:30:00.000Z',
-            end_at: '2025-01-01T12:30:00.000Z',
-        });
-        const future = ap({
-            id: 6,
-            start_at: '2025-01-01T12:45:00.000Z',
-            end_at: '2025-01-01T13:15:00.000Z',
-        });
-        expect(
-            getNextAppointment([future, ongoing], now, {
-                includeOngoing: false,
-            })?.id,
-        ).toBe(6);
+        expect(getNextAppointment([future, started], now)?.id).toBe(4);
     });
 
     it('ignores non-scheduled when onlyScheduled=true', () => {
@@ -99,19 +81,5 @@ describe('relativeLabel', () => {
             end_at: '2025-01-01T13:00:00.000Z',
         });
         expect(relativeLabel(appt, now)).toBe('em 30 min');
-    });
-    it('returns "agora" for ongoing', () => {
-        const appt = ap({
-            start_at: '2025-01-01T11:50:00.000Z',
-            end_at: '2025-01-01T12:10:00.000Z',
-        });
-        expect(relativeLabel(appt, now)).toBe('agora');
-    });
-    it('returns terminou há X min for just finished', () => {
-        const appt = ap({
-            start_at: '2025-01-01T11:00:00.000Z',
-            end_at: '2025-01-01T11:55:00.000Z',
-        });
-        expect(relativeLabel(appt, now)).toBe('terminou há 5 min');
     });
 });

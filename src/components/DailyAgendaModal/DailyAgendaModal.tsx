@@ -1,9 +1,9 @@
 import React from 'react';
 import { AppModal } from '../Modal/Modal';
 import FloatingDatePicker from '../FloatingDatePicker';
-import StickyModalHeader from '../shared/StickyModalHeader';
+import StickyModalHeader from '../Shared/StickyModalHeader';
 import { FaArrowLeft, FaArrowRight, FaCalendarAlt } from 'react-icons/fa';
-import ClientCardRow from '../shared/ClientCardRow';
+import ClientCardRow from '../Shared/ClientCardRow';
 import { enrichList } from '../../utils/appointments/status';
 import { toISODate } from '../../utils/date';
 import {
@@ -13,18 +13,14 @@ import {
     type ClientLike,
 } from '../../utils/appointments/agendaHelpers';
 import { useNowTick } from '../../hooks/useNowTick';
-import { openPendingActionsForAppointment } from '../../utils/appointments/openPendingActions';
 import QuickScheduleModal from '../QuickScheduleModal/QuickScheduleModal';
-// PendingActionsModal é global (Home)
 import type { Appointment } from '../../hooks/useAppointments';
 import { useAppointmentsRange } from '../../hooks/useAppointments';
 import { useAppointmentDetailsModal } from '../../hooks/useAppointmentDetailsModal';
 import type { ClientBasic } from '../../types/ClientBasic';
-import { focusClientCard } from '../../utils/focusClientCard';
 import { cancelAppointment } from '../../services/appointments';
 import { dispatchers } from '../../events/dispatchers';
-import { useAgendaFinalizeAction } from '../../hooks/useAgendaFinalizeAction';
-import type { PendingReturnContext } from '../../types/agendaFlow';
+import type { AppointmentReturnContext } from '../../types/agendaFlow';
 import { addDays, startOfDay } from '../../utils/dateHelpers';
 
 interface DailyAgendaModalProps {
@@ -34,7 +30,7 @@ interface DailyAgendaModalProps {
     focusAppointmentId?: number;
 }
 
-type StatusKey = 'scheduled' | 'done' | 'canceled' | 'ongoing';
+type StatusKey = 'scheduled' | 'done' | 'canceled';
 export function DailyAgendaModal({
     open,
     date,
@@ -77,7 +73,6 @@ export function DailyAgendaModal({
         if (open) setSelectedDay(startOfDay(date));
     }, [open, date]);
     const [reloadKey, setReloadKey] = React.useState(0);
-    // PendingActions é global — nenhum estado local
 
     // Removido listener local de forceClose — Home coordena
     const { detailsModal, openDetails } =
@@ -87,7 +82,7 @@ export function DailyAgendaModal({
         [selectedDay],
     );
     const buildReturnContext = React.useCallback(
-        (appointmentId?: number): PendingReturnContext => ({
+        (appointmentId?: number): AppointmentReturnContext => ({
             kind: 'daily-agenda',
             dateISO: toISODate(dayStart),
             focusAppointmentId: appointmentId,
@@ -101,9 +96,6 @@ export function DailyAgendaModal({
         undefined,
         reloadKey,
     );
-    const { handleFinalize } = useAgendaFinalizeAction(() => {
-        setReloadKey(x => x + 1);
-    });
     const handleCancel = React.useCallback(async (appt: Appointment) => {
         const res = await cancelAppointment(appt.id);
         if (!res.ok) {
@@ -157,24 +149,23 @@ export function DailyAgendaModal({
         }
     }, [open, items, loading, reloadKey, dayStart, dayEnd]);
     const [statusFilter, setStatusFilter] = React.useState<
-        'all' | 'active' | 'past' | 'done' | 'canceled' | 'ongoing'
+        'all' | 'active' | 'done' | 'canceled'
     >('all');
 
     type EnrichedAppt = Appointment & {
         _start: Date;
         _end: Date;
         _isPast: boolean;
-        _isOngoing: boolean;
-        _derivedStatus: 'scheduled' | 'done' | 'canceled' | 'ongoing' | 'past';
+        _derivedStatus: 'scheduled' | 'done' | 'canceled';
         client?: ClientLike | number;
     };
     type RawClientField = ClientLike | number | undefined;
-    // Reactive now — ticks every 30 s so ongoing/past status stays accurate
+    // Reactive now — ticks every 30 s so past status stays accurate
     const effectiveNowRef = useNowTick(30_000);
 
     const enriched: EnrichedAppt[] = React.useMemo(() => {
         const nowRef = effectiveNowRef;
-        // Reuse shared enrich to compute _isPast/_isOngoing and then reattach optional client shape
+        // Reuse shared enrich and then reattach optional client shape
         const base = enrichList(items, nowRef);
         return base.map(a => {
             const rawClient = (a as unknown as { client?: RawClientField })
@@ -201,26 +192,6 @@ export function DailyAgendaModal({
             window.removeEventListener('appointments:changed', onChanged);
     }, [open]);
 
-    // Quando algum compromisso entra em andamento, rolar até o cartão do cliente (como no filtro dinâmico)
-    React.useEffect(() => {
-        if (!open) return;
-        try {
-            const anyOngoing = enriched.find(
-                a => a.status === 'ongoing' || a._isOngoing,
-            );
-            if (anyOngoing) {
-                const c: ClientLike | number | undefined = anyOngoing.client as
-                    | ClientLike
-                    | number
-                    | undefined;
-                const clientId = typeof c === 'number' ? c : c?.id;
-                if (clientId) focusClientCard(clientId);
-            }
-        } catch {
-            /* noop */
-        }
-    }, [open, enriched]);
-
     const filtered = enriched.filter(a => {
         return matchesStatusFilter(statusFilter, a);
     });
@@ -228,12 +199,8 @@ export function DailyAgendaModal({
     const sorted = filtered.slice().sort((a, b) => {
         const t = a._start.getTime() - b._start.getTime();
         if (t !== 0) return t;
-        const ai = STATUS_ORDER.indexOf(
-            (a._isOngoing ? 'ongoing' : a.status) as StatusKey,
-        );
-        const bi = STATUS_ORDER.indexOf(
-            (b._isOngoing ? 'ongoing' : b.status) as StatusKey,
-        );
+        const ai = STATUS_ORDER.indexOf(a.status as StatusKey);
+        const bi = STATUS_ORDER.indexOf(b.status as StatusKey);
         return ai - bi;
     });
 
@@ -435,8 +402,6 @@ export function DailyAgendaModal({
                         >
                             <option value='all'>Todos</option>
                             <option value='active'>Ativos</option>
-                            <option value='ongoing'>Em andamento</option>
-                            <option value='past'>Pendentes</option>
                             <option value='done'>Concluídos</option>
                             <option value='canceled'>Cancelados</option>
                         </select>
@@ -493,17 +458,8 @@ export function DailyAgendaModal({
                                         setQsEdit(a);
                                         setQsOpen(true);
                                     }}
-                                    onResolvePending={appt => {
-                                        openPendingActionsForAppointment(
-                                            appt,
-                                            buildReturnContext(appt.id),
-                                        );
-                                    }}
-                                    finalizeRequestContext={buildReturnContext(
-                                        a.id,
-                                    )}
                                     onDetails={
-                                        a.status === 'done'
+                                        a._derivedStatus === 'done'
                                             ? appt =>
                                                   openDetails(
                                                       appt as Appointment,
@@ -514,20 +470,8 @@ export function DailyAgendaModal({
                                             : undefined
                                     }
                                     onCancel={
-                                        (a.status === 'scheduled' ||
-                                            a.status === 'ongoing' ||
-                                            a._isOngoing) &&
-                                        !(
-                                            a.status === 'scheduled' &&
-                                            !a._isOngoing &&
-                                            a._end < effectiveNowRef
-                                        )
+                                        a._derivedStatus === 'scheduled'
                                             ? handleCancel
-                                            : undefined
-                                    }
-                                    onFinalize={
-                                        a.status === 'ongoing' || a._isOngoing
-                                            ? handleFinalize
                                             : undefined
                                     }
                                     highlight={focusAppointmentId === a.id}
@@ -562,7 +506,6 @@ export function DailyAgendaModal({
                     }}
                 />
             )}
-            {/* PendingActionsModal é global (Home) */}
             {detailsModal}
         </AppModal>
     );

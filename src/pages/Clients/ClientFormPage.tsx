@@ -7,12 +7,14 @@ import { useEffect, useState } from 'react';
 import { ClientForm } from '../../components/ClientForm/ClientForm';
 import { API_BASE } from '../../config/api';
 import { getAccessToken } from '../../utils/auth/session';
+import type { ClientData } from '../../types/ClientData';
 
 export default function ClientFormPage() {
     const { id } = useParams();
-    const [cliente, setCliente] = useState(null);
+    const [cliente, setCliente] = useState<ClientData | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [reloadKey, setReloadKey] = useState(0);
     // Refetch on bfcache restore to avoid stale form targeting wrong client
     useEffect(() => {
         const onPageShow = (e: Event) => {
@@ -20,9 +22,9 @@ export default function ClientFormPage() {
             // When a page is restored from bfcache (persisted), redo the fetch or reset state
             if (evt && evt.persisted) {
                 if (id) {
-                    // trigger refetch by toggling id state
                     setCliente(null);
                     setLoading(true);
+                    setReloadKey(current => current + 1);
                 } else {
                     setCliente(null);
                     setLoading(false);
@@ -39,7 +41,6 @@ export default function ClientFormPage() {
             setError('');
             const token = getAccessToken();
             const url = `${API_BASE}/register/clients/${id}/`;
-            console.debug('[ClientFormPage] fetching', url);
             fetch(url, {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -67,7 +68,7 @@ export default function ClientFormPage() {
             setLoading(false);
             setError('');
         }
-    }, [id]);
+    }, [id, reloadKey]);
 
     return (
         <div
@@ -112,32 +113,6 @@ export default function ClientFormPage() {
             {!loading && !error && !id && <ClientForm />}
             {!loading && !error && id && !cliente && (
                 <div style={{ textAlign: 'center', padding: '2rem' }}>
-                    <div
-                        style={{
-                            color: 'blue',
-                            fontSize: '0.95rem',
-                            marginBottom: '1rem',
-                            background: '#eef',
-                            padding: '0.5rem',
-                            borderRadius: '6px',
-                        }}
-                    >
-                        <div>
-                            <strong>Debug:</strong>
-                        </div>
-                        <div>id da rota: {id?.toString()}</div>
-                        <div>
-                            window.location.pathname:{' '}
-                            {typeof window !== 'undefined'
-                                ? window.location.pathname
-                                : ''}
-                        </div>
-                        <div>
-                            Endpoint usado:{' '}
-                            {API_BASE + '/register/clients/' + id + '/'}
-                        </div>
-                        <div>Token: {getAccessToken()}</div>
-                    </div>
                     <span>Cliente não encontrado.</span>
                 </div>
             )}

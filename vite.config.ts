@@ -88,6 +88,16 @@ export default defineConfig({
                 changeOrigin: true,
                 secure: false,
             },
+            '/clinic': {
+                target: 'http://localhost:8000',
+                changeOrigin: true,
+                secure: false,
+                bypass(req) {
+                    const url = req.url ?? '';
+                    if (url.startsWith('/clinic/')) return null;
+                    return '/index.html';
+                },
+            },
             '/token': {
                 target: 'http://localhost:8000',
                 changeOrigin: true,

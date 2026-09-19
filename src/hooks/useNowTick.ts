@@ -3,7 +3,7 @@ import React from 'react';
 /**
  * Returns a reactive `Date` that updates every `intervalMs` milliseconds.
  * Aligns the first tick to the next multiple of the interval to smooth
- * status transitions (e.g. scheduled → ongoing on the minute boundary).
+ * time-based status transitions at minute boundaries.
  *
  * @param intervalMs - tick interval in ms (default: 30 000 = 30 s)
  */

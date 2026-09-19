@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import type {
     AnamneseBaseData,
+    AnamneseOdontologiaData,
     AnamnesePodologiaData,
     ClientData,
 } from '../../types/ClientData';
@@ -9,6 +10,12 @@ import { formatPhone } from '../../utils/formatPhone';
 import { formatDOBWithAge } from '../../utils/dateOfBirth';
 import { formatCpf, formatCnpj, formatCep } from '../../utils/formatCpf';
 import { useTheme } from '../../contexts/ThemeContext';
+import {
+    readLoggedProfessionalCapabilities,
+    resolveClinicSpecialty,
+} from '../../utils/tenantCapabilities';
+import { ODONTO_ANAMNESIS_FIELDS } from '../Odonto/DentalAnamnesisForm/dentalAnamnesisModel';
+import { PODOLOGY_ANAMNESIS_FIELDS } from '../Podologia/ClientPodologiaSection/podologiaAnamnesisModel';
 
 interface ClientViewProps {
     client: ClientData & {
@@ -16,17 +23,6 @@ interface ClientViewProps {
         date_of_birth?: string | null;
         anamnesis_base?: Partial<AnamneseBaseData> | null;
         anamnesis_podologia?: Partial<AnamnesePodologiaData> | null;
-        anamnesis_responses?: Array<{
-            id?: number;
-            field_id: number;
-            field_code: string;
-            sector: string;
-            sector_order: number;
-            label: string;
-            field_type: 'radio' | 'text' | 'textarea';
-            selection_mode: 'single' | 'multiple';
-            value: string;
-        }> | null;
     };
     openToken?: number;
 }
@@ -94,70 +90,13 @@ function getAnamnesePodologia(client: ClientViewProps['client']) {
         null) as Partial<AnamnesePodologiaData> | null;
 }
 
+function getAnamneseOdontologia(client: ClientViewProps['client']) {
+    return (client.anamnese_odontologia ??
+        null) as Partial<AnamneseOdontologiaData> | null;
+}
+
 function hasValue(value: unknown): boolean {
     return value !== null && value !== undefined && String(value).trim() !== '';
-}
-
-function normalizeSectorName(value: string) {
-    return value
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase();
-}
-
-function getPodologyResponses(client: ClientViewProps['client']) {
-    const responses = client.anamnesis_responses ?? [];
-    if (!responses.length) return [];
-
-    const rows = responses
-        .filter(
-            response => normalizeSectorName(response.sector) !== 'historico',
-        )
-        .slice()
-        .sort(
-            (a, b) =>
-                a.sector_order - b.sector_order || a.field_id - b.field_id,
-        );
-
-    const leftOther = rows.find(
-        row => row.label === 'Outra alteração esquerda',
-    );
-    const rightOther = rows.find(
-        row => row.label === 'Outra alteração direita',
-    );
-
-    const mergeOtherDetail = (label: string, detail: string | undefined) => {
-        if (!detail || !detail.trim()) return;
-        const row = rows.find(item => item.label === label);
-        if (!row) return;
-
-        const parts = row.value
-            .split(',')
-            .map(part => part.trim())
-            .filter(Boolean);
-        const existingDetailIndex = parts.findIndex(part =>
-            part.startsWith('Outros:'),
-        );
-
-        if (existingDetailIndex >= 0) {
-            parts[existingDetailIndex] = `Outros: ${detail.trim()}`;
-        } else if (parts.includes('Outros')) {
-            parts[parts.indexOf('Outros')] = `Outros: ${detail.trim()}`;
-        } else {
-            parts.push(`Outros: ${detail.trim()}`);
-        }
-
-        row.value = parts.join(', ');
-    };
-
-    mergeOtherDetail('Alterações ungueais esquerda', leftOther?.value);
-    mergeOtherDetail('Alterações ungueais direita', rightOther?.value);
-
-    return rows.filter(
-        row =>
-            row.label !== 'Outra alteração esquerda' &&
-            row.label !== 'Outra alteração direita',
-    );
 }
 
 // ── sub-component: a read-only section panel ─────────────────────────────────
@@ -214,6 +153,11 @@ export const ClientView: React.FC<ClientViewProps> = ({
     const { theme } = useTheme();
     const rootRef = React.useRef<HTMLDivElement | null>(null);
 
+    const capabilities = React.useMemo(readLoggedProfessionalCapabilities, []);
+    const specialty = resolveClinicSpecialty(capabilities);
+    const hasOdonto = specialty === 'odonto';
+    const hasPodologia = specialty === 'podologia';
+
     useEffect(() => {
         const node = rootRef.current;
         if (!node) return;
@@ -234,11 +178,10 @@ export const ClientView: React.FC<ClientViewProps> = ({
         () => getAnamnesePodologia(client),
         [client],
     );
-    const dynamicPodologyResponses = React.useMemo(
-        () => getPodologyResponses(client),
+    const anamneseOdontologia = React.useMemo(
+        () => getAnamneseOdontologia(client),
         [client],
     );
-
     // ── Dados Pessoais rows ──────────────────────────────────────────────────
     const personalFields: Array<[keyof ClientData, string]> = [
         ['first_name', 'Nome'],
@@ -318,43 +261,43 @@ export const ClientView: React.FC<ClientViewProps> = ({
                   label: 'Atividade esportiva',
                   value: anamneseBase.sport_activity || '-',
               },
+              {
+                  label: 'Atividade acadêmica',
+                  value: anamneseBase.academic_activity || '-',
+              },
           ].filter(row => hasValue(row.value) && row.value !== '-')
         : [];
 
-    const podologiaRows: { label: string; value: string }[] =
-        dynamicPodologyResponses.length > 0
-            ? dynamicPodologyResponses.map(response => ({
-                  label: response.label,
-                  value: response.value,
-              }))
-            : anamnesePodologia
-              ? [
-                    {
-                        label: 'Calçado usado',
-                        value: anamnesePodologia.footwear_used || '-',
-                    },
-                    {
-                        label: 'Meia usada',
-                        value: anamnesePodologia.sock_used || '-',
-                    },
-                    {
-                        label: 'Teste de sensibilidade',
-                        value: anamnesePodologia.sensitivity_test || '-',
-                    },
-                    {
-                        label: 'Alterações ungueais esquerda',
-                        value: anamnesePodologia.nail_changes_left || '-',
-                    },
-                    {
-                        label: 'Alterações ungueais direita',
-                        value: anamnesePodologia.nail_changes_right || '-',
-                    },
-                    {
-                        label: 'Outros procedimentos',
-                        value: anamnesePodologia.other_procedures || '-',
-                    },
-                ].filter(row => hasValue(row.value) && row.value !== '-')
-              : [];
+    const podologiaRows: { label: string; value: string }[] = anamnesePodologia
+        ? PODOLOGY_ANAMNESIS_FIELDS.map(({ key, label }) => {
+              const rawValue = (anamnesePodologia as Record<string, unknown>)[
+                  key
+              ];
+              const value =
+                  rawValue === null || rawValue === undefined
+                      ? '-'
+                      : String(rawValue);
+              return { label, value };
+          }).filter(row => hasValue(row.value) && row.value !== '-')
+        : [];
+
+    const odontoRows: { label: string; value: string }[] = anamneseOdontologia
+        ? ODONTO_ANAMNESIS_FIELDS.map(({ key, label, isBool }) => {
+              const rawValue = (anamneseOdontologia as Record<string, unknown>)[
+                  key
+              ];
+              if (rawValue === null || rawValue === undefined) return null;
+
+              const value = isBool
+                  ? rawValue === true
+                      ? 'Sim'
+                      : 'Não'
+                  : String(rawValue);
+
+              if (!hasValue(value)) return null;
+              return { label, value };
+          }).filter((row): row is { label: string; value: string } => !!row)
+        : [];
 
     return (
         <div ref={rootRef} className={styles.viewRoot}>
@@ -405,13 +348,24 @@ export const ClientView: React.FC<ClientViewProps> = ({
                 emptyMessage='Nenhum histórico registrado'
             />
 
-            <ViewSection
-                theme={theme}
-                eyebrow='Visualização'
-                title='Anamnese Podologia'
-                rows={podologiaRows}
-                emptyMessage='Nenhum histórico registrado'
-            />
+            {hasOdonto && (
+                <ViewSection
+                    theme={theme}
+                    eyebrow='Visualização'
+                    title='Anamnese Odontologia'
+                    rows={odontoRows}
+                    emptyMessage='Nenhum histórico registrado'
+                />
+            )}
+            {hasPodologia && (
+                <ViewSection
+                    theme={theme}
+                    eyebrow='Visualização'
+                    title='Anamnese Podologia'
+                    rows={podologiaRows}
+                    emptyMessage='Nenhum histórico registrado'
+                />
+            )}
         </div>
     );
 };

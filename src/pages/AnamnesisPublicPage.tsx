@@ -52,6 +52,7 @@ export default function AnamnesisPublicPage() {
     const [loading, setLoading] = React.useState(true);
     const [expired, setExpired] = React.useState(false);
     const [submitted, setSubmitted] = React.useState(false);
+    const [errorDetail, setErrorDetail] = React.useState<string>('');
     const [cliente, setCliente] = React.useState<Partial<ClientData> | null>(
         null,
     );
@@ -69,18 +70,50 @@ export default function AnamnesisPublicPage() {
             }
 
             try {
-                const response = await fetch(
-                    `${API_BASE}/register/clients/validate-anamnesis-token/`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ token }),
+                const validateUrl = `${API_BASE}/register/clients/validate-anamnesis-token/`;
+                if (import.meta.env.DEV) {
+                    console.info(
+                        '[anamnesis-public] validate-url',
+                        validateUrl,
+                    );
+                }
+
+                const response = await fetch(validateUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
                     },
-                );
+                    body: JSON.stringify({ token }),
+                });
 
                 if (!response.ok) {
+                    let detail = EXPIRED_MESSAGE;
+                    try {
+                        const data = (await response.json()) as {
+                            detail?: unknown;
+                        };
+                        if (
+                            typeof data.detail === 'string' &&
+                            data.detail.trim()
+                        ) {
+                            detail = data.detail.trim();
+                        }
+                    } catch {
+                        /* noop */
+                    }
+
+                    if (import.meta.env.DEV) {
+                        console.warn('[anamnesis-public] validate-failed', {
+                            status: response.status,
+                            detail,
+                            apiBase: API_BASE,
+                            href: window.location.href,
+                        });
+                        setErrorDetail(
+                            `status=${response.status} detail=${detail}`,
+                        );
+                    }
+
                     if (!cancelled) {
                         setExpired(true);
                         setLoading(false);
@@ -127,6 +160,13 @@ export default function AnamnesisPublicPage() {
                     setLoading(false);
                 }
             } catch {
+                if (import.meta.env.DEV) {
+                    console.warn('[anamnesis-public] validate-network-error', {
+                        apiBase: API_BASE,
+                        href: window.location.href,
+                    });
+                    setErrorDetail('network-error ao validar token');
+                }
                 if (!cancelled) {
                     setExpired(true);
                     setLoading(false);
@@ -156,6 +196,9 @@ export default function AnamnesisPublicPage() {
             <div className={styles.centeredState} data-theme={publicTheme}>
                 <div className={styles.expiredCard}>
                     <p className={styles.expiredText}>{EXPIRED_MESSAGE}</p>
+                    {import.meta.env.DEV && !!errorDetail && (
+                        <p className={styles.expiredText}>{errorDetail}</p>
+                    )}
                 </div>
             </div>
         );

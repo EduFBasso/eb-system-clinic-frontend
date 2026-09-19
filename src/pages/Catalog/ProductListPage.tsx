@@ -3,17 +3,19 @@ import { API_BASE } from '../../config/api';
 import { apiFetch, ApiError } from '../../utils/apiFetch';
 import FormPage from '../../components/FormKit/FormPage';
 import FormSection from '../../components/FormKit/FormSection';
+import { CatalogPrintView } from '../../components/CatalogPrintView/CatalogPrintView';
+import ActionPromptModal from '../../components/Shared/ActionPromptModal';
+import { emit } from '../../events/bus';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { consumeFlashMessage } from '../../utils/flashMessage';
+import formStyles from '../../styles/pages/Client.module.css';
 
 type Product = {
     id: number;
     name: string;
     type: 'PRODUCT' | 'MEDICATION';
+    description?: string;
     price: number;
-    cost: number;
-    track_inventory: boolean;
-    quantity_on_hand: number;
 };
 
 function format2DecimalsBR(value: number): string {
@@ -27,7 +29,11 @@ export default function ProductListPage() {
     const [items, setItems] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const [search, setSearch] = useState('');
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+    const [deleting, setDeleting] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
     const returnTo =
@@ -46,16 +52,16 @@ export default function ProductListPage() {
         [cameFromConsulta, navigate],
     );
 
-    const openProductForm = useMemo(
-        () =>
-            (productId?: number) => {
-                const path = productId
-                    ? `/catalog/products/${productId}`
-                    : '/catalog/products/new';
-                navigate(path, { state: { returnTo } });
-            },
-        [navigate, returnTo],
-    );
+    useEffect(() => {
+        const flashed = consumeFlashMessage('catalog-products');
+        if (flashed) {
+            emit('systemMessage', {
+                text: flashed.text,
+                type: flashed.type || 'success',
+                autoCloseMs: flashed.autoCloseMs || 4000,
+            });
+        }
+    }, []);
 
     useEffect(() => {
         let mounted = true;
@@ -79,190 +85,324 @@ export default function ProductListPage() {
         };
     }, []);
 
-    useEffect(() => {
-        const message = consumeFlashMessage('catalog-products');
-        if (!message?.text) return;
-        setSuccessMsg(String(message.text));
-        const ms =
-            typeof message.autoCloseMs === 'number'
-                ? message.autoCloseMs
-                : 6000;
-        setTimeout(() => setSuccessMsg(null), ms);
-    }, []);
+    const filteredItems = useMemo(() => {
+        const term = search.trim().toLocaleLowerCase('pt-BR');
+        if (!term) return items;
+        return items.filter(product =>
+            product.name.toLocaleLowerCase('pt-BR').includes(term),
+        );
+    }, [items, search]);
 
-    if (loading) return <div style={{ padding: 16 }}>Carregando…</div>;
-    if (error)
-        return <div style={{ padding: 16, color: 'crimson' }}>{error}</div>;
+    function toggleSelectionMode() {
+        if (selectionMode) {
+            setSelectedIds(new Set());
+            setConfirmDeleteOpen(false);
+        }
+        setSelectionMode(current => !current);
+    }
+
+    function toggleSelected(productId: number) {
+        setSelectedIds(current => {
+            const next = new Set(current);
+            if (next.has(productId)) next.delete(productId);
+            else next.add(productId);
+            return next;
+        });
+    }
+
+    async function deleteSelectedProducts() {
+        const ids = Array.from(selectedIds);
+        setConfirmDeleteOpen(false);
+        setDeleting(true);
+        const deletedIds: number[] = [];
+        const failedIds: number[] = [];
+
+        for (const productId of ids) {
+            try {
+                await apiFetch(`${API_BASE}/inventory/products/${productId}/`, {
+                    method: 'DELETE',
+                });
+                deletedIds.push(productId);
+            } catch {
+                failedIds.push(productId);
+            }
+        }
+
+        setItems(current =>
+            current.filter(product => !deletedIds.includes(product.id)),
+        );
+        setSelectedIds(new Set(failedIds));
+        setDeleting(false);
+
+        if (failedIds.length === 0) {
+            setSelectionMode(false);
+            emit('systemMessage', {
+                text: `${deletedIds.length} ${deletedIds.length === 1 ? 'produto removido' : 'produtos removidos'} do catálogo.`,
+                type: 'success',
+            });
+            return;
+        }
+
+        emit('systemMessage', {
+            text: `Não foi possível remover ${failedIds.length} ${failedIds.length === 1 ? 'produto' : 'produtos'}.`,
+            type: 'error',
+        });
+    }
 
     return (
-        <FormPage title='Produtos' onSubmit={e => e.preventDefault()}>
-            <FormSection
-                title='Lista'
-                onClose={handleClose}
-                closeTitle='Fechar'
-            >
-                {successMsg && (
-                    <div
-                        style={{
-                            marginBottom: 8,
-                            padding: '10px 12px',
-                            background: 'var(--color-success-bg)',
-                            border: '1px solid var(--color-success-dark)',
-                            borderRadius: 8,
-                            color: 'var(--color-success-dark)',
-                            fontWeight: 600,
-                        }}
+        <>
+            <div data-screen-only style={{ display: 'contents' }}>
+                <FormPage title='Produtos' onSubmit={e => e.preventDefault()}>
+                    <FormSection
+                        title='Lista'
+                        onClose={handleClose}
+                        closeTitle='Fechar'
                     >
-                        {successMsg}
-                    </div>
-                )}
-                <div
-                    style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: 12,
-                        gap: 8,
-                    }}
-                >
-                    <button
-                        className='btn'
-                        onClick={handleClose}
-                        style={{
-                            background: 'transparent',
-                            color: 'var(--color-text)',
-                            border: '1px solid var(--color-border)',
-                            borderRadius: 8,
-                            padding: '8px 14px',
-                            fontWeight: 500,
-                            cursor: 'pointer',
-                        }}
-                        title='Voltar'
-                    >
-                        ← Voltar
-                    </button>
-                    <button
-                        className='btn'
-                        onClick={() => openProductForm()}
-                        style={{
-                            background: 'var(--color-primary)',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: 8,
-                            padding: '8px 14px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                        }}
-                    >
-                        + Novo
-                    </button>
-                </div>
-                <div
-                    style={{
-                        overflowX: 'auto',
-                        WebkitOverflowScrolling: 'touch',
-                    }}
-                >
-                    <table
-                        style={{ width: '100%', borderCollapse: 'collapse' }}
-                    >
-                        <thead>
-                            <tr>
-                                <th
-                                    style={{
-                                        textAlign: 'left',
-                                        padding: 8,
-                                        width: 44,
-                                    }}
-                                />
-                                <th style={{ textAlign: 'left', padding: 8 }}>
-                                    Nome
-                                </th>
-                                <th
-                                    style={{
-                                        textAlign: 'left',
-                                        padding: 8,
-                                        minWidth: 120,
-                                    }}
+                        <div
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'flex-start',
+                                alignItems: 'center',
+                                marginBottom: 12,
+                                gap: 8,
+                                flexWrap: 'wrap',
+                            }}
+                        >
+                            <button
+                                className='btn'
+                                onClick={handleClose}
+                                style={{
+                                    background: 'transparent',
+                                    color: 'var(--color-text)',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: 8,
+                                    padding: '8px 14px',
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                }}
+                                title='Voltar'
+                            >
+                                ← Voltar
+                            </button>
+                            <button
+                                type='button'
+                                className={`${formStyles.catalogActionButton} ${formStyles.catalogCompactButton} ${formStyles.catalogThemeButton}`}
+                                onClick={() =>
+                                    navigate('/catalog/products/new', {
+                                        state: { returnTo },
+                                    })
+                                }
+                                disabled={selectionMode || deleting}
+                            >
+                                + Novo
+                            </button>
+                            <button
+                                type='button'
+                                className={`${formStyles.catalogActionButton} ${formStyles.catalogCompactButton} ${!selectionMode ? formStyles.catalogSelectButton : ''}`}
+                                onClick={toggleSelectionMode}
+                                disabled={deleting || items.length === 0}
+                            >
+                                {selectionMode ? 'Cancelar' : 'Apagar'}
+                            </button>
+                            {selectionMode && (
+                                <button
+                                    type='button'
+                                    className={`${formStyles.catalogActionButton} ${formStyles.catalogCompactButton} ${formStyles.catalogDeleteButton}`}
+                                    onClick={() => setConfirmDeleteOpen(true)}
+                                    disabled={
+                                        selectedIds.size === 0 || deleting
+                                    }
                                 >
-                                    Tipo
-                                </th>
-                                <th
+                                    {deleting
+                                        ? 'Excluindo...'
+                                        : `Excluir selecionados (${selectedIds.size})`}
+                                </button>
+                            )}
+                            <input
+                                type='search'
+                                value={search}
+                                onChange={event =>
+                                    setSearch(event.target.value)
+                                }
+                                placeholder='Pesquisar'
+                                aria-label='Buscar produto por nome'
+                                style={{
+                                    flex: '1 1 240px',
+                                    minWidth: 180,
+                                    maxWidth: 420,
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: 8,
+                                    padding: '9px 12px',
+                                    color: 'var(--color-text)',
+                                    background: 'var(--color-bg)',
+                                }}
+                            />
+                        </div>
+                        <div className={formStyles.catalogGrid}>
+                            {filteredItems.map(product => (
+                                <article
+                                    key={product.id}
+                                    className={`${formStyles.catalogCard} flex w-full flex-col ${selectionMode ? formStyles.catalogCardSelectable : ''} ${selectedIds.has(product.id) ? formStyles.catalogCardSelected : ''}`}
                                     style={{
-                                        textAlign: 'left',
-                                        padding: 8,
-                                        minWidth: 140,
+                                        minHeight: 156,
                                     }}
+                                    onClick={
+                                        selectionMode
+                                            ? () => toggleSelected(product.id)
+                                            : undefined
+                                    }
                                 >
-                                    Preço (R$)
-                                </th>
-                                <th
-                                    style={{
-                                        textAlign: 'left',
-                                        padding: 8,
-                                        minWidth: 140,
-                                    }}
-                                >
-                                    Custo (R$)
-                                </th>
-                                <th
-                                    style={{
-                                        textAlign: 'left',
-                                        padding: 8,
-                                        minWidth: 120,
-                                    }}
-                                >
-                                    Estoque (un)
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {items.map(p => (
-                                <tr
-                                    key={p.id}
-                                    style={{
-                                        borderTop:
-                                            '1px solid var(--border-subtle)',
-                                    }}
-                                >
-                                    <td style={{ padding: 8 }}>
-                                        <button
-                                            aria-label='Editar'
-                                            title='Editar'
-                                            onClick={() => openProductForm(p.id)}
+                                    <div
+                                        className='flex min-w-0 items-start justify-between gap-3'
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'flex-start',
+                                        }}
+                                    >
+                                        <div className='min-w-0 flex-1 pr-1'>
+                                            <h2
+                                                className='break-words font-bold'
+                                                style={{
+                                                    color: 'var(--color-success-dark)',
+                                                    margin: 0,
+                                                }}
+                                            >
+                                                {product.name}
+                                            </h2>
+                                        </div>
+                                        {!selectionMode && (
+                                            <button
+                                                type='button'
+                                                className={
+                                                    formStyles.catalogEditButton
+                                                }
+                                                onClick={() =>
+                                                    navigate(
+                                                        `/catalog/products/${product.id}`,
+                                                        {
+                                                            state: { returnTo },
+                                                        },
+                                                    )
+                                                }
+                                                aria-label={`Editar ${product.name}`}
+                                            >
+                                                Editar
+                                            </button>
+                                        )}
+                                    </div>
+                                    {product.description?.trim() && (
+                                        <p
+                                            className='mt-3 flex-1 text-sm'
                                             style={{
-                                                background: 'transparent',
-                                                border: 'none',
-                                                cursor: 'pointer',
-                                                fontSize: 18,
+                                                color: 'var(--color-text-light)',
                                             }}
                                         >
-                                            ✏️
-                                        </button>
-                                    </td>
-                                    <td style={{ padding: 8, minWidth: 220 }}>
-                                        {p.name}
-                                    </td>
-                                    <td style={{ padding: 8 }}>
-                                        {p.type === 'MEDICATION'
-                                            ? 'Medicamento'
-                                            : 'Produto'}
-                                    </td>
-                                    <td style={{ padding: 8 }}>
-                                        {format2DecimalsBR(p.price)}
-                                    </td>
-                                    <td style={{ padding: 8 }}>
-                                        {format2DecimalsBR(p.cost)}
-                                    </td>
-                                    <td style={{ padding: 8 }}>
-                                        {Number(p.quantity_on_hand || 0)}
-                                    </td>
-                                </tr>
+                                            {product.description.trim()}
+                                        </p>
+                                    )}
+                                    <div
+                                        className='mt-4 self-start text-sm font-bold'
+                                        style={{
+                                            color: 'var(--color-success-dark)',
+                                            marginTop: 16,
+                                        }}
+                                    >
+                                        R$ {format2DecimalsBR(product.price)}
+                                    </div>
+                                    {selectionMode && (
+                                        <input
+                                            type='checkbox'
+                                            className={
+                                                formStyles.catalogCheckbox
+                                            }
+                                            checked={selectedIds.has(
+                                                product.id,
+                                            )}
+                                            onClick={event =>
+                                                event.stopPropagation()
+                                            }
+                                            onChange={() =>
+                                                toggleSelected(product.id)
+                                            }
+                                            aria-label={`Selecionar ${product.name}`}
+                                        />
+                                    )}
+                                </article>
                             ))}
-                        </tbody>
-                    </table>
-                </div>
-            </FormSection>
-        </FormPage>
+                        </div>
+                        {!loading && filteredItems.length === 0 && (
+                            <div style={{ padding: 12, color: '#666' }}>
+                                {search
+                                    ? 'Nenhum produto encontrado.'
+                                    : 'Nenhum produto cadastrado.'}
+                            </div>
+                        )}
+                        {loading && (
+                            <div style={{ padding: 12 }}>Carregando…</div>
+                        )}
+                        {error && (
+                            <div style={{ padding: 12, color: 'crimson' }}>
+                                {error}
+                            </div>
+                        )}
+                        <button
+                            type='button'
+                            onClick={() => window.print()}
+                            style={{
+                                position: 'fixed',
+                                right: 20,
+                                bottom: 20,
+                                zIndex: 20,
+                                border: '1px solid var(--btn-theme-border)',
+                                borderRadius: 8,
+                                padding: '10px 16px',
+                                background: 'var(--btn-theme-bg)',
+                                color: 'var(--btn-theme-text)',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.16)',
+                            }}
+                        >
+                            Imprimir
+                        </button>
+                    </FormSection>
+                </FormPage>
+                <ActionPromptModal
+                    open={confirmDeleteOpen}
+                    title='Excluir produtos selecionados?'
+                    message={
+                        <p style={{ margin: 0 }}>
+                            Esta ação removerá permanentemente{' '}
+                            <strong>{selectedIds.size}</strong>{' '}
+                            {selectedIds.size === 1 ? 'produto' : 'produtos'} do
+                            catálogo. Itens já usados em planos conservarão o
+                            nome registrado.
+                        </p>
+                    }
+                    onClose={() => setConfirmDeleteOpen(false)}
+                    actions={[
+                        {
+                            label: 'Cancelar',
+                            onClick: () => setConfirmDeleteOpen(false),
+                        },
+                        {
+                            label: 'Excluir',
+                            variant: 'danger',
+                            onClick: deleteSelectedProducts,
+                        },
+                    ]}
+                />
+            </div>
+            <CatalogPrintView
+                title='Catálogo de Produtos'
+                items={filteredItems.map(product => ({
+                    id: product.id,
+                    name: product.name,
+                    description: product.description?.trim(),
+                    price: Number(product.price || 0),
+                }))}
+            />
+        </>
     );
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
-import StickyModalHeader from '../shared/StickyModalHeader';
+import StickyModalHeader from '../Shared/StickyModalHeader';
 
 // We simulate a ResizeObserver by mutating offsetHeight and dispatching a resize.
 // Because JSDOM lacks real ResizeObserver, our hook falls back to window resize event.

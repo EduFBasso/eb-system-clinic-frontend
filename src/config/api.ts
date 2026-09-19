@@ -11,10 +11,19 @@ function runtimeResolveApiBase(): string {
     const host = inWindow ? window.location.hostname || '' : '';
     const protocol = inWindow ? window.location.protocol || 'http:' : 'http:';
     const isLocalHost =
-        host === 'localhost' || host === '127.0.0.1' || host === '::1';
+        host === 'localhost' ||
+        host.endsWith('.localhost') ||
+        host === '127.0.0.1' ||
+        host === '::1';
     const buildApiIsLocal =
         !!BUILD_API &&
         /^(https?:\/\/)?(localhost|127\.0\.0\.1|::1)/.test(BUILD_API);
+
+    // Subdomínios .localhost precisam usar o proxy do Vite. Uma URL de API
+    // configurada para a rede local não deve transformar esse cenário em CORS.
+    if (inWindow && host.endsWith('.localhost')) {
+        return '';
+    }
 
     // If build provided a valid absolute URL, prefer it except when it points to localhost
     // but the app is accessed from a non-localhost host (e.g., phone on LAN). In that case,

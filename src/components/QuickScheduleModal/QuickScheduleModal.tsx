@@ -2,33 +2,26 @@ import React from 'react';
 import { AppModal } from '../Modal/Modal';
 import { TimePicker10 } from '../TimePicker10/TimePicker10';
 import FloatingDatePicker from '../FloatingDatePicker';
-import QuickScheduleHeader from '../quickschedule/QuickScheduleHeader';
-import DateControlsHeader from '../shared/DateControlsHeader';
-import PendingBanner from '../quickschedule/PendingBanner';
+import QuickScheduleHeader from '../QuickSchedule/QuickScheduleHeader';
+import DateControlsHeader from '../Shared/DateControlsHeader';
 import QuickScheduleDayList, {
     type DayFilter,
-} from '../quickschedule/QuickScheduleDayList';
+} from '../QuickSchedule/QuickScheduleDayList';
 import { AppointmentDetailsModal } from '../AppointmentDetailsModal/AppointmentDetailsModal';
 import type { ClientBasic } from '../../types/ClientBasic';
 import type { Appointment } from '../../hooks/useAppointments';
-import type {
-    QuickScheduleInitialDraft,
-    QuickScheduleReturnContext,
-} from '../../types/agendaFlow';
+import type { QuickScheduleInitialDraft } from '../../types/agendaFlow';
 import { useAppointmentsRange } from '../../hooks/useAppointments';
 import { getNow } from '../../utils/now';
 import { getWorkTimesFromSnapshot } from '../../utils/agendaSettings';
-import { usePendingGuard } from '../../hooks/usePendingGuard';
 import { useQuickScheduleSave } from '../../hooks/useQuickScheduleSave';
 import { useAgendaSettings } from '../../hooks/useAgendaSettings';
 import { pad2, toMinutes, fromMinutes, weekdayLabel } from '../../utils/hmTime';
-import { useAgendaFinalizeAction } from '../../hooks/useAgendaFinalizeAction';
 import { useConflictFlow } from '../../hooks/useConflictFlow';
 import { useAppointmentCancel } from '../../hooks/useAppointmentCancel';
 import qsStyles from './QuickScheduleModal.module.css';
 
 type VisitType = Appointment['visit_type'];
-type ClientMaybeNext = ClientBasic & { next_appointment_id?: number };
 
 function getAppointmentClientFullName(
     appointment: Appointment | null | undefined,
@@ -139,7 +132,26 @@ export default function QuickScheduleModal({
         number | null
     >(currentEdit?.id ?? null);
     const [showPicker, setShowPicker] = React.useState(false);
+    const [visitTypeOpen, setVisitTypeOpen] = React.useState(false);
     const listRef = React.useRef<HTMLDivElement | null>(null);
+    const visitTypeRef = React.useRef<HTMLLabelElement | null>(null);
+
+    React.useEffect(() => {
+        function closeVisitTypeOnOutsideClick(event: PointerEvent) {
+            if (
+                visitTypeRef.current &&
+                !visitTypeRef.current.contains(event.target as Node)
+            ) {
+                setVisitTypeOpen(false);
+            }
+        }
+        document.addEventListener('pointerdown', closeVisitTypeOnOutsideClick);
+        return () =>
+            document.removeEventListener(
+                'pointerdown',
+                closeVisitTypeOnOutsideClick,
+            );
+    }, []);
 
     // Day range for list
     const dayStart = React.useMemo(() => {
@@ -162,10 +174,6 @@ export default function QuickScheduleModal({
     const [detailsAppt, setDetailsAppt] = React.useState<Appointment | null>(
         null,
     );
-
-    const { handleFinalize } = useAgendaFinalizeAction(() => {
-        setReloadKey(k => k + 1);
-    });
 
     const isEditing = !!currentEdit;
     const baseClientFullName =
@@ -234,14 +242,6 @@ export default function QuickScheduleModal({
         startHM,
     ]);
 
-    const { found: pendingFound, refresh: refreshPendingGuard } =
-        usePendingGuard({
-            open,
-            isEdit: isEditing,
-            clientId: client.id,
-        });
-    const isPending = !!pendingFound;
-
     // --- Conflict flow state & derived values ---
     const {
         pendingConflictSelection,
@@ -272,13 +272,8 @@ export default function QuickScheduleModal({
         } catch {
             /* noop */
         }
-        try {
-            refreshPendingGuard();
-        } catch {
-            /* noop */
-        }
         onClose();
-    }, [onClose, refreshPendingGuard, resetConflictFlow]);
+    }, [onClose, resetConflictFlow]);
 
     const { saving, error, clearError, handleSave } = useQuickScheduleSave({
         selectedDate,
@@ -428,36 +423,6 @@ export default function QuickScheduleModal({
         };
     }, [client.first_name, isConflictEditing]);
 
-    const finalizeReturnContext =
-        React.useMemo<QuickScheduleReturnContext | null>(() => {
-            if (!open || client.id <= 0) return null;
-            if (conflictReturnDraft) {
-                return { kind: 'quick-schedule', draft: conflictReturnDraft };
-            }
-            if (currentEdit) return null;
-            return {
-                kind: 'quick-schedule',
-                draft: {
-                    clientId: client.id,
-                    selectedDateISO: selectedDate.toISOString(),
-                    startHM,
-                    endHM,
-                    visitType,
-                    notes,
-                },
-            };
-        }, [
-            client.id,
-            conflictReturnDraft,
-            currentEdit,
-            endHM,
-            notes,
-            open,
-            selectedDate,
-            startHM,
-            visitType,
-        ]);
-
     const { handleCancel } = useAppointmentCancel({
         clientId: client.id,
         currentEdit,
@@ -553,14 +518,6 @@ export default function QuickScheduleModal({
                         }}
                     />
 
-                    {!isEditing && isPending && pendingFound && (
-                        <PendingBanner
-                            pendingFound={pendingFound}
-                            client={client as ClientMaybeNext}
-                            onClose={handleImmediateClose}
-                        />
-                    )}
-
                     <div className={qsStyles.timeGrid}>
                         <TimePicker10
                             label='Início'
@@ -601,22 +558,60 @@ export default function QuickScheduleModal({
                             )}`}
                             stepMinutes={slotInterval}
                         />
-                        <label className={qsStyles.visitTypeField}>
+                        <label
+                            ref={visitTypeRef}
+                            className={qsStyles.visitTypeField}
+                        >
                             <span className={qsStyles.fieldLabel}>Tipo</span>
-                            <select
-                                className={qsStyles.visitTypeSelect}
-                                value={visitType}
-                                onChange={e => {
-                                    clearError();
-                                    setVisitType(e.target.value as VisitType);
-                                }}
+                            <button
+                                type='button'
+                                className={qsStyles.visitTypeTrigger}
+                                aria-label='Tipo'
+                                aria-haspopup='listbox'
+                                aria-expanded={visitTypeOpen}
+                                aria-controls='visit-type-options'
+                                onClick={() => setVisitTypeOpen(open => !open)}
                             >
-                                <option value='consulta'>Consulta</option>
-                                <option value='avaliacao'>Avaliação</option>
-                                <option value='retorno'>Retorno</option>
-                                <option value='procedimento'>Serviço</option>
-                                <option value='outro'>Outro</option>
-                            </select>
+                                {visitType === 'consulta'
+                                    ? 'Consulta'
+                                    : visitType === 'retorno'
+                                      ? 'Retorno'
+                                      : 'Outro'}
+                            </button>
+                            {visitTypeOpen && (
+                                <div
+                                    id='visit-type-options'
+                                    className={qsStyles.visitTypeMenu}
+                                    role='listbox'
+                                >
+                                    {(
+                                        [
+                                            ['consulta', 'Consulta'],
+                                            ['retorno', 'Retorno'],
+                                            ['outro', 'Outro'],
+                                        ] as const
+                                    ).map(([value, text]) => (
+                                        <button
+                                            type='button'
+                                            key={value}
+                                            role='option'
+                                            aria-selected={visitType === value}
+                                            className={`${qsStyles.visitTypeOption} ${
+                                                visitType === value
+                                                    ? qsStyles.visitTypeOptionSelected
+                                                    : ''
+                                            }`}
+                                            onClick={() => {
+                                                clearError();
+                                                setVisitType(value);
+                                                setVisitTypeOpen(false);
+                                            }}
+                                        >
+                                            {text}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </label>
                     </div>
 
@@ -729,8 +724,6 @@ export default function QuickScheduleModal({
                             }
                         }}
                         onCancel={handleCancel}
-                        onFinalize={handleFinalize}
-                        finalizeRequestContext={finalizeReturnContext}
                     />
 
                     {!isEditing && isSelectedPast && (

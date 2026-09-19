@@ -1,21 +1,19 @@
 import React from 'react';
 import { FaCalendarAlt } from 'react-icons/fa';
-import StickyModalHeader from '../shared/StickyModalHeader';
+import StickyModalHeader from '../Shared/StickyModalHeader';
 import { useStickyHeaderHeight } from '../../hooks/useStickyHeaderHeight';
 import { AppModal } from '../Modal/Modal';
 import { track } from '../../utils/telemetry';
 import FloatingDatePicker from '../FloatingDatePicker';
-import AppointmentCard from '../shared/AppointmentCard';
+import AppointmentCard from '../Shared/AppointmentCard';
 import { deriveStatus } from '../../utils/appointments/status';
 import {
     useAppointmentsRange,
     type Appointment,
 } from '../../hooks/useAppointments';
 import { useAppointmentDetailsModal } from '../../hooks/useAppointmentDetailsModal';
-import { openPendingActionsForAppointment } from '../../utils/appointments/openPendingActions';
 import { cancelAppointment } from '../../services/appointments';
 import { dispatchers } from '../../events/dispatchers';
-import { useAgendaFinalizeAction } from '../../hooks/useAgendaFinalizeAction';
 import { toISODate } from '../../utils/date';
 import {
     addDays,
@@ -78,9 +76,6 @@ export function WeeklyPreviewModal({
         undefined,
         reloadKey,
     );
-    const { handleFinalize } = useAgendaFinalizeAction(() => {
-        setReloadKey(x => x + 1);
-    });
     const handleCancel = React.useCallback(async (appt: Appointment) => {
         const res = await cancelAppointment(appt.id);
         if (!res.ok) {
@@ -238,9 +233,6 @@ export function WeeklyPreviewModal({
     const { detailsModal, openDetails } =
         useAppointmentDetailsModal<Appointment>();
     // Pending actions modal state
-    // PendingActions é global — nenhum estado local necessário
-
-    // PendingActions é global — nenhum alinhamento local necessário
 
     const weekLabel = React.useMemo(() => {
         const first = days[0];
@@ -550,17 +542,11 @@ export function WeeklyPreviewModal({
                                                 onClick={() =>
                                                     setSelectedDayISO(iso)
                                                 }
-                                                onResolvePending={appt => {
-                                                    try {
-                                                        openPendingActionsForAppointment(
-                                                            appt,
-                                                        );
-                                                    } catch {
-                                                        /* noop */
-                                                    }
-                                                }}
                                                 onDetails={
-                                                    a.status === 'done'
+                                                    deriveStatus(
+                                                        a,
+                                                        new Date(),
+                                                    ) === 'done'
                                                         ? appt =>
                                                               openDetails(
                                                                   appt as Appointment,
@@ -571,20 +557,8 @@ export function WeeklyPreviewModal({
                                                     deriveStatus(
                                                         a,
                                                         new Date(),
-                                                    ) === 'scheduled' ||
-                                                    deriveStatus(
-                                                        a,
-                                                        new Date(),
-                                                    ) === 'ongoing'
+                                                    ) === 'scheduled'
                                                         ? handleCancel
-                                                        : undefined
-                                                }
-                                                onFinalize={
-                                                    deriveStatus(
-                                                        a,
-                                                        new Date(),
-                                                    ) === 'ongoing'
-                                                        ? handleFinalize
                                                         : undefined
                                                 }
                                             />
@@ -609,7 +583,6 @@ export function WeeklyPreviewModal({
                     // Ensure the floating picker stays below sticky bars so its header is fully visible on iPhone
                     minTop={160}
                 />
-                {/* PendingActionsModal é global (Home) */}
 
                 {detailsModal}
             </div>

@@ -7,10 +7,8 @@ import type { FilterMode } from '../FilterBar/FilterBar';
 interface MainContentHeaderProps {
     filter: string;
     filterMode: FilterMode;
-    pendingCount: number;
     todayCount: number;
     tomorrowCount: number;
-    ongoingCount: number;
     mobileFiltersOpen: boolean;
     mobileFiltersMenuStyle: React.CSSProperties;
     mobileFiltersButtonRef: React.RefObject<HTMLButtonElement | null>;
@@ -30,10 +28,8 @@ interface MainContentHeaderProps {
 export function MainContentHeader({
     filter,
     filterMode,
-    pendingCount,
     todayCount,
     tomorrowCount,
-    ongoingCount,
     mobileFiltersOpen,
     mobileFiltersMenuStyle,
     mobileFiltersButtonRef,
@@ -54,10 +50,8 @@ export function MainContentHeader({
             <FilterBar
                 filter={filter}
                 filterMode={filterMode}
-                pendingCount={pendingCount}
                 todayCount={todayCount}
                 tomorrowCount={tomorrowCount}
-                ongoingCount={ongoingCount}
                 mobileFiltersOpen={mobileFiltersOpen}
                 mobileFiltersMenuStyle={mobileFiltersMenuStyle}
                 mobileFiltersButtonRef={mobileFiltersButtonRef}

@@ -4,20 +4,21 @@ import { formatDOBToBR, normalizeDOBForApi } from '../../utils/dateOfBirth';
 import type { AnamneseBaseData, ClientData } from '../../types/ClientData';
 import ClientPersonalDataForm from '../ClientPersonalDataForm/ClientPersonalDataForm';
 import ClientAddressForm from '../ClientAddressForm/ClientAddressForm';
-import ClientAnamnesisForm from '../ClientAnamnesisForm/ClientAnamnesisForm';
-import ClientPodologiaSection from './ClientPodologiaSection';
+import { ClientAnamnesisForm } from './ClientAnamnesisForm/ClientAnamnesisForm';
+import { SpecialtyAnamnesisSection } from './SpecialtyAnamnesisSection';
+import { useSpecialtyAnamnesis } from './useSpecialtyAnamnesis';
 import styles from './ClientForm.module.css';
 import useUnsavedChangesGuard from '../../hooks/useUnsavedChangesGuard';
 import { useClientDelete } from '../../hooks/useClientDelete';
 import { parseApiError } from '../../utils/parseApiError';
-import InfoModal from '../shared/InfoModal';
-import DeleteConfirmModal from '../shared/DeleteConfirmModal';
+import InfoModal from '../Shared/InfoModal';
+import DeleteConfirmModal from '../Shared/DeleteConfirmModal';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 import type { AppTheme } from '../../contexts/ThemeContext';
 import { getAccessToken } from '../../utils/auth/session';
 import { SmartSection } from '../SmartSection/SmartSection';
-import { useClientAnamnesis } from '../../hooks/useClientAnamnesis';
+import { readLoggedProfessionalCapabilities } from '../../utils/tenantCapabilities';
 
 interface ClientFormProps {
     cliente?: Partial<ClientData>;
@@ -76,7 +77,17 @@ function buildDefaultAnamneseBase(
             nested.pain_sensitivity ?? legacy.pain_sensitivity ?? 'Moderada',
         clinical_history: clinicalHistory || 'Sem histórico relevante',
         sport_activity: nested.sport_activity ?? legacy.sport_activity ?? 'Não',
+        academic_activity:
+            nested.academic_activity ?? legacy.academic_activity ?? 'Não',
     };
+}
+
+function buildFormSnapshot(
+    formData: ClientData,
+    anamneseBase: AnamneseBaseData,
+    specialtySnapshot: unknown,
+): string {
+    return JSON.stringify({ formData, anamneseBase, specialtySnapshot });
 }
 
 export function ClientForm({
@@ -101,25 +112,14 @@ export function ClientForm({
     const [anamneseBase, setAnamneseBase] = useState<AnamneseBaseData>(() =>
         buildDefaultAnamneseBase(cliente),
     );
-    const {
-        anamnesisFields,
-        anamnesisLoading,
-        anamnesisValues,
-        setAnamnesisValues,
-        handleAnamnesisChange,
-        saveAnamnesis,
-    } = useClientAnamnesis(cliente?.id);
 
-    const initialSnapshot = useMemo(
-        () =>
-            JSON.stringify({
-                formData,
-                anamneseBase,
-                anamnesisValues,
-            }),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [cliente?.id],
-    );
+    const capabilities = useMemo(readLoggedProfessionalCapabilities, []);
+    const specialty = useSpecialtyAnamnesis({
+        capabilities,
+        cliente,
+        enabled: !isPublicMode,
+    });
+    const isEdit = !!cliente?.id;
 
     const quickModeRef = useRef(false);
     const formRef = useRef<HTMLFormElement | null>(null);
@@ -127,33 +127,38 @@ export function ClientForm({
         quickModeRef.current = true;
     };
 
-    const initialRef = useRef(initialSnapshot);
+    const initialRef = useRef(
+        buildFormSnapshot(formData, anamneseBase, specialty.snapshot),
+    );
     const [dirty, setDirty] = useState(false);
 
     useEffect(() => {
-        const next = JSON.stringify({
+        const next = buildFormSnapshot(
             formData,
             anamneseBase,
-            anamnesisValues,
-        });
+            specialty.snapshot,
+        );
         setDirty(next !== initialRef.current);
-    }, [formData, anamneseBase, anamnesisValues]);
+    }, [formData, anamneseBase, specialty.snapshot]);
 
     useUnsavedChangesGuard(dirty, 'Há alterações não salvas. Deseja sair?');
 
-    useEffect(() => {
-        const nextClient = buildDefaultClientData(cliente);
-        const nextBase = buildDefaultAnamneseBase(cliente);
+    function resetForm(nextCliente?: Partial<ClientData>) {
+        const nextClient = buildDefaultClientData(nextCliente);
+        const nextBase = buildDefaultAnamneseBase(nextCliente);
+        const nextSpecialty = specialty.reset(nextCliente);
         setFormData(nextClient);
         setAnamneseBase(nextBase);
-
-        const snapshot = JSON.stringify({
-            formData: nextClient,
-            anamneseBase: nextBase,
-            anamnesisValues: {},
-        });
-        initialRef.current = snapshot;
+        initialRef.current = buildFormSnapshot(
+            nextClient,
+            nextBase,
+            nextSpecialty,
+        );
         setDirty(false);
+    }
+
+    useEffect(() => {
+        resetForm(cliente);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cliente?.id]);
 
@@ -173,15 +178,6 @@ export function ClientForm({
     const toggleSection = (sectionId: string) => {
         setOpenSection(prev => (prev === sectionId ? null : sectionId));
     };
-    const publicClientName = [formData.first_name, formData.last_name]
-        .map(value => value?.trim())
-        .filter(Boolean)
-        .join(' ');
-    const withPublicClientName = (baseTitle: string) =>
-        isPublicMode && publicClientName
-            ? `${baseTitle} — ${publicClientName}`
-            : baseTitle;
-
     function handleChange(
         fieldOrEvent:
             | keyof ClientData
@@ -255,7 +251,9 @@ export function ClientForm({
                         anamneseBase.clinical_history,
                     ) || 'Sem histórico relevante',
                 sport_activity: anamneseBase.sport_activity,
+                academic_activity: anamneseBase.academic_activity,
             },
+            ...specialty.getNestedPayload(),
         };
     }
 
@@ -395,16 +393,14 @@ export function ClientForm({
                     return;
                 }
 
-                initialRef.current = JSON.stringify({
+                initialRef.current = buildFormSnapshot(
                     formData,
                     anamneseBase,
-                    anamnesisValues,
-                });
+                    specialty.snapshot,
+                );
                 setDirty(false);
                 if (onPublicSubmitSuccess) {
-                    setFormData(buildDefaultClientData());
-                    setAnamneseBase(buildDefaultAnamneseBase());
-                    setAnamnesisValues({});
+                    resetForm();
                     onPublicSubmitSuccess();
                     return;
                 }
@@ -440,7 +436,6 @@ export function ClientForm({
             return;
         }
 
-        const isEdit = !!cliente?.id;
         const endpoint = isEdit
             ? `${API_BASE}/register/clients/${cliente?.id}/`
             : `${API_BASE}/register/clients/`;
@@ -485,25 +480,22 @@ export function ClientForm({
             const result = await response.json();
 
             if (result?.id) {
-                await saveAnamnesis(Number(result.id), token);
+                try {
+                    await specialty.saveAfterClient(Number(result.id), token);
+                } catch (anamnesisErr) {
+                    throw new Error(
+                        'Cliente salvo, mas houve um erro ao salvar a anamnese da especialidade: ' +
+                            (anamnesisErr instanceof Error
+                                ? anamnesisErr.message
+                                : 'erro desconhecido'),
+                    );
+                }
             }
 
             if (!isEdit && quickModeRef.current) {
                 quickModeRef.current = false;
 
-                const nextClient = buildDefaultClientData();
-                const nextBase = buildDefaultAnamneseBase();
-
-                setFormData(nextClient);
-                setAnamneseBase(nextBase);
-                setAnamnesisValues({});
-                const snapshot = JSON.stringify({
-                    formData: nextClient,
-                    anamneseBase: nextBase,
-                    anamnesisValues: {},
-                });
-                initialRef.current = snapshot;
-                setDirty(false);
+                resetForm();
 
                 setTimeout(() => {
                     try {
@@ -523,11 +515,11 @@ export function ClientForm({
                 localStorage.setItem('newClientId', String(result.id));
             }
 
-            initialRef.current = JSON.stringify({
+            initialRef.current = buildFormSnapshot(
                 formData,
                 anamneseBase,
-                anamnesisValues,
-            });
+                specialty.snapshot,
+            );
             setDirty(false);
 
             setInfoModal({
@@ -547,7 +539,6 @@ export function ClientForm({
         }
     };
 
-    const isEdit = !!cliente?.id;
     const deleteModalTitle =
         [cliente?.first_name, cliente?.last_name]
             .filter(Boolean)
@@ -562,7 +553,7 @@ export function ClientForm({
                 data-theme={activeTheme}
             >
                 <SmartSection
-                    title={withPublicClientName('Dados pessoais')}
+                    title='Dados pessoais'
                     stickyWhenOpen
                     isOpen={openSection === 'personal'}
                     onToggle={() => toggleSection('personal')}
@@ -578,7 +569,7 @@ export function ClientForm({
                 </SmartSection>
 
                 <SmartSection
-                    title={withPublicClientName('Endereço')}
+                    title='Endereço'
                     stickyWhenOpen
                     isOpen={openSection === 'address'}
                     onToggle={() => toggleSection('address')}
@@ -592,7 +583,7 @@ export function ClientForm({
                 </SmartSection>
 
                 <SmartSection
-                    title={withPublicClientName('Anamnese geral')}
+                    title='Anamnese geral'
                     stickyWhenOpen
                     isOpen={openSection === 'anamnesis'}
                     onToggle={() => toggleSection('anamnesis')}
@@ -606,19 +597,11 @@ export function ClientForm({
                 </SmartSection>
 
                 {!isPublicMode && (
-                    <SmartSection
-                        title='Anamnese Podologia'
-                        stickyWhenOpen
-                        isOpen={openSection === 'podologia'}
-                        onToggle={() => toggleSection('podologia')}
-                    >
-                        <ClientPodologiaSection
-                            fields={anamnesisFields}
-                            values={anamnesisValues}
-                            loading={anamnesisLoading}
-                            onChange={handleAnamnesisChange}
-                        />
-                    </SmartSection>
+                    <SpecialtyAnamnesisSection
+                        openSection={openSection}
+                        toggleSection={toggleSection}
+                        specialty={specialty.model}
+                    />
                 )}
 
                 <div className={styles.footer}>

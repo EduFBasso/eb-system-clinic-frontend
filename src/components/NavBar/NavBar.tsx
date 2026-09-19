@@ -9,7 +9,9 @@ function isMobileDevice() {
 }
 // frontend\src\components\NavBar.tsx
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AboutModal } from '../AboutModal/AboutModal';
+import TreatmentPlanCreateModal from '../Shared/TreatmentPlanCreateModal/TreatmentPlanCreateModal';
 import { SessionExpiredModal } from '../SessionExpiredModal/SessionExpiredModal';
 import { API_BASE } from '../../config/api';
 import { openClientForm } from '../../utils/openClientForm';
@@ -21,6 +23,13 @@ type VerifyResponse = {
     active_sessions_count?: number;
     device_id?: string;
     message?: string;
+};
+type ProfessionalLoginOption = {
+    id: number;
+    email: string;
+    first_name: string;
+    last_name: string;
+    specialty?: string;
 };
 import type { Professional as ProfessionalBasic } from '../../types/models';
 import styles from './NavBar.module.css';
@@ -37,12 +46,8 @@ import {
     getAccessToken,
 } from '../../utils/auth/session';
 import { ProfessionalCreateModal } from '../ProfessionalCreateModal/ProfessionalCreateModal';
-import { TotpAdminResetModal } from '../TotpAdminResetModal/TotpAdminResetModal';
-import {
-    startRegistration,
-    startAuthentication,
-} from '@simplewebauthn/browser';
 import { useNavigate } from 'react-router-dom';
+import { resolveClinicTenantSlug } from '../../config/tenant';
 
 interface NavBarProps {
     openNewClientModal?: () => void;
@@ -58,16 +63,17 @@ export const NavBar: React.FC<NavBarProps> = ({
     agendaOpeners,
 }) => {
     const navigate = useNavigate();
-    const biometricStorageKey = React.useCallback((email: string) => {
-        return `hasWebAuthn_${email.trim().toLowerCase()}`;
-    }, []);
 
     // Viewport listener removido (usado apenas pelo relógio)
     const [loginEmail, setLoginEmail] = useState<string>(
         () => localStorage.getItem('lastLoginEmail') ?? '',
     );
-    const [totpCode, setTotpCode] = useState('');
-    const [loadingOtp, setLoadingOtp] = useState(false);
+    const [loginPassword, setLoginPassword] = useState('');
+    const [loadingLogin, setLoadingLogin] = useState(false);
+    const [professionals, setProfessionals] = useState<
+        ProfessionalLoginOption[]
+    >([]);
+    const [loadingProfessionals, setLoadingProfessionals] = useState(false);
     const [loggedProfessional, setLoggedProfessional] =
         useState<ProfessionalBasic | null>(() => {
             const stored = localStorage.getItem('loggedProfessional');
@@ -83,6 +89,10 @@ export const NavBar: React.FC<NavBarProps> = ({
     // Consulta dropdown state
     const [consultaDropdownOpen, setConsultaDropdownOpen] = useState(false);
     const consultaDropdownRef = useRef<HTMLDivElement>(null);
+    const [professionalDropdownOpen, setProfessionalDropdownOpen] =
+        useState(false);
+    const professionalDropdownRef = useRef<HTMLDivElement>(null);
+    const loginButtonRef = useRef<HTMLButtonElement>(null);
 
     // Modal state
     const [modalOpen, setModalOpen] = useState(false);
@@ -94,26 +104,21 @@ export const NavBar: React.FC<NavBarProps> = ({
 
     // About modal state
     const [aboutOpen, setAboutOpen] = useState(false);
+    const [clinicProfileOpen, setClinicProfileOpen] = useState(false);
     // Admin modals (superuser only)
     const [createProfOpen, setCreateProfOpen] = useState(false);
-    const [totpResetOpen, setTotpResetOpen] = useState(false);
-    // Biometric / WebAuthn
-    const [offerBiometricOpen, setOfferBiometricOpen] = useState(false);
-    const [biometricLoading, setBiometricLoading] = useState(false);
-    const [platformAuthenticatorAvailable, setPlatformAuthenticatorAvailable] =
-        useState(false);
-    const [, setBiometricConfigured] = useState(false);
-    const hasWebAuthn = !!loginEmail && platformAuthenticatorAvailable;
+
     // Estado para modal de sessão expirada
     const [sessionExpiredOpen, setSessionExpiredOpen] = useState(false);
     const [sessionExpiredMessage, setSessionExpiredMessage] = useState(
         'Sua sessão expirou. Por favor, faça login novamente.',
     );
 
-    // Fecha dropdown ao clicar fora
+    // Fecha dropdown ao clicar fora (Corrigido)
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             const target = event.target as Node;
+
             if (dropdownRef.current && !dropdownRef.current.contains(target)) {
                 setDropdownOpen(false);
             }
@@ -129,11 +134,24 @@ export const NavBar: React.FC<NavBarProps> = ({
             ) {
                 setConsultaDropdownOpen(false);
             }
+            if (
+                professionalDropdownRef.current &&
+                !professionalDropdownRef.current.contains(target)
+            ) {
+                setProfessionalDropdownOpen(false);
+            }
         }
+
         document.addEventListener('mousedown', handleClickOutside);
-        return () =>
+        return () => {
             document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+        };
+    }, [
+        dropdownRef,
+        agendaDropdownRef,
+        consultaDropdownRef,
+        professionalDropdownRef,
+    ]);
 
     useEffect(() => {
         const token = getAccessToken();
@@ -145,6 +163,52 @@ export const NavBar: React.FC<NavBarProps> = ({
             if (stored) setLoggedProfessional(JSON.parse(stored));
         }
     }, []);
+
+    useEffect(() => {
+        let active = true;
+        if (loggedProfessional) {
+            return;
+        }
+        const tenantSlug = resolveClinicTenantSlug();
+        if (!tenantSlug) {
+            setProfessionals([]);
+            setLoadingProfessionals(false);
+            return;
+        }
+        const loadProfessionals = async () => {
+            setLoadingProfessionals(true);
+            try {
+                const res = await fetch(
+                    `${API_BASE}/register/professionals-basic/?ecosystem=clinic&tenant_slug=${encodeURIComponent(tenantSlug)}`,
+                );
+                if (!res.ok) {
+                    throw new Error('Falha ao carregar profissionais.');
+                }
+                const data = await res.json();
+                const items = Array.isArray(data)
+                    ? data
+                    : Array.isArray(data?.results)
+                      ? data.results
+                      : [];
+                if (!active) {
+                    return;
+                }
+                setProfessionals(items);
+            } catch {
+                if (active) {
+                    setProfessionals([]);
+                }
+            } finally {
+                if (active) {
+                    setLoadingProfessionals(false);
+                }
+            }
+        };
+        void loadProfessionals();
+        return () => {
+            active = false;
+        };
+    }, [loggedProfessional]);
 
     useEffect(() => {
         const disposeLogin = on('auth:login', () => {
@@ -162,7 +226,7 @@ export const NavBar: React.FC<NavBarProps> = ({
 
         const disposeLogout = on('auth:logout', detail => {
             setLoggedProfessional(null);
-            setTotpCode('');
+            setLoginPassword('');
             setDropdownOpen(false);
             setAgendaDropdownOpen(false);
             setConsultaDropdownOpen(false);
@@ -180,52 +244,6 @@ export const NavBar: React.FC<NavBarProps> = ({
         return () => {
             disposeLogin();
             disposeLogout();
-        };
-    }, []);
-
-    useEffect(() => {
-        const email = (loggedProfessional?.email || loginEmail || '').trim();
-        if (!email) {
-            setBiometricConfigured(false);
-            return;
-        }
-        setBiometricConfigured(
-            !!localStorage.getItem(biometricStorageKey(email)),
-        );
-    }, [biometricStorageKey, loggedProfessional, loginEmail]);
-
-    useEffect(() => {
-        let active = true;
-        async function detectPlatformAuthenticator() {
-            try {
-                if (
-                    typeof PublicKeyCredential === 'undefined' ||
-                    typeof (
-                        PublicKeyCredential as {
-                            isUserVerifyingPlatformAuthenticatorAvailable?: () => Promise<boolean>;
-                        }
-                    ).isUserVerifyingPlatformAuthenticatorAvailable !==
-                        'function'
-                ) {
-                    if (active) setPlatformAuthenticatorAvailable(false);
-                    return;
-                }
-
-                const available = await (
-                    PublicKeyCredential as {
-                        isUserVerifyingPlatformAuthenticatorAvailable: () => Promise<boolean>;
-                    }
-                ).isUserVerifyingPlatformAuthenticatorAvailable();
-                if (active)
-                    setPlatformAuthenticatorAvailable(Boolean(available));
-            } catch {
-                if (active) setPlatformAuthenticatorAvailable(false);
-            }
-        }
-
-        void detectPlatformAuthenticator();
-        return () => {
-            active = false;
         };
     }, []);
 
@@ -281,167 +299,6 @@ export const NavBar: React.FC<NavBarProps> = ({
         openClientForm({ id: selectedClientId });
     }
 
-    // Helpers Agenda
-    // Helper de busca de próximo agendamento removido (não utilizado após retirar 'Editar')
-
-    // goAgendaDay removed: unificamos via modais (sem rota /schedule)
-
-    // Edição via menu Agenda removida (opção Editar retirada)
-
-    // handleAgendaNew removido (menu Novo Compromisso retirado)
-
-    // --- WebAuthn: register biometric after TOTP login ---
-    const handleRegisterBiometric = async () => {
-        setBiometricLoading(true);
-        try {
-            const token = getAccessToken();
-            const email = (
-                loggedProfessional?.email ||
-                loginEmail ||
-                ''
-            ).trim();
-            if (!token || !email) {
-                throw new Error('Entre na conta antes de ativar a biometria.');
-            }
-            const beginRes = await fetch(
-                `${API_BASE}/register/auth/webauthn/register-begin/`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({}),
-                },
-            );
-            if (!beginRes.ok) throw new Error('Erro ao iniciar registro.');
-            const options = await beginRes.json();
-            const credential = await startRegistration({
-                optionsJSON: options,
-            });
-            const ua = navigator.userAgent;
-            const deviceName = /iPhone/.test(ua)
-                ? 'iPhone'
-                : /iPad/.test(ua)
-                  ? 'iPad'
-                  : /Mac/.test(ua)
-                    ? 'Mac'
-                    : 'Dispositivo';
-            const completeRes = await fetch(
-                `${API_BASE}/register/auth/webauthn/register-complete/`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        credential,
-                        device_name: deviceName,
-                    }),
-                },
-            );
-            if (!completeRes.ok) throw new Error('Erro ao concluir registro.');
-            localStorage.setItem(biometricStorageKey(email), '1');
-            setBiometricConfigured(true);
-            setOfferBiometricOpen(false);
-            setModalMessage('Face ID ativado para futuros logins!');
-            setModalOpen(true);
-        } catch (err: unknown) {
-            const msg =
-                err instanceof Error
-                    ? err.message
-                    : 'Erro ao registrar biometria.';
-            setModalMessage(msg);
-            setModalOpen(true);
-        } finally {
-            setBiometricLoading(false);
-        }
-    };
-
-    // --- WebAuthn: login with biometric ---
-    const handleWebAuthnLogin = async () => {
-        setBiometricLoading(true);
-        try {
-            const beginRes = await fetch(
-                `${API_BASE}/register/auth/webauthn/login-begin/`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: loginEmail }),
-                },
-            );
-            if (!beginRes.ok) throw new Error('Erro ao iniciar autenticação.');
-            const options = await beginRes.json();
-            const assertion = await startAuthentication({
-                optionsJSON: options,
-            });
-            const deviceIdKey = 'device_id';
-            const deviceId = getOrCreateDeviceId(deviceIdKey);
-            const completeRes = await fetch(
-                `${API_BASE}/register/auth/webauthn/login-complete/`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: loginEmail,
-                        assertion,
-                        device_id: deviceId,
-                    }),
-                },
-            );
-            let data: VerifyResponse = {};
-            try {
-                data = await completeRes.json();
-            } catch {
-                data = { message: 'Falha ao interpretar resposta do servidor' };
-            }
-            if (completeRes.ok && data.access) {
-                setModalMessage('Login realizado!');
-                setModalOpen(true);
-                localStorage.setItem('accessToken', data.access);
-                localStorage.setItem('lastLoginEmail', loginEmail);
-                localStorage.setItem(biometricStorageKey(loginEmail), '1');
-                setBiometricConfigured(true);
-                localStorage.setItem(
-                    'loggedProfessional',
-                    JSON.stringify(data.professional),
-                );
-                if (data.device_id) {
-                    localStorage.setItem(deviceIdKey, String(data.device_id));
-                }
-                setLoggedProfessional(data.professional || null);
-                if (data.professional?.is_superuser) {
-                    navigate('/admin', { replace: true });
-                    return;
-                }
-                emit('auth:login', undefined);
-                window.dispatchEvent(new Event('updateClients'));
-                window.dispatchEvent(new Event('clearClients'));
-            } else {
-                setModalMessage(
-                    String(data.message || 'Autenticação biométrica falhou.'),
-                );
-                setModalOpen(true);
-            }
-        } catch (err: unknown) {
-            const msg =
-                err instanceof Error
-                    ? err.message
-                    : 'Erro na autenticação biométrica.';
-            // User cancelled the prompt → just ignore, no error modal
-            if (
-                !msg.toLowerCase().includes('cancel') &&
-                !msg.toLowerCase().includes('not allowed')
-            ) {
-                setModalMessage(msg);
-                setModalOpen(true);
-            }
-        } finally {
-            setBiometricLoading(false);
-        }
-    };
-
     return (
         <div className={styles.navBar}>
             <div className={styles.menuContainer}>
@@ -482,7 +339,16 @@ export const NavBar: React.FC<NavBarProps> = ({
                                     setAboutOpen(true);
                                 }}
                             >
-                                Sobre
+                                Configurações
+                            </button>
+                            <button
+                                className={styles.dropdownItem}
+                                onClick={() => {
+                                    setDropdownOpen(false);
+                                    setClinicProfileOpen(true);
+                                }}
+                            >
+                                Editar Dados da Clínica
                             </button>
                             {/* Opções adicionais removidas para simplificar o menu de Clientes */}
                         </div>
@@ -572,9 +438,9 @@ export const NavBar: React.FC<NavBarProps> = ({
                                     }
                                     navigate('/catalog/services');
                                 }}
-                                title='Serviços'
+                                title='Tratamentos'
                             >
-                                📋 Serviços
+                                📋 Tratamentos
                             </button>
                             <button
                                 className={styles.dropdownItem}
@@ -626,192 +492,263 @@ export const NavBar: React.FC<NavBarProps> = ({
                             onClick={() => {
                                 setLoggedProfessional(null);
                                 setLoginEmail('');
-                                setTotpCode('');
+                                setLoginPassword('');
                                 dispatchLogout('manual');
                             }}
                         >
                             Sair
                         </button>
-                        {/* Superusers são redirecionados para /admin no login e não usam ações do NavBar */}
                     </div>
                 ) : (
                     <>
-                        {/* TOTP login: email + código do Google Authenticator */}
-                        <input
-                            type='email'
-                            placeholder='E-mail'
-                            className={styles.loginInput}
-                            value={loginEmail}
-                            onChange={e => setLoginEmail(e.target.value)}
-                            style={{ marginRight: 6 }}
-                            autoComplete='username'
-                        />
-                        <input
-                            type='text'
-                            inputMode='numeric'
-                            pattern='[0-9]*'
-                            placeholder='Código (6 dígitos)'
-                            className={styles.loginInput}
-                            value={totpCode}
-                            onChange={e =>
-                                setTotpCode(
-                                    e.target.value
-                                        .replace(/\D/g, '')
-                                        .slice(0, 6),
-                                )
-                            }
-                            style={{ marginRight: 6, width: 120 }}
-                            autoComplete='one-time-code'
-                            autoCorrect='off'
-                            autoCapitalize='off'
-                            spellCheck={false}
-                            onKeyDown={e => {
-                                if (e.key === 'Enter')
-                                    e.currentTarget
-                                        .closest('form')
-                                        ?.requestSubmit();
-                            }}
-                        />
-                        {hasWebAuthn && (
-                            <button
-                                className={styles.loginButton}
-                                disabled={biometricLoading || !loginEmail}
-                                onClick={handleWebAuthnLogin}
-                                title='Entrar com biometria'
-                                style={{ marginRight: 6 }}
-                            >
-                                {biometricLoading ? '...' : '🔒 Face ID'}
-                            </button>
-                        )}
-                        <button
-                            className={styles.loginButton}
-                            disabled={
-                                loadingOtp ||
-                                !loginEmail ||
-                                totpCode.length !== 6
-                            }
-                            aria-busy={loadingOtp}
-                            onClick={async () => {
-                                setLoadingOtp(true);
-                                try {
-                                    const deviceIdKey = 'device_id';
-                                    const deviceId =
-                                        getOrCreateDeviceId(deviceIdKey);
-                                    const res = await fetch(
-                                        `${API_BASE}/register/auth/totp/verify/`,
-                                        {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type':
-                                                    'application/json',
-                                            },
-                                            body: JSON.stringify({
-                                                email: loginEmail,
-                                                code: totpCode,
-                                                device_id: deviceId,
-                                            }),
-                                        },
-                                    );
-                                    let data: VerifyResponse = {};
-                                    try {
-                                        data = await res.json();
-                                    } catch {
-                                        data = {
-                                            message:
-                                                'Falha ao interpretar resposta do servidor',
-                                        };
-                                    }
-                                    if (res.ok && data.access) {
-                                        setModalMessage(
-                                            'Login realizado! Dados dos clientes liberados.',
-                                        );
-                                        setModalOpen(true);
-                                        localStorage.setItem(
-                                            'accessToken',
-                                            data.access,
-                                        );
-                                        setTotpCode('');
-                                        setLoggedProfessional(
-                                            data.professional || null,
-                                        );
-                                        localStorage.setItem(
-                                            'loggedProfessional',
-                                            JSON.stringify(data.professional),
-                                        );
-                                        if (data.device_id) {
-                                            localStorage.setItem(
-                                                deviceIdKey,
-                                                String(data.device_id),
-                                            );
-                                        }
-                                        if (data.professional?.is_superuser) {
-                                            navigate('/admin', {
-                                                replace: true,
-                                            });
-                                            return;
-                                        }
-                                        emit('auth:login', undefined);
-                                        window.dispatchEvent(
-                                            new Event('updateClients'),
-                                        );
-                                        window.dispatchEvent(
-                                            new Event('clearClients'),
-                                        );
-                                        localStorage.setItem(
-                                            'lastLoginEmail',
-                                            loginEmail,
-                                        );
-                                        // Offer biometric registration if not already set
-                                        if (
-                                            !localStorage.getItem(
-                                                biometricStorageKey(loginEmail),
-                                            ) &&
-                                            typeof PublicKeyCredential !==
-                                                'undefined' &&
-                                            typeof (
-                                                PublicKeyCredential as {
-                                                    isUserVerifyingPlatformAuthenticatorAvailable?: () => Promise<boolean>;
-                                                }
+                        {(() => {
+                            const selected = professionals.find(
+                                p => p.email === loginEmail,
+                            );
+                            const buttonLabel = selected
+                                ? `Alterar profissional: ${selected.first_name} ${selected.last_name}`
+                                : loadingProfessionals
+                                  ? 'Carregando profissionais'
+                                  : 'Selecionar profissional';
+                            return (
+                                <div
+                                    className={styles.dropdownWrapper}
+                                    ref={professionalDropdownRef}
+                                >
+                                    <button
+                                        className={`${styles.menuButton} ${styles.profSelectorBtn} ${styles.profSelectorLayout}`}
+                                        type='button'
+                                        onClick={() =>
+                                            setProfessionalDropdownOpen(
+                                                open => !open,
                                             )
-                                                .isUserVerifyingPlatformAuthenticatorAvailable ===
-                                                'function'
-                                        ) {
-                                            try {
-                                                const ok = await (
-                                                    PublicKeyCredential as {
-                                                        isUserVerifyingPlatformAuthenticatorAvailable: () => Promise<boolean>;
-                                                    }
-                                                ).isUserVerifyingPlatformAuthenticatorAvailable();
-                                                if (ok)
-                                                    setOfferBiometricOpen(true);
-                                            } catch {
-                                                /* ignore */
-                                            }
                                         }
-                                    } else {
-                                        setModalMessage(
-                                            String(
-                                                data.message ||
-                                                    'Código inválido',
-                                            ),
-                                        );
-                                        setModalOpen(true);
-                                    }
-                                } catch (err) {
-                                    const detail =
-                                        err instanceof Error
-                                            ? err.message
-                                            : String(err);
-                                    setModalMessage(
-                                        `Erro ao validar código: ${detail}`,
-                                    );
-                                    setModalOpen(true);
-                                }
-                                setLoadingOtp(false);
-                            }}
-                        >
-                            {loadingOtp ? 'Entrando...' : 'Entrar'}
-                        </button>
+                                        aria-haspopup='listbox'
+                                        aria-expanded={professionalDropdownOpen}
+                                        aria-label={buttonLabel}
+                                        title={buttonLabel}
+                                    >
+                                        <span className={styles.profIcon}>
+                                            🧑‍⚕️
+                                        </span>
+                                        {selected ? (
+                                            <span
+                                                className={
+                                                    styles.selectedProfName
+                                                }
+                                                title={`${selected.first_name} ${selected.last_name}${selected.specialty ? ' • ' + selected.specialty : ''}`}
+                                            >
+                                                {selected.first_name}
+                                            </span>
+                                        ) : (
+                                            <span
+                                                className={
+                                                    styles.selectedProfName
+                                                }
+                                            >
+                                                Profissional
+                                            </span>
+                                        )}
+                                        <span className={styles.caret}>▼</span>
+                                    </button>
+                                    {professionalDropdownOpen && (
+                                        <div
+                                            className={`${styles.dropdownMenu} ${styles.dropdownMenuRight}`}
+                                            role='listbox'
+                                        >
+                                            {professionals.length === 0 ? (
+                                                <button
+                                                    type='button'
+                                                    className={
+                                                        styles.dropdownItem
+                                                    }
+                                                    disabled
+                                                >
+                                                    Nenhum profissional
+                                                    disponível
+                                                </button>
+                                            ) : (
+                                                professionals.map(prof => (
+                                                    <button
+                                                        key={prof.id}
+                                                        type='button'
+                                                        className={
+                                                            styles.dropdownItem
+                                                        }
+                                                        onClick={() => {
+                                                            setLoginEmail(
+                                                                prof.email,
+                                                            );
+                                                            setProfessionalDropdownOpen(
+                                                                false,
+                                                            );
+                                                        }}
+                                                    >
+                                                        {prof.first_name}{' '}
+                                                        {prof.last_name} •{' '}
+                                                        {prof.specialty ||
+                                                            'Sem especialidade'}
+                                                    </button>
+                                                ))
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
+                        {loginEmail && (
+                            <div className={styles.passBlock}>
+                                <div className={styles.passInlineRow}>
+                                    <input
+                                        type='text'
+                                        value={loginEmail}
+                                        readOnly
+                                        tabIndex={-1}
+                                        aria-hidden='true'
+                                        autoComplete='username'
+                                        className={styles.authHiddenField}
+                                    />
+                                    <input
+                                        type='password'
+                                        name='clinic-password'
+                                        placeholder='Senha'
+                                        className={styles.loginInput}
+                                        value={loginPassword}
+                                        onChange={e =>
+                                            setLoginPassword(e.target.value)
+                                        }
+                                        autoComplete='current-password'
+                                        autoCorrect='off'
+                                        autoCapitalize='off'
+                                        spellCheck={false}
+                                        autoFocus
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                loginButtonRef.current?.click();
+                                            }
+                                        }}
+                                    />
+                                </div>
+                                <button
+                                    ref={loginButtonRef}
+                                    className={`${styles.loginButton} ${styles.enterButton}`}
+                                    disabled={loadingLogin || !loginPassword}
+                                    aria-busy={loadingLogin}
+                                    onClick={async () => {
+                                        setLoadingLogin(true);
+                                        try {
+                                            const deviceIdKey = 'device_id';
+                                            const deviceId =
+                                                getOrCreateDeviceId(
+                                                    deviceIdKey,
+                                                );
+                                            const tenantSlug =
+                                                resolveClinicTenantSlug();
+                                            if (!tenantSlug) {
+                                                setModalMessage(
+                                                    'Acesso bloqueado: domínio da clínica não reconhecido.',
+                                                );
+                                                setModalOpen(true);
+                                                setLoadingLogin(false);
+                                                return;
+                                            }
+                                            const res = await fetch(
+                                                `${API_BASE}/token/`,
+                                                {
+                                                    method: 'POST',
+                                                    headers: {
+                                                        'Content-Type':
+                                                            'application/json',
+                                                    },
+                                                    body: JSON.stringify({
+                                                        email: loginEmail,
+                                                        password: loginPassword,
+                                                        device_id: deviceId,
+                                                        tenant_slug: tenantSlug,
+                                                    }),
+                                                },
+                                            );
+                                            let data: VerifyResponse = {};
+                                            try {
+                                                data = await res.json();
+                                            } catch {
+                                                data = {
+                                                    message:
+                                                        'Falha ao interpretar resposta do servidor',
+                                                };
+                                            }
+                                            if (res.ok && data.access) {
+                                                setModalMessage(
+                                                    'Login realizado! Dados dos clientes liberados.',
+                                                );
+                                                setModalOpen(true);
+                                                localStorage.setItem(
+                                                    'accessToken',
+                                                    data.access,
+                                                );
+                                                setLoginPassword('');
+                                                setLoggedProfessional(
+                                                    data.professional || null,
+                                                );
+                                                localStorage.setItem(
+                                                    'loggedProfessional',
+                                                    JSON.stringify(
+                                                        data.professional,
+                                                    ),
+                                                );
+                                                if (data.device_id) {
+                                                    localStorage.setItem(
+                                                        deviceIdKey,
+                                                        String(data.device_id),
+                                                    );
+                                                }
+                                                if (
+                                                    data.professional
+                                                        ?.is_superuser
+                                                ) {
+                                                    navigate('/admin', {
+                                                        replace: true,
+                                                    });
+                                                    return;
+                                                }
+                                                emit('auth:login', undefined);
+                                                window.dispatchEvent(
+                                                    new Event('updateClients'),
+                                                );
+                                                window.dispatchEvent(
+                                                    new Event('clearClients'),
+                                                );
+                                                localStorage.setItem(
+                                                    'lastLoginEmail',
+                                                    loginEmail,
+                                                );
+                                            } else {
+                                                setModalMessage(
+                                                    String(
+                                                        data.message ||
+                                                            'Credenciais inválidas',
+                                                    ),
+                                                );
+                                                setModalOpen(true);
+                                            }
+                                        } catch (err) {
+                                            const detail =
+                                                err instanceof Error
+                                                    ? err.message
+                                                    : String(err);
+                                            setModalMessage(
+                                                `Erro ao validar credenciais: ${detail}`,
+                                            );
+                                            setModalOpen(true);
+                                        }
+                                        setLoadingLogin(false);
+                                    }}
+                                >
+                                    {loadingLogin ? 'Entrando...' : 'Entrar'}
+                                </button>
+                            </div>
+                        )}
                     </>
                 )}
             </div>
@@ -851,41 +788,17 @@ export const NavBar: React.FC<NavBarProps> = ({
                 open={createProfOpen}
                 onClose={() => setCreateProfOpen(false)}
             />
-            <TotpAdminResetModal
-                open={totpResetOpen}
-                onClose={() => setTotpResetOpen(false)}
-            />
-            {/* Modal: oferecer registro de biometria após login TOTP */}
-            <AppModal
-                open={offerBiometricOpen}
-                onClose={() => setOfferBiometricOpen(false)}
-                unmountOnClose
-            >
-                <div className='modal-message'>
-                    <h3>Ativar Face ID / Touch ID?</h3>
-                    <p style={{ fontSize: 14, marginBottom: 16 }}>
-                        Use a biometria do dispositivo para entrar sem digitar o
-                        código nas próximas vezes.
-                    </p>
-                    <div
-                        style={{
-                            display: 'flex',
-                            gap: 8,
-                            justifyContent: 'center',
-                        }}
-                    >
-                        <button
-                            onClick={handleRegisterBiometric}
-                            disabled={biometricLoading}
-                        >
-                            {biometricLoading ? 'Aguarde...' : 'Sim, ativar'}
-                        </button>
-                        <button onClick={() => setOfferBiometricOpen(false)}>
-                            Agora não
-                        </button>
-                    </div>
-                </div>
-            </AppModal>
+            {createPortal(
+                <TreatmentPlanCreateModal
+                    open={clinicProfileOpen}
+                    saving={false}
+                    profileOnly
+                    onClose={() => setClinicProfileOpen(false)}
+                    onSave={() => undefined}
+                    onProfileSaved={() => undefined}
+                />,
+                document.body,
+            )}
         </div>
     );
 };

@@ -1,8 +1,7 @@
 // frontend/src/components/ClientCard.tsx
 import React from 'react';
-import { focusClientCard } from '../../utils/focusClientCard';
 import styles from './ClientCard.module.css';
-import { FaEye, FaWhatsapp, FaTooth } from 'react-icons/fa';
+import { FaEye, FaWhatsapp, FaTooth, FaShoePrints } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useClientCreateAction } from '../../hooks/useClientCreateAction';
 import { API_BASE } from '../../config/api';
@@ -12,18 +11,13 @@ import { formatPhone } from '../../utils/formatPhone';
 import { FaEdit } from 'react-icons/fa';
 import '../../styles/palette.css';
 import { parseDOB, calcAge } from '../../utils/dateOfBirth';
-import { useClientCardStyle } from '../clientCard/useClientCardStyle';
-// PendingActionsModal é gerenciado globalmente (Home) via evento 'pendingActions:open'
-import { useClientPendingState } from '../../hooks/useClientPendingState';
-import { useClientCardFocusScroll } from '../clientCard/useClientCardFocusScroll';
+import { useClientCardStyle } from './useClientCardStyle';
+import { useClientCardFocusScroll } from './useClientCardFocusScroll';
 import { useClientFutureAppointments } from '../../domain/futureAppointments';
 // (hysteresis & appointment state consolidated inside hooks)
-import { useFinalizeAppointment } from '../../hooks/useFinalizeAppointment';
-// Replaced latch/snapshot/sweep logic by consolidated hook
-import { useClientOngoingState } from '../../hooks/useClientOngoingState';
 import { formatAppointmentDateRange } from '../../utils/agendaPresentation';
 import { openClientForm } from '../../utils/openClientForm';
-import { useNowTick } from '../../hooks/useNowTick';
+// import { useNowTick } from '../../hooks/useNowTick'; <- sem uso
 import { emit } from '../../events/bus';
 import { getAccessToken } from '../../utils/auth/session';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -43,10 +37,58 @@ interface ClientCardProps {
     /** Quando definido, o botão "Avisar" usa este agendamento em vez do next_appointment do cliente.
      *  Útil quando o filtro ativo é "Amanhã" e o cliente tem um agendamento amanhã distinto do next. */
     notifyAppt?: { start_at?: string; end_at?: string; title?: string };
-    /** Dados do compromisso pendente para exibir data/hora no card pending. */
-    pendingAppt?: { start_at?: string; end_at?: string };
     /** Modo de filtro ativo. Quando 'today' ou 'tomorrow', o card exibe apenas o dia filtrado. */
-    filterMode?: 'all' | 'pending' | 'today' | 'tomorrow';
+    filterMode?: 'all' | 'today' | 'tomorrow';
+}
+
+const LOCAL_HOST_PATTERN = /^(localhost|127\.0\.0\.1|::1)$/i;
+
+function isLocalHostname(hostname: string): boolean {
+    return LOCAL_HOST_PATTERN.test((hostname || '').trim());
+}
+
+function parseAbsoluteUrl(value: string): URL | null {
+    try {
+        return new URL(value);
+    } catch {
+        return null;
+    }
+}
+
+function resolvePublicAnamnesisBaseUrl(): string {
+    const currentOrigin = window.location.origin.replace(/\/+$/, '');
+
+    // In local development, keep domain parity with the current access mode.
+    // If user opened with localhost, generate localhost link.
+    // If user opened with LAN IP, generate LAN IP link.
+    if (import.meta.env.DEV) {
+        return currentOrigin;
+    }
+
+    const configuredBase = (
+        import.meta.env.VITE_PUBLIC_ANAMNESIS_BASE_URL as string | undefined
+    )?.trim();
+    if (configuredBase && /^https?:\/\//i.test(configuredBase)) {
+        return configuredBase.replace(/\/+$/, '');
+    }
+
+    const currentHost = window.location.hostname || '';
+
+    // If app is running on localhost, try inferring a LAN host from API_BASE
+    // so links can be opened by another device (e.g., client phone).
+    if (isLocalHostname(currentHost)) {
+        const apiUrl = parseAbsoluteUrl(API_BASE);
+        if (apiUrl && !isLocalHostname(apiUrl.hostname)) {
+            const protocol = window.location.protocol || apiUrl.protocol;
+            const frontendPort = window.location.port || '5173';
+            return `${protocol}//${apiUrl.hostname}:${frontendPort}`.replace(
+                /\/+$/,
+                '',
+            );
+        }
+    }
+
+    return currentOrigin;
 }
 
 function ClientCardBase({
@@ -55,26 +97,16 @@ function ClientCardBase({
     selected,
     onSelect,
     notifyAppt,
-    pendingAppt,
     filterMode = 'all',
 }: ClientCardProps) {
     const navigate = useNavigate();
     const { theme } = useTheme();
-    // Feature flag: disable per-client ongoing probe unless explicitly enabled (reduces debug traffic)
-    const ENABLE_ONGOING_PROBE =
-        (import.meta as ImportMeta).env.VITE_ENABLE_ONGOING_PROBE === 'true';
     const isScheduled = client.next_appointment_status === 'scheduled';
     // Futuros agora gerenciados por hook dedicado
     const { futureAppointments, loadingFuture, dynLimit } =
         useClientFutureAppointments({ client, isScheduled });
     const [pressed, setPressed] = React.useState(false);
-    const { finishing, finalize } = useFinalizeAppointment(client.id);
-    // Suprimir visual de "em andamento" por alguns segundos após finalizar/cancelar
-    // suppressOngoingUntil removido (gestão dentro do hook de ongoing)
-    // Tick a cada 5 s para refletir mudanças de estado (scheduled→ongoing) sem interação do usuário
-    const now = useNowTick(5000);
-    // Removed resumeGrace (was used for previous ongoing suppression logic)
-    // const resumeGrace = useVisibilityResumeGrace(30000);
+    // const now = useNowTick(5000); <- sem uso
     // start derivado como Date não é necessário; mantemos ISO para o snapshot
     // end derivado não é necessário para estilização; snapshot usa ISO strings
     // Idade calculada uma vez (se data válida) para exibir em linha própria
@@ -86,7 +118,7 @@ function ClientCardBase({
             ? parsed.age
             : calcAge(parsed.year, parsed.month, parsed.day);
     }, [client.date_of_birth]);
-    const canAccessOdontoArcade = React.useMemo(() => {
+    const canAccessTreatmentPlan = React.useMemo(() => {
         try {
             const stored = localStorage.getItem('loggedProfessional');
             if (!stored) return false;
@@ -98,92 +130,36 @@ function ClientCardBase({
             return (
                 specialty.includes('odonto') ||
                 specialty.includes('dent') ||
-                specialty.includes('ortodont')
+                specialty.includes('ortodont') ||
+                specialty.includes('podolog')
             );
         } catch {
             return false;
         }
     }, []);
-    // isScheduled já definido acima (reordenado para hook de futuros)
-    // Base: informações vindas do servidor (se disponíveis)
-    // startISO / endISO no longer directly used after ongoing refactor
-    // const startISO = client.next_appointment_start_at ?? null;
-    // const endISO = client.next_appointment_end_at ?? null;
-    const {
-        isOngoing,
-        // isOngoingRaw (raw signal) not needed in card after refactor
-        displayStartISO,
-        displayEndISO,
-        effectiveApptId,
-        afterFinalizeSuccess,
-    } = useClientOngoingState({
-        client,
-        now,
-        enableProbe: ENABLE_ONGOING_PROBE,
-        debug: false,
-    });
-
-    // Quando tivermos uma janela confiável e status scheduled, usamos o hook compartilhado
-    // legacy variables now derived via hook (kept for potential future use) startISO/endISO still used for future fetch logic
-
-    // Preferir dados confiáveis do servidor OU da varredura global quando houver janela atual
-    // Se houver um agendamento em andamento detectado pela varredura (windowFromOverride),
-    // usamos esse horário/ID em prioridade para refletir corretamente o estado "Em andamento".
-    // removed: local derivations now handled by useClientOngoingState
-
-    // Auto-clear latch some time after the end to avoid sticky ongoing if finalize didn't fire
-    // removed auto-clear effect (handled inside hook)
-
-    // Novo: limpar latch imediatamente se detectarmos que o appointment latched foi finalizado/cancelado, expirado ou janela deixou de ser confiável
-    // removed immediate-clear effect (handled in hook)
-
-    // On resume (visibility/pageshow), refresh local latched state from storage in case iOS flushed memory
-    // removed visibility storage refresh (handled in hook)
-
-    // Aplicar histerese visual: aguarda 250ms para entrar em ongoing; saída é imediata
-    // hysteresis now inside hook (isOngoing already stabilized)
-
-    // Instrumentação de diagnóstico opcional: loga decisão de ongoing/latch
-    // removed debug effect (handled via hook's debug option)
-
-    // Telemetry: entering ongoing window
-    // removed telemetry enter effect (done inside hook)
-
-    // Hook centralizado de pendência
-    const {
-        effectivePending: isPending,
-        openPendingActions,
-        tryOpenPendingElseQuick,
-    } = useClientPendingState({
-        client,
-        now,
-        probeEnabled: ENABLE_ONGOING_PROBE,
-    });
-
-    // Mostrar seção de agenda somente se há algo concreto (agendamento atual ou em andamento) ou futuros carregados.
-    // Estado pendente isolado não exibe cabeçalho/tipo para manter UI minimalista.
-    // Agenda line (tipo / horário) é suprimida se pendente para manter visual minimalista.
-    // Porém queremos ainda exibir a linha 'Data:' com o botão Solucionar mesmo que haja um agendamento (scheduled+pending).
-    // Regra revisada:
-    //  - Quando pendente: não mostramos linha de agenda nem linha Data (substituímos por bloco compacto de pendência)
-    //  - Linha de agenda aparece apenas se há scheduled ativo, em andamento ou futuros E não está pendente
-    // isTomorrowFilter / effectiveOngoing declarados aqui porque hasAgendaLine (abaixo) os usa
+    const isPodology = React.useMemo(() => {
+        try {
+            const stored = localStorage.getItem('loggedProfessional');
+            const specialty = stored
+                ? String(
+                      (JSON.parse(stored) as { specialty?: string })
+                          .specialty || '',
+                  )
+                : '';
+            return specialty.toLowerCase().includes('podolog');
+        } catch {
+            return false;
+        }
+    }, []);
     const isTomorrowFilter = filterMode === 'tomorrow' && !!notifyAppt;
-    const effectiveOngoing = isOngoing && !isTomorrowFilter;
 
-    const hasAgendaLine =
-        (isScheduled || effectiveOngoing || futureAppointments.length > 0) &&
-        !isPending;
+    const hasAgendaLine = isScheduled || futureAppointments.length > 0;
 
     // Ações unificadas (+) para agenda e fallback
     const createActionAgenda = useClientCreateAction({
-        isOngoing,
-        isPending,
         futureAppointmentsCount: futureAppointments.length,
         isScheduled,
         dynLimit,
-        openPendingActions,
-        tryOpenPendingElseQuick,
         setEditing: () => {
             /* noop: scheduling flow is hosted globally in Home */
         },
@@ -191,20 +167,15 @@ function ClientCardBase({
         baseTitle: 'Novo agendamento',
     });
     const createActionFallback = useClientCreateAction({
-        isOngoing,
-        isPending,
         futureAppointmentsCount: futureAppointments.length,
         isScheduled,
         dynLimit,
-        openPendingActions,
-        tryOpenPendingElseQuick,
         setEditing: () => {
             /* noop: scheduling flow is hosted globally in Home */
         },
         openQuick: () => openGlobalQuickSchedule(),
         baseTitle: 'Agendar',
     });
-    // Estilos centralizados via hook: mantém regra de cartão branco durante atendimento
     const {
         containerStyle,
         labelColor,
@@ -213,11 +184,8 @@ function ClientCardBase({
         separatorColor,
         separatorOpacity,
     } = useClientCardStyle({
-        isOngoing: effectiveOngoing,
         selected,
         pressed,
-        isScheduled,
-        isPending,
     });
     const openGlobalQuickSchedule = React.useCallback(
         (appointment?: Appointment | null) => {
@@ -256,59 +224,29 @@ function ClientCardBase({
     );
 
     // Align with global forceClose: ensure any ClientCard modal closes too
-    // PendingActions global — sem necessidade de listener local
 
-    // Finalização com encapsulamento via hook
-    const finalizeEarlyAware = React.useCallback(async () => {
-        const apptId = effectiveApptId;
-        if (!apptId) return;
-        const ok = await finalize(apptId, {
-            preferEarly: isOngoing,
-            openPendingAfter: async () => {
-                await tryOpenPendingElseQuick(() => {});
-            },
-        });
-        if (ok) {
-            afterFinalizeSuccess();
-            // Rola e foca o card após fechar o modal de finalização (mesmo padrão da notificação push)
-            focusClientCard(client.id, { delayMs: 400 });
-        }
-    }, [
-        effectiveApptId,
-        isOngoing,
-        finalize,
-        tryOpenPendingElseQuick,
-        afterFinalizeSuccess,
-        client.id,
-    ]);
     // Fechar modo edição ao clicar fora do card
     // Efeito de clique fora removido enquanto editor inline está desativado
     // Borda e fundo já definidos no hook (containerStyle)
     // title display moved into the agenda section below when scheduled
-    // Flash visual ao focar/entrar em andamento removido — mantemos apenas seleção + scroll
     useClientCardFocusScroll({
         clientId: client.id,
         cardRef,
         onSelect,
         futureAppointmentsCount: futureAppointments.length,
-        isOngoing,
         isScheduled,
     });
 
     // Inline effect de futuros removido (substituído pelo hook)
 
-    // Clear ongoing visual immediately when a targeted event is dispatched (same-tab UX)
-    // Clear ongoing event handling moved to hook; listener removed
-
     // Quando o filtro ativo é 'tomorrow' e temos o agendamento de amanhã, usamos seus dados
     // para o bloco "Data:" e o botão "Avisar" — substituindo os dados de hoje.
-    // (isTomorrowFilter e effectiveOngoing já declarados acima, antes de hasAgendaLine)
     const activeStartISO = isTomorrowFilter
         ? (notifyAppt?.start_at ?? null)
-        : displayStartISO || client.next_appointment_start_at || null;
+        : client.next_appointment_start_at || null;
     const activeEndISO = isTomorrowFilter
         ? (notifyAppt?.end_at ?? null)
-        : displayEndISO || client.next_appointment_end_at || null;
+        : client.next_appointment_end_at || null;
     // Ocultar o bloco "Próximos compromissos" quando um filtro de dia específico está ativo
     const hideFutureList = filterMode === 'today' || filterMode === 'tomorrow';
     const cardClassNames = [styles.card, selected ? styles.cardSelected : '']
@@ -384,19 +322,34 @@ function ClientCardBase({
                 );
             }
 
-            const basePublicUrl =
-                (
-                    import.meta.env.VITE_PUBLIC_ANAMNESIS_BASE_URL as
-                        | string
-                        | undefined
-                )?.trim() || window.location.origin;
+            const basePublicUrl = resolvePublicAnamnesisBaseUrl();
             const normalizedBase = basePublicUrl.replace(/\/+$/, '');
             const params = new URLSearchParams({
                 token: data.token,
                 theme,
             });
             const link = `${normalizedBase}/anamnesis/public?${params.toString()}`;
-            const message = `Olá ${client.first_name}, por favor preencha sua ficha ou atualize seus dados: ${link}`;
+
+            const resolvedHost =
+                parseAbsoluteUrl(normalizedBase)?.hostname || '';
+            if (isLocalHostname(resolvedHost)) {
+                window.dispatchEvent(
+                    new CustomEvent('systemMessage', {
+                        detail: {
+                            text: 'Link de anamnese gerado com localhost. Para abrir em outro aparelho, configure VITE_PUBLIC_ANAMNESIS_BASE_URL com uma URL acessível (LAN, túnel ou domínio público).',
+                            type: 'warning',
+                        },
+                    }),
+                );
+            }
+
+            const message = [
+                `Olá ${client.first_name}!`,
+                'Para preencher ou atualizar sua ficha, toque no link abaixo:',
+                link,
+                'Este link é válido por 1 hora.',
+                'Se não abrir automaticamente, copie e cole o link no navegador.',
+            ].join('\n\n');
 
             const userAgent =
                 typeof navigator !== 'undefined' ? navigator.userAgent : '';
@@ -486,16 +439,24 @@ function ClientCardBase({
                     </span>
                 </div>
                 <div className={styles.nameActions}>
-                    {canAccessOdontoArcade && (
+                    {canAccessTreatmentPlan && (
                         <button
                             className={styles.iconButton}
-                            title='Abrir prontuario odontologico'
+                            title={
+                                isPodology
+                                    ? 'Abrir plano de tratamento'
+                                    : 'Abrir prontuario odontologico'
+                            }
                             onClick={e => {
                                 e.stopPropagation();
-                                navigate(`/odonto/arcada/${client.id}`);
+                                navigate(`/treatment/plans/${client.id}`);
                             }}
                         >
-                            <FaTooth color={iconColor} />
+                            {isPodology ? (
+                                <FaShoePrints color={iconColor} />
+                            ) : (
+                                <FaTooth color={iconColor} />
+                            )}
                         </button>
                     )}
                     <button
@@ -610,15 +571,11 @@ function ClientCardBase({
             <ClientCardAgendaSection
                 client={client}
                 notifyAppt={notifyAppt}
-                pendingAppt={pendingAppt}
                 hasAgendaLine={hasAgendaLine}
                 isScheduled={isScheduled}
-                isPending={isPending}
-                isOngoing={isOngoing}
-                effectiveOngoing={effectiveOngoing}
                 activeStartISO={activeStartISO}
                 activeEndISO={activeEndISO}
-                displayStartISO={displayStartISO}
+                displayStartISO={client.next_appointment_start_at || null}
                 futureAppointments={futureAppointments}
                 loadingFuture={loadingFuture}
                 hideFutureList={hideFutureList}
@@ -629,27 +586,8 @@ function ClientCardBase({
                 iconColor={iconColor}
                 separatorColor={separatorColor}
                 separatorOpacity={separatorOpacity}
-                finishing={finishing}
-                effectiveApptId={effectiveApptId}
-                onFinalize={finalizeEarlyAware}
                 onOpenMonthlyAgenda={openGlobalMonthlyAgenda}
                 onOpenQuickSchedule={openGlobalQuickSchedule}
-                onSolvePending={async () => {
-                    try {
-                        onSelect?.();
-                    } catch {
-                        /* noop */
-                    }
-                    await tryOpenPendingElseQuick(
-                        () => {
-                            /* noop fallback */
-                        },
-                        {
-                            kind: 'home',
-                            clientId: client.id,
-                        },
-                    );
-                }}
                 formatDateRange={formatAppointmentDateRange}
             />
 

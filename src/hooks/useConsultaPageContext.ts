@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type {
-    PendingReturnContext,
+    AppointmentReturnContext,
     ReopenAppointmentDetailsContext,
 } from '../types/agendaFlow';
 
@@ -21,7 +21,7 @@ export interface ConsultaPageState<TItem = unknown> {
     chargeId?: number;
     chargeItems?: TItem[];
     chargeNotes?: string;
-    returnContext?: PendingReturnContext;
+    returnContext?: AppointmentReturnContext;
 }
 
 function loadConsultaPageState<TItem>(
@@ -48,13 +48,16 @@ function loadConsultaPageState<TItem>(
 
 function persistConsultaPageState<TItem>(state: ConsultaPageState<TItem>) {
     try {
-        sessionStorage.setItem(CONSULTA_PAGE_CONTEXT_KEY, JSON.stringify(state));
+        sessionStorage.setItem(
+            CONSULTA_PAGE_CONTEXT_KEY,
+            JSON.stringify(state),
+        );
     } catch {
         /* noop */
     }
 }
 
-function persistResumeQuickSchedule(returnContext?: PendingReturnContext) {
+function persistResumeQuickSchedule(returnContext?: AppointmentReturnContext) {
     if (returnContext?.kind !== 'quick-schedule') return false;
 
     try {
@@ -69,7 +72,7 @@ function persistResumeQuickSchedule(returnContext?: PendingReturnContext) {
     return true;
 }
 
-function persistResumeAgendaModal(returnContext?: PendingReturnContext) {
+function persistResumeAgendaModal(returnContext?: AppointmentReturnContext) {
     if (
         returnContext?.kind !== 'daily-agenda' &&
         returnContext?.kind !== 'weekly-agenda' &&
@@ -90,7 +93,7 @@ function persistResumeAgendaModal(returnContext?: PendingReturnContext) {
     return true;
 }
 
-function persistResumeDesktopAgenda(returnContext?: PendingReturnContext) {
+function persistResumeDesktopAgenda(returnContext?: AppointmentReturnContext) {
     if (returnContext?.kind !== 'desktop-agenda') return false;
 
     try {
@@ -105,7 +108,7 @@ function persistResumeDesktopAgenda(returnContext?: PendingReturnContext) {
     return true;
 }
 
-function persistResumeHomeFocus(returnContext?: PendingReturnContext) {
+function persistResumeHomeFocus(returnContext?: AppointmentReturnContext) {
     if (returnContext?.kind !== 'home') return false;
 
     try {

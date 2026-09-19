@@ -1,7 +1,5 @@
-// frontend/src/pages/AdminPage.tsx
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import QRCode from 'qrcode';
 import type { Professional } from '../types/models';
 import { API_BASE } from '../config/api';
 import { ProfessionalCreateModal } from '../components/ProfessionalCreateModal/ProfessionalCreateModal';
@@ -110,12 +108,6 @@ const AdminPageContent: React.FC = () => {
 
     // Reactivate
     const [reactivating, setReactivating] = useState<number | null>(null);
-
-    // TOTP reset modal
-    const [totpTarget, setTotpTarget] = useState<Professional | null>(null);
-    const [totpLoading, setTotpLoading] = useState(false);
-    const [totpQr, setTotpQr] = useState('');
-    const [totpError, setTotpError] = useState('');
 
     const fetchList = useCallback(async () => {
         setLoading(true);
@@ -293,48 +285,6 @@ const AdminPageContent: React.FC = () => {
         }
     }
 
-    // ── TOTP Reset ────────────────────────────────────────────────────────────
-
-    function openTotpReset(p: Professional) {
-        setTotpTarget(p);
-        setTotpQr('');
-        setTotpError('');
-    }
-
-    async function confirmTotpReset() {
-        if (!totpTarget) return;
-        setTotpLoading(true);
-        setTotpError('');
-        try {
-            const res = await fetch(
-                `${API_BASE}/register/auth/totp/admin-reset/`,
-                {
-                    method: 'POST',
-                    headers: {
-                        ...authHeader(),
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ user_id: totpTarget.id }),
-                },
-            );
-            const data = await res.json();
-            if (!res.ok) {
-                setTotpError(data.message || `Erro ${res.status}`);
-                return;
-            }
-            const dataUrl = await QRCode.toDataURL(data.otpauth_uri, {
-                width: 240,
-                margin: 2,
-                color: { dark: '#000000', light: '#ffffff' },
-            });
-            setTotpQr(dataUrl);
-        } catch {
-            setTotpError('Erro de conexão.');
-        } finally {
-            setTotpLoading(false);
-        }
-    }
-
     // ─────────────────────────────────────────────────────────────────────────
 
     return (
@@ -409,7 +359,6 @@ const AdminPageContent: React.FC = () => {
                                     onEditChange={handleEditChange}
                                     onDeactivate={() => openDeactivate(p)}
                                     onReactivate={() => reactivate(p)}
-                                    onTotpReset={() => openTotpReset(p)}
                                 />
                             ))}
                         </tbody>
@@ -489,104 +438,6 @@ const AdminPageContent: React.FC = () => {
                     </div>
                 </div>
             </AppModal>
-
-            {/* TOTP Reset Modal */}
-            <AppModal
-                open={!!totpTarget}
-                onClose={() => {
-                    if (!totpLoading) setTotpTarget(null);
-                }}
-                unmountOnClose
-            >
-                <div className='modal-message' style={{ minWidth: 300 }}>
-                    {!totpQr ? (
-                        <>
-                            <h3>Resetar Autenticador</h3>
-                            <p
-                                style={{
-                                    fontSize: 13,
-                                    marginBottom: 12,
-                                    color: '#555',
-                                }}
-                            >
-                                Isso irá revogar o segredo TOTP atual de{' '}
-                                <strong>
-                                    {totpTarget?.first_name}{' '}
-                                    {totpTarget?.last_name}
-                                </strong>{' '}
-                                e gerar um novo. Um novo QR code será exibido e
-                                enviado por e-mail.
-                            </p>
-                            {totpError && (
-                                <p
-                                    style={{
-                                        color: 'crimson',
-                                        fontSize: 13,
-                                        marginBottom: 8,
-                                    }}
-                                >
-                                    {totpError}
-                                </p>
-                            )}
-                            <div style={{ display: 'flex', gap: 8 }}>
-                                <button
-                                    onClick={() => setTotpTarget(null)}
-                                    style={{ ...styles.btnSecondary, flex: 1 }}
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={confirmTotpReset}
-                                    disabled={totpLoading}
-                                    style={{ ...styles.btnPrimary, flex: 1 }}
-                                >
-                                    {totpLoading
-                                        ? 'Gerando...'
-                                        : 'Confirmar Reset'}
-                                </button>
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            <h3>Novo QR Code</h3>
-                            <p style={{ marginBottom: 8, fontSize: 13 }}>
-                                Novo autenticador para{' '}
-                                <strong>
-                                    {totpTarget?.first_name}{' '}
-                                    {totpTarget?.last_name}
-                                </strong>
-                                . Escaneie no Google Authenticator ou app
-                                equivalente.
-                            </p>
-                            <img
-                                src={totpQr}
-                                alt='QR code TOTP'
-                                style={{
-                                    display: 'block',
-                                    margin: '0 auto 12px',
-                                    width: 220,
-                                    height: 220,
-                                }}
-                            />
-                            <p
-                                style={{
-                                    fontSize: 11,
-                                    color: '#888',
-                                    marginBottom: 12,
-                                }}
-                            >
-                                Este QR code não será exibido novamente.
-                            </p>
-                            <button
-                                onClick={() => setTotpTarget(null)}
-                                style={{ ...styles.btnPrimary, width: '100%' }}
-                            >
-                                Concluir
-                            </button>
-                        </>
-                    )}
-                </div>
-            </AppModal>
         </div>
     );
 };
@@ -608,7 +459,6 @@ interface RowProps {
     ) => void;
     onDeactivate: () => void;
     onReactivate: () => void;
-    onTotpReset: () => void;
 }
 
 const ProfRow: React.FC<RowProps> = ({
@@ -624,7 +474,6 @@ const ProfRow: React.FC<RowProps> = ({
     onEditChange,
     onDeactivate,
     onReactivate,
-    onTotpReset,
 }) => {
     const inactive = p.is_active === false;
 
@@ -771,12 +620,6 @@ const ProfRow: React.FC<RowProps> = ({
                 >
                     <button onClick={onEdit} style={styles.btnSmall}>
                         Editar
-                    </button>
-                    <button
-                        onClick={onTotpReset}
-                        style={styles.btnSmallSecondary}
-                    >
-                        Reset TOTP
                     </button>
                     {inactive ? (
                         <button
