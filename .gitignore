@@ -30,4 +30,6 @@ dist/
 .venv/
 .vscode/
 
-docs/
+docs/*
+!docs/
+!docs/frontend-stabilization-performance-plan.md

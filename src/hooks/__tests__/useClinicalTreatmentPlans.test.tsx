@@ -97,6 +97,35 @@ describe('useClinicalTreatmentPlans payment and printing flow', () => {
         window.removeEventListener('systemMessage', listener);
     });
 
+    it('keeps a trailing space in plan notes after autosave', async () => {
+        mockPlanLoad();
+        apiFetchMock.mockResolvedValueOnce({
+            ...basePlan,
+            notes: 'Orientacao',
+        });
+        const { result } = renderHook(() =>
+            useClinicalTreatmentPlans(12, true, 7),
+        );
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        act(() => {
+            result.current.setPlanNotes('Orientacao ');
+        });
+
+        await waitFor(() =>
+            expect(result.current.planNotes).toBe('Orientacao '),
+        );
+        await waitFor(() =>
+            expect(apiFetchMock).toHaveBeenCalledWith(
+                '/clinic/treatment/plans/7/',
+                expect.objectContaining({
+                    method: 'PATCH',
+                    body: expect.objectContaining({ notes: 'Orientacao ' }),
+                }),
+            ),
+        );
+    });
+
     it('blocks printing and emits a warning when the plan total is zero', async () => {
         mockPlanLoad(basePlan, []);
         const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {});

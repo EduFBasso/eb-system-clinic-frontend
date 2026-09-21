@@ -290,14 +290,26 @@ export function useClinicalTreatmentPlans(
                         },
                     },
                 )) as PlanListItem;
-                const persisted = { ...plan, ...updated };
+                // Keep the editor state authoritative while the autosave response
+                // updates the plan metadata. Rehydrating the textarea here can
+                // erase a trailing space typed just before the response arrives.
+                const persisted = {
+                    ...plan,
+                    ...updated,
+                    payment_condition: paymentCondition,
+                    installments_count: installmentsCount,
+                    first_due_date:
+                        paymentCondition === 'aprazo' && firstDueDate
+                            ? firstDueDate
+                            : null,
+                    notes: planNotes,
+                };
                 setPlan(persisted);
                 setAllPlans(prev =>
                     prev.map(item =>
                         item.id === persisted.id ? persisted : item,
                     ),
                 );
-                hydratePlanDetails(persisted);
                 return true;
             } catch (err) {
                 emit('systemMessage', {
@@ -322,7 +334,6 @@ export function useClinicalTreatmentPlans(
         }
     }, [
         firstDueDate,
-        hydratePlanDetails,
         installmentsCount,
         isPlanDetailsDirty,
         paymentCondition,
