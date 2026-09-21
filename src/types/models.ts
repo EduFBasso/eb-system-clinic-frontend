@@ -1,4 +1,23 @@
 // src/types/models.ts
+// Dados comerciais (endereço, CNPJ) e políticas Odonto pertencem ao tenant,
+// não ao profissional — ver docs/plano-migracao-identidade-profissional-para-tenant.md
+export interface ClinicTenantProfile {
+    id?: number;
+    name?: string;
+    trade_name?: string;
+    slug?: string;
+    zip_code?: string;
+    street?: string;
+    number?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
+    complement?: string;
+    cnpj?: string;
+    lock_odonto_plan_after_print?: boolean;
+    odonto_quote_validity_days?: number;
+}
+
 export interface Professional {
     id: number;
     first_name: string;
@@ -6,10 +25,9 @@ export interface Professional {
     display_name?: string;
     email: string;
     phone?: string;
+    cpf?: string;
     specialty?: string;
     register_number?: string;
-    city?: string;
-    state?: string;
     is_active?: boolean;
     is_superuser?: boolean;
     is_staff?: boolean;
@@ -23,6 +41,7 @@ export interface Professional {
     ecosystem?: 'clinic' | 'bakery';
     role?: string;
     capabilities?: Record<string, unknown>;
+    tenant?: ClinicTenantProfile;
 }
 
 export interface Client {

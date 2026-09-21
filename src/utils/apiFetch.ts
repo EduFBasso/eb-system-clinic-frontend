@@ -19,6 +19,40 @@ export class ApiError extends Error {
     }
 }
 
+// DRF devolve erros de validação sob chaves variadas conforme a origem
+// (non_field_errors para ValidationError genérico, detail para
+// PermissionDenied/AuthenticationFailed, ou o próprio nome do campo). Sem
+// isso, rejeições distintas do login Clinic (slug ausente, especialidades
+// conflitantes, conta desativada) todas caíam numa mensagem genérica.
+export function extractApiErrorMessage(
+    data: unknown,
+    fallback = 'Erro ao processar a solicitação.',
+): string {
+    if (!data || typeof data !== 'object') {
+        return fallback;
+    }
+    const payload = data as Record<string, unknown>;
+    const candidates = [
+        payload.detail,
+        payload.non_field_errors,
+        payload.tenant_slug,
+        payload.message,
+    ];
+    for (const candidate of candidates) {
+        if (typeof candidate === 'string' && candidate.trim()) {
+            return candidate;
+        }
+        if (
+            Array.isArray(candidate) &&
+            typeof candidate[0] === 'string' &&
+            candidate[0].trim()
+        ) {
+            return candidate[0];
+        }
+    }
+    return fallback;
+}
+
 // Event names for global auth state changes
 export const AUTH_LOGOUT_EVENT = 'auth:logout';
 

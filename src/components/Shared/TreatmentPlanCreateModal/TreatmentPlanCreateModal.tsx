@@ -16,6 +16,27 @@ type Props = {
 
 type ProfessionalProfile = Record<string, string | undefined>;
 
+// Dados pessoais do profissional — PATCH em /register/professionals/me/.
+const PERSONAL_FIELDS = new Set([
+    'display_name',
+    'specialty',
+    'register_number',
+    'phone',
+    'cpf',
+]);
+// Dados comerciais e políticas Odonto pertencem ao tenant (clínica) — PATCH
+// em /register/tenant/profile/. Ver docs/plano-migracao-identidade-...
+const TENANT_FIELDS = new Set([
+    'cnpj',
+    'street',
+    'number',
+    'neighborhood',
+    'zip_code',
+    'city',
+    'state',
+    'odonto_quote_validity_days',
+]);
+
 export default function TreatmentPlanCreateModal({
     open,
     saving,
@@ -40,9 +61,15 @@ export default function TreatmentPlanCreateModal({
             setName(defaultPlanName());
             try {
                 const stored = localStorage.getItem('loggedProfessional');
-                setProfile(
-                    stored ? (JSON.parse(stored) as ProfessionalProfile) : {},
-                );
+                const parsed = stored
+                    ? (JSON.parse(stored) as ProfessionalProfile & {
+                          tenant?: ProfessionalProfile;
+                      })
+                    : {};
+                const { tenant, ...personal } = parsed;
+                // Achata professional + tenant num único objeto de edição;
+                // a separação por endpoint acontece só ao salvar.
+                setProfile({ ...personal, ...(tenant || {}) });
             } catch {
                 setProfile({});
             }
@@ -54,24 +81,42 @@ export default function TreatmentPlanCreateModal({
         setProfileError('');
         setProfileSuccess('');
         try {
-            const profilePayload = {
+            const personalPayload: ProfessionalProfile = {};
+            const tenantPayload: ProfessionalProfile = {};
+            for (const [field, value] of Object.entries(profile)) {
+                if (PERSONAL_FIELDS.has(field)) personalPayload[field] = value;
+                else if (TENANT_FIELDS.has(field)) tenantPayload[field] = value;
+            }
+            personalPayload.phone = (() => {
+                const digits = profile.phone?.replace(/\D/g, '') ?? '';
+                if (!digits) return '';
+                return digits.startsWith('55') ? `+${digits}` : `+55${digits}`;
+            })();
+
+            const [updatedPersonal, updatedTenant] = await Promise.all([
+                apiFetch('/register/professionals/me/', {
+                    method: 'PATCH',
+                    body: personalPayload,
+                }) as Promise<ProfessionalProfile>,
+                apiFetch('/register/tenant/profile/', {
+                    method: 'PATCH',
+                    body: tenantPayload,
+                }) as Promise<ProfessionalProfile>,
+            ]);
+            const mergedProfile = {
                 ...profile,
-                phone: (() => {
-                    const digits = profile.phone?.replace(/\D/g, '') ?? '';
-                    if (!digits) return '';
-                    return digits.startsWith('55')
-                        ? `+${digits}`
-                        : `+55${digits}`;
-                })(),
+                ...updatedPersonal,
+                ...updatedTenant,
             };
-            const updated = (await apiFetch('/register/professionals/me/', {
-                method: 'PATCH',
-                body: profilePayload,
-            })) as ProfessionalProfile;
-            const mergedProfile = { ...profile, ...updated };
+            const stored = localStorage.getItem('loggedProfessional');
+            const previous = stored ? JSON.parse(stored) : {};
             localStorage.setItem(
                 'loggedProfessional',
-                JSON.stringify(mergedProfile),
+                JSON.stringify({
+                    ...previous,
+                    ...updatedPersonal,
+                    tenant: { ...previous.tenant, ...updatedTenant },
+                }),
             );
             setProfile(mergedProfile);
             setProfileSuccess('Dados profissionais salvos com sucesso.');
@@ -163,7 +208,7 @@ export default function TreatmentPlanCreateModal({
                                     'Validade do orçamento (dias)',
                                 ],
                                 ['phone', 'Telefone'],
-                                ['address', 'Endereço'],
+                                ['street', 'Endereço'],
                                 ['number', 'Número'],
                                 ['neighborhood', 'Bairro'],
                                 ['zip_code', 'CEP'],

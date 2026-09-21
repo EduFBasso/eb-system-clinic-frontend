@@ -22,15 +22,17 @@ type Professional = {
     email?: string;
     phone?: string;
     register_number?: string;
-    address?: string;
-    street?: string;
-    number?: string;
-    neighborhood?: string;
-    zip_code?: string;
-    cnpj?: string;
-    city?: string;
-    state?: string;
-    odonto_quote_validity_days?: number | string;
+    // Endereço/CNPJ/políticas Odonto pertencem ao tenant (clínica), não ao profissional.
+    tenant?: {
+        street?: string;
+        number?: string;
+        neighborhood?: string;
+        zip_code?: string;
+        cnpj?: string;
+        city?: string;
+        state?: string;
+        odonto_quote_validity_days?: number | string;
+    };
 };
 
 type PrintableItem = {
@@ -101,6 +103,8 @@ export default function ClinicalPrintView({
     const prof = React.useMemo(loadProfessional, [professionalVersion]);
     if (!plan) return null;
 
+    const tenant = prof.tenant ?? {};
+
     // Container rows (e.g. "Produtos usados") are excluded — only leaf lines are printed.
     const containerIds = new Set(
         items.map(i => i.parent_item).filter((id): id is number => id != null),
@@ -113,22 +117,22 @@ export default function ClinicalPrintView({
         prof.display_name ||
         [prof.first_name, prof.last_name].filter(Boolean).join(' ') ||
         'Consultório Clínico';
-    const addressLine = [prof.address || prof.street, prof.number]
+    const addressLine = [tenant.street, tenant.number]
         .filter(Boolean)
         .join(', ');
-    const locationLine = [prof.neighborhood, prof.city, prof.state]
+    const locationLine = [tenant.neighborhood, tenant.city, tenant.state]
         .filter(Boolean)
         .join(' - ');
-    const postalLine = prof.zip_code ? `CEP ${prof.zip_code}` : '';
+    const postalLine = tenant.zip_code ? `CEP ${tenant.zip_code}` : '';
     const businessAddress =
         [addressLine, locationLine, postalLine].filter(Boolean).join(' | ') ||
         'Endereço comercial não informado';
     const formattedPhone = formatPhone(prof.phone);
-    const formattedCnpj = formatCnpj(prof.cnpj ?? '');
+    const formattedCnpj = formatCnpj(tenant.cnpj ?? '');
     const printDate = new Intl.DateTimeFormat('pt-BR').format(new Date());
     const validityDays = Math.max(
         1,
-        Number(prof.odonto_quote_validity_days) || 30,
+        Number(tenant.odonto_quote_validity_days) || 30,
     );
     const pages = paginateItems([
         ...services.map(item => ({

@@ -38,7 +38,7 @@ export function useClinicalTreatmentPlans(
     const [installmentsCount, setInstallmentsCount] = React.useState(2);
     const [firstDueDate, setFirstDueDate] = React.useState(todayISODate());
     const [planNotes, setPlanNotes] = React.useState('');
-    const [savingPlanDetails, setSavingPlanDetails] = React.useState(false);
+    const [, setSavingPlanDetails] = React.useState(false);
     const detailsDirtyRef = React.useRef(false);
     const hydratedPlanIdRef = React.useRef<number | null>(null);
     const saveInFlightRef = React.useRef<Promise<boolean> | null>(null);
@@ -56,7 +56,7 @@ export function useClinicalTreatmentPlans(
             return 'Informe a data de vencimento da primeira parcela antes de imprimir.';
         }
         return null;
-    }, [firstDueDate, installmentsCount, paymentCondition, planTotal]);
+    }, [firstDueDate, paymentCondition, planTotal]);
     const [lockAfterPrint, setLockAfterPrint] = React.useState(true);
     const isPlanLocked = Boolean(plan?.is_printed);
 
@@ -65,24 +65,24 @@ export function useClinicalTreatmentPlans(
             const stored = localStorage.getItem('loggedProfessional');
             if (!stored) return;
             const professional = JSON.parse(stored) as {
-                lock_odonto_plan_after_print?: boolean;
+                tenant?: { lock_odonto_plan_after_print?: boolean };
             };
             setLockAfterPrint(
-                professional.lock_odonto_plan_after_print !== false,
+                professional.tenant?.lock_odonto_plan_after_print !== false,
             );
         } catch {
             setLockAfterPrint(true);
         }
     }, []);
 
-    function hydratePlanDetails(source: PlanListItem) {
+    const hydratePlanDetails = React.useCallback((source: PlanListItem) => {
         setPaymentCondition(source.payment_condition ?? 'avista');
         setInstallmentsCount(source.installments_count ?? 2);
         setFirstDueDate(source.first_due_date ?? '');
         setPlanNotes(source.notes ?? '');
         hydratedPlanIdRef.current = source.id;
         detailsDirtyRef.current = false;
-    }
+    }, []);
 
     const isPlanDetailsDirty = Boolean(
         plan &&
@@ -153,7 +153,7 @@ export function useClinicalTreatmentPlans(
         } finally {
             setLoading(false);
         }
-    }, [canAccess, numericClientId]);
+    }, [canAccess, hydratePlanDetails, numericClientId]);
 
     React.useEffect(() => {
         void loadPlan();
@@ -268,7 +268,7 @@ export function useClinicalTreatmentPlans(
         }
     }
 
-    async function savePlanDetails(): Promise<boolean> {
+    const savePlanDetails = React.useCallback(async (): Promise<boolean> => {
         if (!plan || !isPlanDetailsDirty) return true;
         if (saveInFlightRef.current) return saveInFlightRef.current;
 
@@ -320,7 +320,15 @@ export function useClinicalTreatmentPlans(
                 saveInFlightRef.current = null;
             }
         }
-    }
+    }, [
+        firstDueDate,
+        hydratePlanDetails,
+        installmentsCount,
+        isPlanDetailsDirty,
+        paymentCondition,
+        plan,
+        planNotes,
+    ]);
 
     React.useEffect(() => {
         if (!plan || isPlanLocked || !isPlanDetailsDirty) return;
@@ -336,6 +344,7 @@ export function useClinicalTreatmentPlans(
         paymentCondition,
         plan,
         planNotes,
+        savePlanDetails,
     ]);
 
     async function markPrinted() {
@@ -385,17 +394,18 @@ export function useClinicalTreatmentPlans(
     async function updateLockAfterPrint(enabled: boolean) {
         setLockAfterPrint(enabled);
         try {
-            const updated = (await apiFetch('/register/professionals/me/', {
+            const updated = (await apiFetch('/register/tenant/profile/', {
                 method: 'PATCH',
                 body: { lock_odonto_plan_after_print: enabled },
             })) as { lock_odonto_plan_after_print?: boolean };
+            const previous = JSON.parse(
+                localStorage.getItem('loggedProfessional') || '{}',
+            );
             localStorage.setItem(
                 'loggedProfessional',
                 JSON.stringify({
-                    ...JSON.parse(
-                        localStorage.getItem('loggedProfessional') || '{}',
-                    ),
-                    ...updated,
+                    ...previous,
+                    tenant: { ...previous.tenant, ...updated },
                 }),
             );
             emit('systemMessage', {

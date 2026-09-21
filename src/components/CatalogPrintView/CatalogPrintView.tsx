@@ -15,14 +15,16 @@ type Professional = {
     display_name?: string;
     specialty?: string;
     register_number?: string;
-    address?: string;
-    street?: string;
-    number?: string;
-    neighborhood?: string;
-    zip_code?: string;
-    cnpj?: string;
-    city?: string;
-    state?: string;
+    // Endereço/CNPJ pertencem ao tenant (clínica), não ao profissional.
+    tenant?: {
+        street?: string;
+        number?: string;
+        neighborhood?: string;
+        zip_code?: string;
+        cnpj?: string;
+        city?: string;
+        state?: string;
+    };
 };
 
 type Props = {
@@ -59,32 +61,24 @@ function paginateItems(items: CatalogPrintItem[]): CatalogPrintItem[][] {
 
 export function CatalogPrintView({ title, items }: Props) {
     const professional = React.useMemo(loadProfessional, []);
+    const tenant = professional.tenant ?? {};
     const clinicName =
         professional.display_name ||
         [professional.first_name, professional.last_name]
             .filter(Boolean)
             .join(' ') ||
         'Consultório Odontológico';
-    const addressLine = [
-        professional.address || professional.street,
-        professional.number,
-    ]
+    const addressLine = [tenant.street, tenant.number]
         .filter(Boolean)
         .join(', ');
-    const locationLine = [
-        professional.neighborhood,
-        professional.city,
-        professional.state,
-    ]
+    const locationLine = [tenant.neighborhood, tenant.city, tenant.state]
         .filter(Boolean)
         .join(' - ');
-    const postalLine = professional.zip_code
-        ? `CEP ${professional.zip_code}`
-        : '';
+    const postalLine = tenant.zip_code ? `CEP ${tenant.zip_code}` : '';
     const businessAddress = [addressLine, locationLine, postalLine]
         .filter(Boolean)
         .join(' | ');
-    const formattedCnpj = formatCnpj(professional.cnpj ?? '');
+    const formattedCnpj = formatCnpj(tenant.cnpj ?? '');
     const printDate = new Intl.DateTimeFormat('pt-BR').format(new Date());
     const pages = paginateItems(items);
 

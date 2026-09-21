@@ -27,28 +27,12 @@ import { focusClientCard } from '../utils/focusClientCard';
 import { useAgendaModals, ensureClientBasic } from '../hooks/useAgendaModals';
 import type { QuickScheduleInitialDraft } from '../types/agendaFlow';
 import { API_BASE } from '../config/api';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useHomeResumeFlows } from '../hooks/useHomeResumeFlows';
 import { unlockPageScroll } from '../utils/unlockPageScroll';
 import { getAccessToken } from '../utils/auth/session';
 
 export default function Home() {
-    const navigate = useNavigate();
-    // Superusers go straight to /admin — they are not practitioners
-    useEffect(() => {
-        try {
-            const stored = localStorage.getItem('loggedProfessional');
-            if (stored) {
-                const prof = JSON.parse(stored);
-                if (prof?.is_superuser) {
-                    navigate('/admin', { replace: true });
-                }
-            }
-        } catch {
-            /* noop */
-        }
-    }, [navigate]);
-
     const location = useLocation();
     const [selectedClientId, setSelectedClientId] = useState<number | null>(
         null,
