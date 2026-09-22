@@ -22,13 +22,19 @@ type Professional = {
     email?: string;
     phone?: string;
     register_number?: string;
-    // Endereço/CNPJ/políticas Odonto pertencem ao tenant (clínica), não ao profissional.
+    address?: string;
+    number?: string;
+    neighborhood?: string;
+    zip_code?: string;
+    city?: string;
+    state?: string;
+    cnpj?: string;
+    odonto_quote_validity_days?: number | string;
     tenant?: {
         street?: string;
         number?: string;
         neighborhood?: string;
         zip_code?: string;
-        cnpj?: string;
         city?: string;
         state?: string;
         odonto_quote_validity_days?: number | string;
@@ -117,22 +123,33 @@ export default function ClinicalPrintView({
         prof.display_name ||
         [prof.first_name, prof.last_name].filter(Boolean).join(' ') ||
         'Consultório Clínico';
-    const addressLine = [tenant.street, tenant.number]
+    const addressLine = [
+        prof.address || tenant.street,
+        prof.number || tenant.number,
+    ]
         .filter(Boolean)
         .join(', ');
-    const locationLine = [tenant.neighborhood, tenant.city, tenant.state]
+    const locationLine = [
+        prof.neighborhood || tenant.neighborhood,
+        prof.city || tenant.city,
+        prof.state || tenant.state,
+    ]
         .filter(Boolean)
         .join(' - ');
-    const postalLine = tenant.zip_code ? `CEP ${tenant.zip_code}` : '';
+    const postalCode = prof.zip_code || tenant.zip_code;
+    const postalLine = postalCode ? `CEP ${postalCode}` : '';
     const businessAddress =
         [addressLine, locationLine, postalLine].filter(Boolean).join(' | ') ||
         'Endereço comercial não informado';
     const formattedPhone = formatPhone(prof.phone);
-    const formattedCnpj = formatCnpj(tenant.cnpj ?? '');
+    const formattedCnpj = formatCnpj(prof.cnpj ?? '');
     const printDate = new Intl.DateTimeFormat('pt-BR').format(new Date());
     const validityDays = Math.max(
         1,
-        Number(tenant.odonto_quote_validity_days) || 30,
+        Number(
+            prof.odonto_quote_validity_days ??
+                tenant.odonto_quote_validity_days,
+        ) || 30,
     );
     const pages = paginateItems([
         ...services.map(item => ({

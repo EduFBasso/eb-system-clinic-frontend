@@ -1,8 +1,9 @@
 import React from 'react';
 import { defaultPlanName } from '../../../utils/TreatmentHelpers';
 import { apiFetch } from '../../../utils/apiFetch';
-import { formatCnpj } from '../../../utils/formatCpf';
+import { formatCep, formatCnpj } from '../../../utils/formatCpf';
 import { formatPhone } from '../../../utils/formatPhone';
+import { useViaCep } from '../../../hooks/useViaCep';
 import styles from '../TreatmentWorkspacePage/TreatmentWorkspacePage.module.css';
 
 type Props = {
@@ -16,19 +17,14 @@ type Props = {
 
 type ProfessionalProfile = Record<string, string | undefined>;
 
-// Dados pessoais do profissional — PATCH em /register/professionals/me/.
+// Dados do profissional — PATCH em /register/professionals/me/.
 const PERSONAL_FIELDS = new Set([
     'display_name',
     'specialty',
     'register_number',
     'phone',
-    'cpf',
-]);
-// Dados comerciais e políticas Odonto pertencem ao tenant (clínica) — PATCH
-// em /register/tenant/profile/. Ver docs/plano-migracao-identidade-...
-const TENANT_FIELDS = new Set([
     'cnpj',
-    'street',
+    'address',
     'number',
     'neighborhood',
     'zip_code',
@@ -51,6 +47,24 @@ export default function TreatmentPlanCreateModal({
     const [savingProfile, setSavingProfile] = React.useState(false);
     const [profileError, setProfileError] = React.useState('');
     const [profileSuccess, setProfileSuccess] = React.useState('');
+    const onCepFound = React.useCallback(
+        (data: {
+            address: string;
+            neighborhood: string;
+            city: string;
+            state: string;
+        }) => {
+            setProfile(current => ({
+                ...current,
+                address: data.address,
+                neighborhood: data.neighborhood,
+                city: data.city,
+                state: data.state,
+            }));
+        },
+        [],
+    );
+    const { status: cepStatus, lookup: lookupCep } = useViaCep(onCepFound);
     const today = React.useMemo(() => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -67,9 +81,15 @@ export default function TreatmentPlanCreateModal({
                       })
                     : {};
                 const { tenant, ...personal } = parsed;
-                // Achata professional + tenant num único objeto de edição;
-                // a separação por endpoint acontece só ao salvar.
-                setProfile({ ...personal, ...(tenant || {}) });
+                setProfile({
+                    ...personal,
+                    address: personal.address || tenant?.street,
+                    number: personal.number || tenant?.number,
+                    neighborhood: personal.neighborhood || tenant?.neighborhood,
+                    zip_code: personal.zip_code || tenant?.zip_code,
+                    city: personal.city || tenant?.city,
+                    state: personal.state || tenant?.state,
+                });
             } catch {
                 setProfile({});
             }
@@ -82,10 +102,8 @@ export default function TreatmentPlanCreateModal({
         setProfileSuccess('');
         try {
             const personalPayload: ProfessionalProfile = {};
-            const tenantPayload: ProfessionalProfile = {};
             for (const [field, value] of Object.entries(profile)) {
                 if (PERSONAL_FIELDS.has(field)) personalPayload[field] = value;
-                else if (TENANT_FIELDS.has(field)) tenantPayload[field] = value;
             }
             personalPayload.phone = (() => {
                 const digits = profile.phone?.replace(/\D/g, '') ?? '';
@@ -93,20 +111,16 @@ export default function TreatmentPlanCreateModal({
                 return digits.startsWith('55') ? `+${digits}` : `+55${digits}`;
             })();
 
-            const [updatedPersonal, updatedTenant] = await Promise.all([
-                apiFetch('/register/professionals/me/', {
+            const updatedPersonal = (await apiFetch(
+                '/register/professionals/me/',
+                {
                     method: 'PATCH',
                     body: personalPayload,
-                }) as Promise<ProfessionalProfile>,
-                apiFetch('/register/tenant/profile/', {
-                    method: 'PATCH',
-                    body: tenantPayload,
-                }) as Promise<ProfessionalProfile>,
-            ]);
+                },
+            )) as ProfessionalProfile;
             const mergedProfile = {
                 ...profile,
                 ...updatedPersonal,
-                ...updatedTenant,
             };
             const stored = localStorage.getItem('loggedProfessional');
             const previous = stored ? JSON.parse(stored) : {};
@@ -115,7 +129,6 @@ export default function TreatmentPlanCreateModal({
                 JSON.stringify({
                     ...previous,
                     ...updatedPersonal,
-                    tenant: { ...previous.tenant, ...updatedTenant },
                 }),
             );
             setProfile(mergedProfile);
@@ -158,7 +171,7 @@ export default function TreatmentPlanCreateModal({
             >
                 <h3 className={styles.sectionTitle}>
                     {profileOnly
-                        ? 'Dados da clínica e da profissional'
+                        ? 'Dados profissionais'
                         : 'Novo plano de tratamento'}
                 </h3>
 
@@ -208,10 +221,10 @@ export default function TreatmentPlanCreateModal({
                                     'Validade do orçamento (dias)',
                                 ],
                                 ['phone', 'Telefone'],
-                                ['street', 'Endereço'],
+                                ['zip_code', 'CEP'],
+                                ['address', 'Endereço'],
                                 ['number', 'Número'],
                                 ['neighborhood', 'Bairro'],
-                                ['zip_code', 'CEP'],
                                 ['city', 'Cidade'],
                                 ['state', 'UF'],
                             ].map(([field, label]) => (
@@ -226,7 +239,11 @@ export default function TreatmentPlanCreateModal({
                                                   ? formatCnpj(
                                                         profile[field] || '',
                                                     )
-                                                  : profile[field] || ''
+                                                  : field === 'zip_code'
+                                                    ? formatCep(
+                                                          profile[field] || '',
+                                                      )
+                                                    : profile[field] || ''
                                         }
                                         type={
                                             field ===
@@ -251,7 +268,7 @@ export default function TreatmentPlanCreateModal({
                                                 ? '+5511999990000'
                                                 : undefined
                                         }
-                                        onChange={event =>
+                                        onChange={event => {
                                             setProfile(current => ({
                                                 ...current,
                                                 [field]:
@@ -265,11 +282,60 @@ export default function TreatmentPlanCreateModal({
                                                                 event.target
                                                                     .value,
                                                             )
-                                                          : event.target.value,
-                                            }))
-                                        }
+                                                          : field === 'zip_code'
+                                                            ? formatCep(
+                                                                  event.target
+                                                                      .value,
+                                                              )
+                                                            : event.target
+                                                                  .value,
+                                            }));
+                                            if (field === 'zip_code') {
+                                                lookupCep(event.target.value);
+                                            }
+                                        }}
                                         disabled={saving || savingProfile}
+                                        autoComplete={
+                                            field === 'zip_code'
+                                                ? 'postal-code'
+                                                : field === 'phone'
+                                                  ? 'tel'
+                                                  : undefined
+                                        }
+                                        inputMode={
+                                            field === 'zip_code' ||
+                                            field === 'phone'
+                                                ? 'tel'
+                                                : undefined
+                                        }
                                     />
+                                    {field === 'zip_code' &&
+                                        cepStatus === 'loading' && (
+                                            <span className={styles.cepStatus}>
+                                                Buscando CEP...
+                                            </span>
+                                        )}
+                                    {field === 'zip_code' &&
+                                        cepStatus === 'not_found' && (
+                                            <span
+                                                className={
+                                                    styles.cepStatusError
+                                                }
+                                            >
+                                                CEP não encontrado
+                                            </span>
+                                        )}
+                                    {field === 'zip_code' &&
+                                        cepStatus === 'error' && (
+                                            <span
+                                                className={
+                                                    styles.cepStatusError
+                                                }
+                                            >
+                                                Sem conexão — preencha
+                                                manualmente
+                                            </span>
+                                        )}
                                 </label>
                             ))}
                         </div>

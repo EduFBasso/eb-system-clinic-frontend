@@ -20,7 +20,7 @@ type VerifyResponse = {
     access?: string;
     refresh?: string;
     professional?: ProfessionalBasic;
-    // Dados comerciais/políticas Odonto do tenant ativo (endereço, CNPJ etc.).
+    // Dados comerciais/políticas Odonto do tenant ativo (endereço etc.).
     tenant?: ProfessionalBasic['tenant'];
     active_sessions_count?: number;
     device_id?: string;
@@ -735,7 +735,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                                                     data.access,
                                                 );
                                                 setLoginPassword('');
-                                                // Endereço/CNPJ/políticas Odonto vêm do tenant, não do professional.
+                                                // Endereço/políticas vêm do tenant; CNPJ vem do professional.
                                                 const loggedProfessionalData =
                                                     data.professional
                                                         ? {

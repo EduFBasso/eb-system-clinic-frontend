@@ -15,13 +15,18 @@ type Professional = {
     display_name?: string;
     specialty?: string;
     register_number?: string;
-    // Endereço/CNPJ pertencem ao tenant (clínica), não ao profissional.
+    address?: string;
+    number?: string;
+    neighborhood?: string;
+    zip_code?: string;
+    city?: string;
+    state?: string;
+    cnpj?: string;
     tenant?: {
         street?: string;
         number?: string;
         neighborhood?: string;
         zip_code?: string;
-        cnpj?: string;
         city?: string;
         state?: string;
     };
@@ -68,17 +73,25 @@ export function CatalogPrintView({ title, items }: Props) {
             .filter(Boolean)
             .join(' ') ||
         'Consultório Odontológico';
-    const addressLine = [tenant.street, tenant.number]
+    const addressLine = [
+        professional.address || tenant.street,
+        professional.number || tenant.number,
+    ]
         .filter(Boolean)
         .join(', ');
-    const locationLine = [tenant.neighborhood, tenant.city, tenant.state]
+    const locationLine = [
+        professional.neighborhood || tenant.neighborhood,
+        professional.city || tenant.city,
+        professional.state || tenant.state,
+    ]
         .filter(Boolean)
         .join(' - ');
-    const postalLine = tenant.zip_code ? `CEP ${tenant.zip_code}` : '';
+    const postalCode = professional.zip_code || tenant.zip_code;
+    const postalLine = postalCode ? `CEP ${postalCode}` : '';
     const businessAddress = [addressLine, locationLine, postalLine]
         .filter(Boolean)
         .join(' | ');
-    const formattedCnpj = formatCnpj(tenant.cnpj ?? '');
+    const formattedCnpj = formatCnpj(professional.cnpj ?? '');
     const printDate = new Intl.DateTimeFormat('pt-BR').format(new Date());
     const pages = paginateItems(items);
 

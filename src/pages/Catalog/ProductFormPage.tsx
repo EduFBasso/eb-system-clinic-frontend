@@ -44,13 +44,6 @@ export default function ProductFormPage() {
         return Number.isFinite(n) ? n : 0;
     }
 
-    function parseIntOnlyDigits(str: string): number {
-        if (!str) return 0;
-        const digits = str.replace(/\D/g, '');
-        const n = Number(digits);
-        return Number.isFinite(n) ? n : 0;
-    }
-
     // Carregar dados existentes no modo edição
     useEffect(() => {
         if (!id) return;
