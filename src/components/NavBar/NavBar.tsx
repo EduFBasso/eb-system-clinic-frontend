@@ -386,7 +386,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                                     setAboutOpen(true);
                                 }}
                             >
-                                Configurações
+                                Tema
                             </button>
                             <button
                                 className={styles.dropdownItem}
