@@ -648,7 +648,7 @@ export function AppModal(props: AppModalProps) {
 
     // Restauração imediata no ciclo de desmontagem.
     // IMPORTANTE: não condicionar ao valor de 'open' — componentes pai podem
-    // retornar null com open=true ainda no closure (ex.: BudgetModal), fazendo
+    // retornar null com open=true ainda no closure, fazendo
     // com que o AppModal seja desmontado SEM ter passado por open=false.
     // O efeito com [] garante que o cleanup roda em todo unmount.
     // ATENÇÃO: verificar se outro modal ainda está aberto antes de limpar os locks,
