@@ -44,6 +44,7 @@ export default function Home() {
         null,
     );
     const [clientViewOpenToken, setClientViewOpenToken] = useState(0);
+    const clientViewCloseRequestedRef = React.useRef(false);
     const {
         monthlyOpen,
         setMonthlyOpen,
@@ -242,6 +243,7 @@ export default function Home() {
 
     const closeClientView = React.useCallback(() => {
         setClientViewOpen(false);
+        clientViewCloseRequestedRef.current = true;
         // Keep clientViewData alive so content doesn't flash-disappear during the
         // modal's close transition. Clear it after the animation completes.
         setTimeout(() => setClientViewData(null), 300);
@@ -258,10 +260,27 @@ export default function Home() {
     }, []);
 
     useEffect(() => {
+        if (!clientViewOpen) return;
+
+        const onBeforeUnload = (event: BeforeUnloadEvent) => {
+            event.preventDefault();
+            event.returnValue =
+                'A visualização do cliente está aberta. Feche pelo botão X antes de atualizar.';
+        };
+
+        window.addEventListener('beforeunload', onBeforeUnload);
+        return () => window.removeEventListener('beforeunload', onBeforeUnload);
+    }, [clientViewOpen]);
+
+    useEffect(() => {
         function onPopState() {
             if (clientViewOpen) {
-                setClientViewOpen(false);
-                setTimeout(() => setClientViewData(null), 300);
+                if (clientViewCloseRequestedRef.current) {
+                    clientViewCloseRequestedRef.current = false;
+                    return;
+                }
+                // A visualização detalhada só deve sair pelo botão X.
+                window.history.pushState({ modal: 'clientView' }, '');
             }
         }
         window.addEventListener('popstate', onPopState);
@@ -369,9 +388,11 @@ export default function Home() {
                     onClose={() => setDailyOpen(false)}
                 />
                 <Footer />
-                {version.hasUpdate && (
+                {version.hasUpdate && !clientViewOpen && (
                     <UpdateBanner
-                        onReload={acceptAndReload}
+                        onReload={() => {
+                            if (!clientViewOpen) acceptAndReload();
+                        }}
                         onDismiss={version.dismiss}
                         message={
                             version.latestSeen && version.currentAccepted
@@ -414,6 +435,9 @@ export default function Home() {
                     open={clientViewOpen}
                     onClose={closeClientView}
                     showCloseButton
+                    closeOnEnter={false}
+                    closeOnEscape={false}
+                    disableEscapeKeyDown
                     fullScreen
                     disableOuterScroll
                 >

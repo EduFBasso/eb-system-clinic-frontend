@@ -20,11 +20,7 @@ function ModalHarness({ initiallyOpen = true }: { initiallyOpen?: boolean }) {
     );
 }
 
-function NamedModalHarness({
-    openerLabel,
-}: {
-    openerLabel: string;
-}) {
+function NamedModalHarness({ openerLabel }: { openerLabel: string }) {
     const [open, setOpen] = React.useState(false);
     return (
         <>
@@ -32,8 +28,27 @@ function NamedModalHarness({
             <AppModal open={open} onClose={() => setOpen(false)}>
                 <div>
                     <h2>{`Conteudo ${openerLabel}`}</h2>
-                    <button onClick={() => setOpen(false)}>{`fechar ${openerLabel}`}</button>
+                    <button
+                        onClick={() => setOpen(false)}
+                    >{`fechar ${openerLabel}`}</button>
                 </div>
+            </AppModal>
+        </>
+    );
+}
+
+function NestedModalHarness() {
+    const [outerOpen, setOuterOpen] = React.useState(true);
+    const [innerOpen, setInnerOpen] = React.useState(false);
+    return (
+        <>
+            <AppModal open={outerOpen} onClose={() => setOuterOpen(false)}>
+                <button onClick={() => setInnerOpen(true)}>
+                    abrir interno
+                </button>
+            </AppModal>
+            <AppModal open={innerOpen} onClose={() => setInnerOpen(false)}>
+                <div>modal interno</div>
             </AppModal>
         </>
     );
@@ -170,36 +185,50 @@ describe('AppModal scroll lock', () => {
         await user.click(screen.getByRole('button', { name: 'open A' }));
         await waitFor(() => {
             const { bodyOverflow, htmlOverflow } = getBodyStyles();
-            expect(
-                bodyOverflow === 'hidden' || htmlOverflow === 'hidden',
-            ).toBe(true);
+            expect(bodyOverflow === 'hidden' || htmlOverflow === 'hidden').toBe(
+                true,
+            );
         });
 
         // Close A → scroll restored
         await user.click(screen.getByRole('button', { name: 'fechar open A' }));
         await waitFor(() => {
             const { bodyOverflow, htmlOverflow } = getBodyStyles();
-            expect(
-                bodyOverflow === 'hidden' || htmlOverflow === 'hidden',
-            ).toBe(false);
+            expect(bodyOverflow === 'hidden' || htmlOverflow === 'hidden').toBe(
+                false,
+            );
         });
 
         // Open B → scroll locked again
         await user.click(screen.getByRole('button', { name: 'open B' }));
         await waitFor(() => {
             const { bodyOverflow, htmlOverflow } = getBodyStyles();
-            expect(
-                bodyOverflow === 'hidden' || htmlOverflow === 'hidden',
-            ).toBe(true);
+            expect(bodyOverflow === 'hidden' || htmlOverflow === 'hidden').toBe(
+                true,
+            );
         });
 
         // Close B → scroll restored again
         await user.click(screen.getByRole('button', { name: 'fechar open B' }));
         await waitFor(() => {
             const { bodyOverflow, htmlOverflow } = getBodyStyles();
+            expect(bodyOverflow === 'hidden' || htmlOverflow === 'hidden').toBe(
+                false,
+            );
+        });
+    });
+
+    it('does not retain focus inside a lower modal when it becomes aria-hidden', async () => {
+        const user = userEvent.setup();
+        render(<NestedModalHarness />);
+
+        await user.click(screen.getByRole('button', { name: 'abrir interno' }));
+
+        await waitFor(() => {
+            const focused = document.activeElement as HTMLElement | null;
             expect(
-                bodyOverflow === 'hidden' || htmlOverflow === 'hidden',
-            ).toBe(false);
+                focused?.closest('.MuiModal-root[aria-hidden="true"]'),
+            ).toBeNull();
         });
     });
 });
