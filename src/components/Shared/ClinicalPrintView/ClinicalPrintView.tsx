@@ -287,21 +287,7 @@ export default function ClinicalPrintView({
                                     <tbody>
                                         {pageProducts.map(item => (
                                             <tr key={item.id}>
-                                                <td>
-                                                    <div>
-                                                        {item.custom_name}
-                                                    </div>
-                                                    <small
-                                                        className={
-                                                            styles.printItemNotes
-                                                        }
-                                                    >
-                                                        {item.quantity ?? 1}x
-                                                        {item.notes
-                                                            ? ` — ${item.notes}`
-                                                            : ''}
-                                                    </small>
-                                                </td>
+                                                <td>{item.custom_name}</td>
                                                 <td className={styles.colValue}>
                                                     {formatMoney(
                                                         Number(
