@@ -24,9 +24,10 @@ export function useClients() {
     const clientsRef = useRef<ClientBasic[]>([]);
     const debounceRef = useRef<number | null>(null);
     const lastFetchAtRef = useRef(0);
+    const clientsFetchInFlightRef = useRef(false);
 
     useEffect(() => {
-        const fetchClients = async () => {
+        const performFetchClients = async () => {
             lastFetchAtRef.current = Date.now();
             const token = getAccessToken();
             if (isTokenExpired(token)) {
@@ -116,6 +117,17 @@ export function useClients() {
                         : rawMessage,
                 );
                 setLoading(false);
+            }
+        };
+        const fetchClients = async () => {
+            if (clientsFetchInFlightRef.current) {
+                return;
+            }
+            clientsFetchInFlightRef.current = true;
+            try {
+                await performFetchClients();
+            } finally {
+                clientsFetchInFlightRef.current = false;
             }
         };
         fetchClients();
