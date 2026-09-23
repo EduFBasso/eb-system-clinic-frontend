@@ -28,7 +28,6 @@ export function useClients() {
 
     useEffect(() => {
         const performFetchClients = async () => {
-            lastFetchAtRef.current = Date.now();
             const token = getAccessToken();
             if (isTokenExpired(token)) {
                 const hadLoggedProfessional =
@@ -78,6 +77,7 @@ export function useClients() {
                     : [];
                 setClients(nextClients);
                 clientsRef.current = nextClients;
+                lastFetchAtRef.current = Date.now();
                 setLoading(false); // hide big loading (initial)
             } catch (err) {
                 const rawMessage =
