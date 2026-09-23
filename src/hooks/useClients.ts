@@ -26,7 +26,7 @@ export function useClients() {
     const lastFetchAtRef = useRef(0);
 
     useEffect(() => {
-        const fetchClients = () => {
+        const fetchClients = async () => {
             lastFetchAtRef.current = Date.now();
             const token = getAccessToken();
             if (isTokenExpired(token)) {
@@ -50,57 +50,73 @@ export function useClients() {
             if (isInitial) setLoading(true);
             const url = `${API_BASE}/register/clients-basic/`;
             console.debug('[useClients] API_BASE =', API_BASE, 'fetching', url);
-            apiFetch('/register/clients-basic/', {
-                timeoutMs: 12000,
-            })
-                .then(data => {
-                    const nextClients = Array.isArray(data)
-                        ? (data as ClientBasic[])
-                        : [];
-                    setClients(nextClients);
-                    clientsRef.current = nextClients;
-                    setLoading(false); // hide big loading (initial)
-                })
-                .catch(err => {
-                    const rawMessage =
-                        err instanceof Error ? err.message : String(err);
-                    const isDeviceSessionInvalid =
-                        /Sessão de dispositivo não encontrada|Sessão de dispositivo revogada|Sessão de dispositivo inativa/i.test(
-                            rawMessage,
-                        );
-                    const isNetworkError =
-                        /Failed to fetch|NetworkError|Load failed|Tempo limite/i.test(
-                            rawMessage,
-                        );
-                    const hasCachedClients =
-                        (clientsRef.current?.length || 0) > 0;
-
-                    if (isDeviceSessionInvalid) {
-                        // apiFetch já faz logout global neste caso; evita poluir UI com erro técnico.
-                        setClients([]);
-                        clientsRef.current = [];
-                        setError(null);
-                        setLoading(false);
-                        return;
+            const timeoutMs = isInitial ? 30000 : 12000;
+            try {
+                let data: unknown;
+                let lastError: unknown;
+                for (
+                    let attempt = 0;
+                    attempt < (isInitial ? 2 : 1);
+                    attempt += 1
+                ) {
+                    try {
+                        data = await apiFetch('/register/clients-basic/', {
+                            timeoutMs,
+                        });
+                        lastError = undefined;
+                        break;
+                    } catch (err) {
+                        lastError = err;
                     }
+                }
+                if (lastError) {
+                    throw lastError;
+                }
+                const nextClients = Array.isArray(data)
+                    ? (data as ClientBasic[])
+                    : [];
+                setClients(nextClients);
+                clientsRef.current = nextClients;
+                setLoading(false); // hide big loading (initial)
+            } catch (err) {
+                const rawMessage =
+                    err instanceof Error ? err.message : String(err);
+                const isDeviceSessionInvalid =
+                    /Sessão de dispositivo não encontrada|Sessão de dispositivo revogada|Sessão de dispositivo inativa/i.test(
+                        rawMessage,
+                    );
+                const isNetworkError =
+                    /Failed to fetch|NetworkError|Load failed|Tempo limite/i.test(
+                        rawMessage,
+                    );
+                const hasCachedClients = (clientsRef.current?.length || 0) > 0;
 
-                    if (hasCachedClients) {
-                        // Em refresh em segundo plano, preserva a lista já exibida sem poluir a UI.
-                        console.warn(
-                            '[useClients] refresh failed, keeping cached clients:',
-                            rawMessage,
-                        );
-                        setLoading(false);
-                        return;
-                    }
+                if (isDeviceSessionInvalid) {
+                    // apiFetch já faz logout global neste caso; evita poluir UI com erro técnico.
+                    setClients([]);
+                    clientsRef.current = [];
+                    setError(null);
+                    setLoading(false);
+                    return;
+                }
 
-                    setError(
-                        isNetworkError
-                            ? 'Falha de conexao ao atualizar clientes. Verifique backend/rede.'
-                            : rawMessage,
+                if (hasCachedClients) {
+                    // Em refresh em segundo plano, preserva a lista já exibida sem poluir a UI.
+                    console.warn(
+                        '[useClients] refresh failed, keeping cached clients:',
+                        rawMessage,
                     );
                     setLoading(false);
-                });
+                    return;
+                }
+
+                setError(
+                    isNetworkError
+                        ? 'Falha de conexao ao atualizar clientes. Verifique backend/rede.'
+                        : rawMessage,
+                );
+                setLoading(false);
+            }
         };
         fetchClients();
         // Handler para limpar clientes ao logout
