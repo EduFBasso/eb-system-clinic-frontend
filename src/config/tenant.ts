@@ -6,6 +6,7 @@ const CLINIC_ROOT_DOMAINS = ['clinic.eb.com', 'clinic.eb.localhost'];
 // (ex.: eb-system-clinic-frontend.vercel.app/?tenant=consultorio-podologia).
 const TENANT_QUERY_PARAM = 'tenant';
 const TENANT_SESSION_STORAGE_KEY = 'clinic_tenant_slug';
+const TENANT_LOCAL_STORAGE_KEY = 'clinic_tenant_slug';
 const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,138}[a-z0-9])?$/;
 
 function isValidSlug(
@@ -34,11 +35,29 @@ function readSlugFromSessionStorage(): string | null {
     }
 }
 
+function readSlugFromLocalStorage(): string | null {
+    try {
+        const stored = window.localStorage.getItem(TENANT_LOCAL_STORAGE_KEY);
+        return isValidSlug(stored) ? stored : null;
+    } catch {
+        return null;
+    }
+}
+
 function persistSlugInSessionStorage(slug: string): void {
     try {
         window.sessionStorage.setItem(TENANT_SESSION_STORAGE_KEY, slug);
     } catch {
         // Falha silenciosa: pior caso é reler o slug da URL na próxima navegação.
+    }
+}
+
+function persistSlug(slug: string): void {
+    persistSlugInSessionStorage(slug);
+    try {
+        window.localStorage.setItem(TENANT_LOCAL_STORAGE_KEY, slug);
+    } catch {
+        // O sessionStorage continua disponível como fallback de sessão.
     }
 }
 
@@ -48,8 +67,8 @@ function persistSlugInSessionStorage(slug: string): void {
  *
  * Diretriz 1: hostname/subdomínio é a fonte principal do tenant_slug. Só se
  * nenhum subdomínio reconhecido for encontrado é que caímos no fallback de
- * `?tenant=` (persistido em sessionStorage para sobreviver a navegações
- * internas do SPA que não preservam a query string).
+ * `?tenant=` (persistido nos storages do navegador para sobreviver a
+ * navegações internas do SPA, logout e reabertura do PWA).
  * Diretriz 4: hostname desconhecido sem nenhum fallback disponível bloqueia
  * o acesso — nunca assumir um tenant silenciosamente em produção.
  */
@@ -62,7 +81,7 @@ export function resolveClinicTenantSlug(): string | null {
     if (rootDomain && hostname !== rootDomain) {
         const slug = hostname.slice(0, -(rootDomain.length + 1));
         if (slug && !slug.includes('.')) {
-            persistSlugInSessionStorage(slug);
+            persistSlug(slug);
             return slug;
         }
         return null;
@@ -73,21 +92,30 @@ export function resolveClinicTenantSlug(): string | null {
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
         const configuredSlug = import.meta.env.VITE_CLINIC_TENANT_SLUG?.trim();
         if (configuredSlug) {
-            return configuredSlug;
+            if (isValidSlug(configuredSlug)) {
+                persistSlug(configuredSlug);
+                return configuredSlug;
+            }
         }
     }
 
     // Fallback provisório (diretriz 1): sem domínio próprio, lê `?tenant=`
-    // da URL e persiste em sessionStorage para as próximas navegações do SPA.
+    // da URL e persiste para as próximas navegações do SPA.
     const slugFromQuery = readSlugFromQueryString();
     if (slugFromQuery) {
-        persistSlugInSessionStorage(slugFromQuery);
+        persistSlug(slugFromQuery);
         return slugFromQuery;
     }
 
     const slugFromSession = readSlugFromSessionStorage();
     if (slugFromSession) {
         return slugFromSession;
+    }
+
+    const slugFromLocal = readSlugFromLocalStorage();
+    if (slugFromLocal) {
+        persistSlugInSessionStorage(slugFromLocal);
+        return slugFromLocal;
     }
 
     // Diretriz 4: hostname desconhecido e sem fallback disponível — bloqueia.
