@@ -3,6 +3,16 @@
 // Usage example: track({ type: 'appointment_cancel_clicked', payload: { id } })
 
 export type TelemetryEvent =
+    | {
+          type: 'performance_span';
+          payload: {
+              name: string;
+              ms: number;
+              ok: boolean;
+              status?: number;
+              error?: string;
+          };
+      }
     // UI lifecycle
     | { type: 'modal_opened'; payload: { name: string } }
     | { type: 'modal_closed'; payload: { name: string } }
@@ -42,6 +52,7 @@ type TelemetryConfig = {
 declare global {
     interface Window {
         __telemetryConfig?: TelemetryConfig;
+        __clinicPerformanceDiagnostics?: boolean;
     }
 }
 
@@ -49,16 +60,8 @@ function shouldSendNetwork(): string | undefined {
     try {
         const cfg = window.__telemetryConfig;
         if (cfg?.enabled && cfg.endpoint) return cfg.endpoint;
-        // optionally enable by env var replace during build
-        // Access env safely without depending on Node typings in browser bundle
-        const p: unknown = typeof process !== 'undefined' ? process : undefined;
-        const envEndpoint =
-            p && typeof p === 'object' && 'env' in p
-                ? (p as { env?: Record<string, unknown> }).env?.[
-                      'VITE_TELEMETRY_ENDPOINT'
-                  ]
-                : undefined;
-        if (envEndpoint) return String(envEndpoint);
+        const envEndpoint = import.meta.env.VITE_TELEMETRY_ENDPOINT;
+        if (envEndpoint) return envEndpoint;
     } catch {
         /* noop */
     }
@@ -92,14 +95,46 @@ function sendNetwork(endpoint: string, e: TelemetryEvent) {
 export function track(e: TelemetryEvent): void {
     const endpoint = shouldSendNetwork();
     if (endpoint) sendNetwork(endpoint, e);
-    else if (
-        typeof process !== 'undefined' &&
-        process.env.NODE_ENV !== 'production'
-    ) {
+    else if (import.meta.env.DEV) {
         try {
             console.debug('[telemetry]', e);
         } catch {
             /* noop */
         }
     }
+}
+
+function performanceDiagnosticsEnabled(): boolean {
+    try {
+        return Boolean(
+            (typeof window !== 'undefined' &&
+                window.__clinicPerformanceDiagnostics) ||
+            (typeof import.meta !== 'undefined' && import.meta.env?.DEV),
+        );
+    } catch {
+        return false;
+    }
+}
+
+export function startPerformanceSpan(
+    name: string,
+): (result?: { ok?: boolean; status?: number; error?: string }) => void {
+    const startedAt = performance.now();
+    let finished = false;
+
+    return (result = {}) => {
+        if (finished) return;
+        finished = true;
+        const payload = {
+            name,
+            ms: Math.round(performance.now() - startedAt),
+            ok: result.ok ?? true,
+            ...(result.status === undefined ? {} : { status: result.status }),
+            ...(result.error ? { error: result.error.slice(0, 120) } : {}),
+        };
+        track({ type: 'performance_span', payload });
+        if (performanceDiagnosticsEnabled()) {
+            console.debug('[clinic-performance]', payload);
+        }
+    };
 }

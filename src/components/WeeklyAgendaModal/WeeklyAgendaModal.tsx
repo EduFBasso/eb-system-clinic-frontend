@@ -95,6 +95,7 @@ function WeeklyAgendaContent({
         weekEnd,
         undefined,
         reloadKey,
+        open,
     );
     const effectiveNowRef = useNowTick(30_000);
     const handleCancel = React.useCallback(async (appt: Appointment) => {

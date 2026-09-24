@@ -95,6 +95,7 @@ export function DailyAgendaModal({
         dayEnd,
         undefined,
         reloadKey,
+        open,
     );
     const handleCancel = React.useCallback(async (appt: Appointment) => {
         const res = await cancelAppointment(appt.id);

@@ -166,7 +166,7 @@ export default function QuickScheduleModal({
     }, [dayStart]);
 
     const { items: dayAppointments, loading: dayLoading } =
-        useAppointmentsRange(dayStart, dayEnd, undefined, reloadKey);
+        useAppointmentsRange(dayStart, dayEnd, undefined, reloadKey, open);
 
     const [dayFilter, setDayFilter] = React.useState<DayFilter>('todos');
 

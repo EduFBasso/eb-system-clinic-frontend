@@ -16,6 +16,7 @@ import { SessionExpiredModal } from '../SessionExpiredModal/SessionExpiredModal'
 import { API_BASE } from '../../config/api';
 import { openClientForm } from '../../utils/openClientForm';
 import { getOrCreateDeviceId } from '../../utils/device';
+import { startPerformanceSpan } from '../../utils/telemetry';
 type VerifyResponse = {
     access?: string;
     refresh?: string;
@@ -224,10 +225,14 @@ export const NavBar: React.FC<NavBarProps> = ({
         }
         const loadProfessionals = async () => {
             setLoadingProfessionals(true);
+            const finishPerformance = startPerformanceSpan(
+                'api:professionals-basic',
+            );
             try {
                 const res = await fetch(
                     `${API_BASE}/register/professionals-basic/?ecosystem=clinic&tenant_slug=${encodeURIComponent(tenantSlug)}`,
                 );
+                finishPerformance({ ok: res.ok, status: res.status });
                 if (!res.ok) {
                     throw new Error('Falha ao carregar profissionais.');
                 }
@@ -241,7 +246,12 @@ export const NavBar: React.FC<NavBarProps> = ({
                     return;
                 }
                 setProfessionals(filterProfessionalsByCapability(items));
-            } catch {
+            } catch (error) {
+                finishPerformance({
+                    ok: false,
+                    error:
+                        error instanceof Error ? error.message : String(error),
+                });
                 if (active) {
                     setProfessionals([]);
                 }
@@ -700,22 +710,44 @@ export const NavBar: React.FC<NavBarProps> = ({
                                                 setLoadingLogin(false);
                                                 return;
                                             }
-                                            const res = await fetch(
-                                                `${API_BASE}/token/`,
-                                                {
-                                                    method: 'POST',
-                                                    headers: {
-                                                        'Content-Type':
-                                                            'application/json',
+                                            const finishLoginPerformance =
+                                                startPerformanceSpan(
+                                                    'api:token',
+                                                );
+                                            let res: Response;
+                                            try {
+                                                res = await fetch(
+                                                    `${API_BASE}/token/`,
+                                                    {
+                                                        method: 'POST',
+                                                        headers: {
+                                                            'Content-Type':
+                                                                'application/json',
+                                                        },
+                                                        body: JSON.stringify({
+                                                            email: loginEmail,
+                                                            password:
+                                                                loginPassword,
+                                                            device_id: deviceId,
+                                                            tenant_slug:
+                                                                tenantSlug,
+                                                        }),
                                                     },
-                                                    body: JSON.stringify({
-                                                        email: loginEmail,
-                                                        password: loginPassword,
-                                                        device_id: deviceId,
-                                                        tenant_slug: tenantSlug,
-                                                    }),
-                                                },
-                                            );
+                                                );
+                                            } catch (error) {
+                                                finishLoginPerformance({
+                                                    ok: false,
+                                                    error:
+                                                        error instanceof Error
+                                                            ? error.message
+                                                            : String(error),
+                                                });
+                                                throw error;
+                                            }
+                                            finishLoginPerformance({
+                                                ok: res.ok,
+                                                status: res.status,
+                                            });
                                             let data: VerifyResponse = {};
                                             try {
                                                 data = await res.json();
