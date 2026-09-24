@@ -308,27 +308,7 @@ export default function ClinicalPrintView({
                         </section>
 
                         {isLastPage && (
-                            <div className={styles.printClosingBlock}>
-                                <section
-                                    className={`${styles.printSection} ${styles.clinicalNotes}`}
-                                >
-                                    <h2 className={styles.printSubtitle}>
-                                        Observações
-                                    </h2>
-                                    {plan.notes?.trim() ? (
-                                        <p className={styles.printNotesText}>
-                                            {plan.notes}
-                                        </p>
-                                    ) : (
-                                        <div
-                                            className={styles.observationLines}
-                                            aria-hidden='true'
-                                        >
-                                            <div />
-                                        </div>
-                                    )}
-                                </section>
-
+                            <>
                                 <section className={styles.printSection}>
                                     <hr className={styles.printDivider} />
                                     <div className={styles.printTotalRow}>
@@ -337,6 +317,26 @@ export default function ClinicalPrintView({
                                             {formatMoney(planTotal)}
                                         </strong>
                                     </div>
+                                </section>
+
+                                <div className={styles.printClosingBlock}>
+                                    <section
+                                        className={`${styles.printSection} ${styles.clinicalNotes}`}
+                                    >
+                                        <h2 className={styles.printSubtitle}>
+                                            Observações
+                                        </h2>
+                                        {plan.notes?.trim() ? (
+                                            <p
+                                                className={
+                                                    styles.printNotesText
+                                                }
+                                            >
+                                                {plan.notes}
+                                            </p>
+                                        ) : null}
+                                    </section>
+
                                     <p className={styles.printPaymentLine}>
                                         {paymentCondition === 'avista'
                                             ? 'Forma de pagamento: À Vista'
@@ -344,18 +344,19 @@ export default function ClinicalPrintView({
                                                   installmentValue,
                                               )} com vencimento inicial em ${formatDate(firstDueDate)}`}
                                     </p>
-                                </section>
 
-                                <p className={styles.validityText}>
-                                    Este orçamento é válido por {validityDays}{' '}
-                                    dias a partir da data de impressão.
-                                </p>
+                                    <p className={styles.validityText}>
+                                        Este orçamento é válido por{' '}
+                                        {validityDays} dias a partir da data de
+                                        impressão.
+                                    </p>
 
-                                <div className={styles.signatureBlock}>
-                                    <div className={styles.signatureLine} />
-                                    <span>Assinatura do responsável</span>
+                                    <div className={styles.signatureBlock}>
+                                        <div className={styles.signatureLine} />
+                                        <span>Assinatura do responsável</span>
+                                    </div>
                                 </div>
-                            </div>
+                            </>
                         )}
 
                         <footer className={styles.printFooter}>
