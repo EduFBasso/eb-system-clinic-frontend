@@ -1,4 +1,20 @@
 // src/types/models.ts
+export interface ClinicTenantProfile {
+    id?: number;
+    name?: string;
+    trade_name?: string;
+    slug?: string;
+    zip_code?: string;
+    street?: string;
+    number?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
+    complement?: string;
+    lock_odonto_plan_after_print?: boolean;
+    odonto_quote_validity_days?: number;
+}
+
 export interface Professional {
     id: number;
     first_name: string;
@@ -6,10 +22,17 @@ export interface Professional {
     display_name?: string;
     email: string;
     phone?: string;
-    specialty?: string;
-    register_number?: string;
+    address?: string;
+    number?: string;
+    neighborhood?: string;
+    zip_code?: string;
     city?: string;
     state?: string;
+    cnpj?: string;
+    cpf?: string;
+    specialty?: string;
+    register_number?: string;
+    odonto_quote_validity_days?: number;
     is_active?: boolean;
     is_superuser?: boolean;
     is_staff?: boolean;
@@ -23,6 +46,7 @@ export interface Professional {
     ecosystem?: 'clinic' | 'bakery';
     role?: string;
     capabilities?: Record<string, unknown>;
+    tenant?: ClinicTenantProfile;
 }
 
 export interface Client {

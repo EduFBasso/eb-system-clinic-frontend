@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { API_BASE } from '../config/api';
 import { isTokenExpired } from '../utils/jwt';
 import { getAccessToken } from '../utils/auth/session';
+import { startPerformanceSpan } from '../utils/telemetry';
 
 export interface Appointment {
     id: number;
@@ -31,6 +32,7 @@ export function useAppointmentsRange(
     endDate: Date,
     clientId?: number,
     reloadKey?: number,
+    enabled = true,
 ) {
     const [items, setItems] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState(false);
@@ -51,6 +53,10 @@ export function useAppointmentsRange(
     } | null>(null);
 
     useEffect(() => {
+        if (!enabled) {
+            setLoading(false);
+            return;
+        }
         const token = getAccessToken();
         if (isTokenExpired(token)) {
             setItems([]);
@@ -72,11 +78,13 @@ export function useAppointmentsRange(
         )}&end=${encodeURIComponent(endISO)}${
             clientId ? `&client=${clientId}` : ''
         }&ts=${Date.now()}`;
+        const finishPerformance = startPerformanceSpan('api:appointments');
         fetch(url, {
             headers: { Authorization: `Bearer ${token}` },
             cache: 'no-store',
         })
             .then(r => {
+                finishPerformance({ ok: r.ok, status: r.status });
                 if (!r.ok) throw new Error('Erro ao carregar agenda');
                 return r.json();
             })
@@ -86,10 +94,14 @@ export function useAppointmentsRange(
                 setLoading(false);
             })
             .catch(err => {
+                finishPerformance({
+                    ok: false,
+                    error: err instanceof Error ? err.message : String(err),
+                });
                 setError(err.message);
                 setLoading(false);
             });
-    }, [startISO, endISO, clientId, reloadKey]);
+    }, [startISO, endISO, clientId, reloadKey, enabled]);
 
     return { items, loading, error };
 }

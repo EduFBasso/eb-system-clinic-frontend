@@ -7,6 +7,7 @@ import { API_BASE } from '../config/api';
 import { emit } from '../events/bus';
 import { getOrCreateDeviceId } from './device';
 import { clearStoredAuth } from './auth/session';
+import { startPerformanceSpan } from './telemetry';
 
 // Custom error shape so callers can differentiate
 export class ApiError extends Error {
@@ -17,6 +18,40 @@ export class ApiError extends Error {
         this.status = status;
         this.code = code;
     }
+}
+
+// DRF devolve erros de validação sob chaves variadas conforme a origem
+// (non_field_errors para ValidationError genérico, detail para
+// PermissionDenied/AuthenticationFailed, ou o próprio nome do campo). Sem
+// isso, rejeições distintas do login Clinic (slug ausente, especialidades
+// conflitantes, conta desativada) todas caíam numa mensagem genérica.
+export function extractApiErrorMessage(
+    data: unknown,
+    fallback = 'Erro ao processar a solicitação.',
+): string {
+    if (!data || typeof data !== 'object') {
+        return fallback;
+    }
+    const payload = data as Record<string, unknown>;
+    const candidates = [
+        payload.detail,
+        payload.non_field_errors,
+        payload.tenant_slug,
+        payload.message,
+    ];
+    for (const candidate of candidates) {
+        if (typeof candidate === 'string' && candidate.trim()) {
+            return candidate;
+        }
+        if (
+            Array.isArray(candidate) &&
+            typeof candidate[0] === 'string' &&
+            candidate[0].trim()
+        ) {
+            return candidate[0];
+        }
+    }
+    return fallback;
 }
 
 // Event names for global auth state changes
@@ -131,6 +166,7 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
     }
 
     const url = path.startsWith('http') ? path : `${API_BASE || ''}${path}`;
+    const finishPerformance = startPerformanceSpan(`api:${path.split('?')[0]}`);
     const requestSignal = createRequestSignal(signal ?? undefined, timeoutMs);
     let response: Response;
     // Ensure body type matches fetch signature (string, FormData, Blob, etc.)
@@ -159,6 +195,14 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
         });
     } catch (e) {
         requestSignal.cleanup();
+        finishPerformance({
+            ok: false,
+            error: requestSignal.didTimeout()
+                ? 'timeout'
+                : e instanceof Error
+                  ? e.message
+                  : 'network_error',
+        });
         if (requestSignal.didTimeout()) {
             throw new ApiError(
                 'Tempo limite da requisicao excedido.',
@@ -187,6 +231,7 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
     }
 
     if (!response.ok) {
+        finishPerformance({ ok: false, status: response.status });
         if (
             !suppressAutoLogout &&
             shouldTriggerDeviceLogout(response.status, bodyText)
@@ -200,6 +245,7 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
         throw new ApiError(message, response.status, code);
     }
 
+    finishPerformance({ ok: true, status: response.status });
     return isJson ? json : bodyText;
 }
 

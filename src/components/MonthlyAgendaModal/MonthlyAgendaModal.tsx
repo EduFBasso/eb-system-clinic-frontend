@@ -79,6 +79,7 @@ export function MonthlyAgendaModal({
         monthEnd,
         client?.id,
         reloadKey,
+        open,
     );
 
     // Removido listener local — Home coordena

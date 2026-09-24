@@ -76,7 +76,7 @@ export function AppointmentDetailsModal({
     open,
     onClose,
     appt,
-    returnContext,
+    returnContext: _returnContext,
 }: AppointmentDetailsModalProps) {
     const [viewportWidth, setViewportWidth] = React.useState(() => {
         if (typeof window === 'undefined') return 1024;

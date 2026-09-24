@@ -1,5 +1,6 @@
 import { API_BASE } from '../config/api';
 import { getAccessToken } from './auth/session';
+import { startPerformanceSpan } from './telemetry';
 
 export type WorkTimes = {
     startHour: number;
@@ -368,14 +369,27 @@ async function fetchProfessionalSettings(
         throw new Error('Sessão expirada. Faça login novamente.');
     }
 
-    const res = await fetch(`${API_BASE}/register/professionals/settings/`, {
-        ...init,
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-            ...(init?.headers || {}),
-        },
-    });
+    const finishPerformance = startPerformanceSpan(
+        `api:professional-settings:${init?.method || 'GET'}`,
+    );
+    let res: Response;
+    try {
+        res = await fetch(`${API_BASE}/register/professionals/settings/`, {
+            ...init,
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+                ...(init?.headers || {}),
+            },
+        });
+        finishPerformance({ ok: res.ok, status: res.status });
+    } catch (error) {
+        finishPerformance({
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+    }
 
     if (!res.ok) {
         let detail = 'Erro ao salvar configurações.';

@@ -16,10 +16,13 @@ import { SessionExpiredModal } from '../SessionExpiredModal/SessionExpiredModal'
 import { API_BASE } from '../../config/api';
 import { openClientForm } from '../../utils/openClientForm';
 import { getOrCreateDeviceId } from '../../utils/device';
+import { startPerformanceSpan } from '../../utils/telemetry';
 type VerifyResponse = {
     access?: string;
     refresh?: string;
     professional?: ProfessionalBasic;
+    // Dados comerciais/políticas Odonto do tenant ativo (endereço etc.).
+    tenant?: ProfessionalBasic['tenant'];
     active_sessions_count?: number;
     device_id?: string;
     message?: string;
@@ -30,7 +33,54 @@ type ProfessionalLoginOption = {
     first_name: string;
     last_name: string;
     specialty?: string;
+    // Diretriz 6/7: capabilities do tenant Clinic ao qual esta membership
+    // pertence (ex.: { clinic: true, odonto: true }), usado para filtrar o
+    // dropdown por especialidade.
+    tenant_capabilities?: Record<string, unknown>;
 };
+
+type ClinicCapability = 'odonto' | 'podologia';
+
+function resolveTenantCapability(
+    capabilities: Record<string, unknown> | undefined,
+): ClinicCapability | null {
+    if (!capabilities) {
+        return null;
+    }
+    const modules =
+        typeof capabilities.modules === 'object' &&
+        capabilities.modules !== null
+            ? (capabilities.modules as Record<string, unknown>)
+            : null;
+    if (capabilities.odonto === true || modules?.odonto === true) {
+        return 'odonto';
+    }
+    if (capabilities.podologia === true || modules?.podologia === true) {
+        return 'podologia';
+    }
+    return null;
+}
+
+// Diretriz 5/7: um tenant Clinic tem sempre uma única especialidade ativa.
+// O backend já delimita a lista por tenant_slug, então este filtro é hoje
+// redundante em produção — mas protege a UI caso um tenant futuro passe a
+// listar profissionais de especialidades diferentes por engano.
+function filterProfessionalsByCapability(
+    list: ProfessionalLoginOption[],
+): ProfessionalLoginOption[] {
+    const capabilities = list
+        .map(item => resolveTenantCapability(item.tenant_capabilities))
+        .filter((value): value is ClinicCapability => value !== null);
+    const expectedCapability = capabilities[0] ?? null;
+    if (!expectedCapability) {
+        return list;
+    }
+    return list.filter(
+        item =>
+            resolveTenantCapability(item.tenant_capabilities) ===
+            expectedCapability,
+    );
+}
 import type { Professional as ProfessionalBasic } from '../../types/models';
 import styles from './NavBar.module.css';
 import { AgendaSettingsModal } from '../AgendaSettingsModal/AgendaSettingsModal';
@@ -38,6 +88,7 @@ import { AgendaSettingsModal } from '../AgendaSettingsModal/AgendaSettingsModal'
 import { AppModal } from '../Modal/Modal';
 import '../../styles/modal-message.css';
 import { isTokenExpired } from '../../utils/jwt';
+import { extractApiErrorMessage } from '../../utils/apiFetch';
 import { emit, on } from '../../events/bus';
 import {
     clearStoredAuth,
@@ -45,7 +96,6 @@ import {
     hasActiveSession,
     getAccessToken,
 } from '../../utils/auth/session';
-import { ProfessionalCreateModal } from '../ProfessionalCreateModal/ProfessionalCreateModal';
 import { useNavigate } from 'react-router-dom';
 import { resolveClinicTenantSlug } from '../../config/tenant';
 
@@ -105,8 +155,6 @@ export const NavBar: React.FC<NavBarProps> = ({
     // About modal state
     const [aboutOpen, setAboutOpen] = useState(false);
     const [clinicProfileOpen, setClinicProfileOpen] = useState(false);
-    // Admin modals (superuser only)
-    const [createProfOpen, setCreateProfOpen] = useState(false);
 
     // Estado para modal de sessão expirada
     const [sessionExpiredOpen, setSessionExpiredOpen] = useState(false);
@@ -177,10 +225,14 @@ export const NavBar: React.FC<NavBarProps> = ({
         }
         const loadProfessionals = async () => {
             setLoadingProfessionals(true);
+            const finishPerformance = startPerformanceSpan(
+                'api:professionals-basic',
+            );
             try {
                 const res = await fetch(
                     `${API_BASE}/register/professionals-basic/?ecosystem=clinic&tenant_slug=${encodeURIComponent(tenantSlug)}`,
                 );
+                finishPerformance({ ok: res.ok, status: res.status });
                 if (!res.ok) {
                     throw new Error('Falha ao carregar profissionais.');
                 }
@@ -193,8 +245,13 @@ export const NavBar: React.FC<NavBarProps> = ({
                 if (!active) {
                     return;
                 }
-                setProfessionals(items);
-            } catch {
+                setProfessionals(filterProfessionalsByCapability(items));
+            } catch (error) {
+                finishPerformance({
+                    ok: false,
+                    error:
+                        error instanceof Error ? error.message : String(error),
+                });
                 if (active) {
                     setProfessionals([]);
                 }
@@ -339,7 +396,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                                     setAboutOpen(true);
                                 }}
                             >
-                                Configurações
+                                Tema
                             </button>
                             <button
                                 className={styles.dropdownItem}
@@ -653,22 +710,44 @@ export const NavBar: React.FC<NavBarProps> = ({
                                                 setLoadingLogin(false);
                                                 return;
                                             }
-                                            const res = await fetch(
-                                                `${API_BASE}/token/`,
-                                                {
-                                                    method: 'POST',
-                                                    headers: {
-                                                        'Content-Type':
-                                                            'application/json',
+                                            const finishLoginPerformance =
+                                                startPerformanceSpan(
+                                                    'api:token',
+                                                );
+                                            let res: Response;
+                                            try {
+                                                res = await fetch(
+                                                    `${API_BASE}/token/`,
+                                                    {
+                                                        method: 'POST',
+                                                        headers: {
+                                                            'Content-Type':
+                                                                'application/json',
+                                                        },
+                                                        body: JSON.stringify({
+                                                            email: loginEmail,
+                                                            password:
+                                                                loginPassword,
+                                                            device_id: deviceId,
+                                                            tenant_slug:
+                                                                tenantSlug,
+                                                        }),
                                                     },
-                                                    body: JSON.stringify({
-                                                        email: loginEmail,
-                                                        password: loginPassword,
-                                                        device_id: deviceId,
-                                                        tenant_slug: tenantSlug,
-                                                    }),
-                                                },
-                                            );
+                                                );
+                                            } catch (error) {
+                                                finishLoginPerformance({
+                                                    ok: false,
+                                                    error:
+                                                        error instanceof Error
+                                                            ? error.message
+                                                            : String(error),
+                                                });
+                                                throw error;
+                                            }
+                                            finishLoginPerformance({
+                                                ok: res.ok,
+                                                status: res.status,
+                                            });
                                             let data: VerifyResponse = {};
                                             try {
                                                 data = await res.json();
@@ -688,13 +767,21 @@ export const NavBar: React.FC<NavBarProps> = ({
                                                     data.access,
                                                 );
                                                 setLoginPassword('');
+                                                // Endereço/políticas vêm do tenant; CNPJ vem do professional.
+                                                const loggedProfessionalData =
+                                                    data.professional
+                                                        ? {
+                                                              ...data.professional,
+                                                              tenant: data.tenant,
+                                                          }
+                                                        : null;
                                                 setLoggedProfessional(
-                                                    data.professional || null,
+                                                    loggedProfessionalData,
                                                 );
                                                 localStorage.setItem(
                                                     'loggedProfessional',
                                                     JSON.stringify(
-                                                        data.professional,
+                                                        loggedProfessionalData,
                                                     ),
                                                 );
                                                 if (data.device_id) {
@@ -702,15 +789,6 @@ export const NavBar: React.FC<NavBarProps> = ({
                                                         deviceIdKey,
                                                         String(data.device_id),
                                                     );
-                                                }
-                                                if (
-                                                    data.professional
-                                                        ?.is_superuser
-                                                ) {
-                                                    navigate('/admin', {
-                                                        replace: true,
-                                                    });
-                                                    return;
                                                 }
                                                 emit('auth:login', undefined);
                                                 window.dispatchEvent(
@@ -725,9 +803,9 @@ export const NavBar: React.FC<NavBarProps> = ({
                                                 );
                                             } else {
                                                 setModalMessage(
-                                                    String(
-                                                        data.message ||
-                                                            'Credenciais inválidas',
+                                                    extractApiErrorMessage(
+                                                        data,
+                                                        'Credenciais inválidas',
                                                     ),
                                                 );
                                                 setModalOpen(true);
@@ -783,10 +861,6 @@ export const NavBar: React.FC<NavBarProps> = ({
                 buildTime={
                     import.meta.env?.VITE_BUILD_TIME as string | undefined
                 }
-            />
-            <ProfessionalCreateModal
-                open={createProfOpen}
-                onClose={() => setCreateProfOpen(false)}
             />
             {createPortal(
                 <TreatmentPlanCreateModal

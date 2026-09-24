@@ -1,8 +1,9 @@
 import React from 'react';
 import { defaultPlanName } from '../../../utils/TreatmentHelpers';
 import { apiFetch } from '../../../utils/apiFetch';
-import { formatCnpj } from '../../../utils/formatCpf';
+import { formatCep, formatCnpj } from '../../../utils/formatCpf';
 import { formatPhone } from '../../../utils/formatPhone';
+import { useViaCep } from '../../../hooks/useViaCep';
 import styles from '../TreatmentWorkspacePage/TreatmentWorkspacePage.module.css';
 
 type Props = {
@@ -15,6 +16,22 @@ type Props = {
 };
 
 type ProfessionalProfile = Record<string, string | undefined>;
+
+// Dados do profissional — PATCH em /register/professionals/me/.
+const PERSONAL_FIELDS = new Set([
+    'display_name',
+    'specialty',
+    'register_number',
+    'phone',
+    'cnpj',
+    'address',
+    'number',
+    'neighborhood',
+    'zip_code',
+    'city',
+    'state',
+    'odonto_quote_validity_days',
+]);
 
 export default function TreatmentPlanCreateModal({
     open,
@@ -30,6 +47,24 @@ export default function TreatmentPlanCreateModal({
     const [savingProfile, setSavingProfile] = React.useState(false);
     const [profileError, setProfileError] = React.useState('');
     const [profileSuccess, setProfileSuccess] = React.useState('');
+    const onCepFound = React.useCallback(
+        (data: {
+            address: string;
+            neighborhood: string;
+            city: string;
+            state: string;
+        }) => {
+            setProfile(current => ({
+                ...current,
+                address: data.address,
+                neighborhood: data.neighborhood,
+                city: data.city,
+                state: data.state,
+            }));
+        },
+        [],
+    );
+    const { status: cepStatus, lookup: lookupCep } = useViaCep(onCepFound);
     const today = React.useMemo(() => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -40,9 +75,21 @@ export default function TreatmentPlanCreateModal({
             setName(defaultPlanName());
             try {
                 const stored = localStorage.getItem('loggedProfessional');
-                setProfile(
-                    stored ? (JSON.parse(stored) as ProfessionalProfile) : {},
-                );
+                const parsed = stored
+                    ? (JSON.parse(stored) as ProfessionalProfile & {
+                          tenant?: ProfessionalProfile;
+                      })
+                    : {};
+                const { tenant, ...personal } = parsed;
+                setProfile({
+                    ...personal,
+                    address: personal.address || tenant?.street,
+                    number: personal.number || tenant?.number,
+                    neighborhood: personal.neighborhood || tenant?.neighborhood,
+                    zip_code: personal.zip_code || tenant?.zip_code,
+                    city: personal.city || tenant?.city,
+                    state: personal.state || tenant?.state,
+                });
             } catch {
                 setProfile({});
             }
@@ -54,24 +101,35 @@ export default function TreatmentPlanCreateModal({
         setProfileError('');
         setProfileSuccess('');
         try {
-            const profilePayload = {
+            const personalPayload: ProfessionalProfile = {};
+            for (const [field, value] of Object.entries(profile)) {
+                if (PERSONAL_FIELDS.has(field)) personalPayload[field] = value;
+            }
+            personalPayload.phone = (() => {
+                const digits = profile.phone?.replace(/\D/g, '') ?? '';
+                if (!digits) return '';
+                return digits.startsWith('55') ? `+${digits}` : `+55${digits}`;
+            })();
+
+            const updatedPersonal = (await apiFetch(
+                '/register/professionals/me/',
+                {
+                    method: 'PATCH',
+                    body: personalPayload,
+                },
+            )) as ProfessionalProfile;
+            const mergedProfile = {
                 ...profile,
-                phone: (() => {
-                    const digits = profile.phone?.replace(/\D/g, '') ?? '';
-                    if (!digits) return '';
-                    return digits.startsWith('55')
-                        ? `+${digits}`
-                        : `+55${digits}`;
-                })(),
+                ...updatedPersonal,
             };
-            const updated = (await apiFetch('/register/professionals/me/', {
-                method: 'PATCH',
-                body: profilePayload,
-            })) as ProfessionalProfile;
-            const mergedProfile = { ...profile, ...updated };
+            const stored = localStorage.getItem('loggedProfessional');
+            const previous = stored ? JSON.parse(stored) : {};
             localStorage.setItem(
                 'loggedProfessional',
-                JSON.stringify(mergedProfile),
+                JSON.stringify({
+                    ...previous,
+                    ...updatedPersonal,
+                }),
             );
             setProfile(mergedProfile);
             setProfileSuccess('Dados profissionais salvos com sucesso.');
@@ -113,7 +171,7 @@ export default function TreatmentPlanCreateModal({
             >
                 <h3 className={styles.sectionTitle}>
                     {profileOnly
-                        ? 'Dados da clínica e da profissional'
+                        ? 'Dados profissionais'
                         : 'Novo plano de tratamento'}
                 </h3>
 
@@ -163,10 +221,10 @@ export default function TreatmentPlanCreateModal({
                                     'Validade do orçamento (dias)',
                                 ],
                                 ['phone', 'Telefone'],
+                                ['zip_code', 'CEP'],
                                 ['address', 'Endereço'],
                                 ['number', 'Número'],
                                 ['neighborhood', 'Bairro'],
-                                ['zip_code', 'CEP'],
                                 ['city', 'Cidade'],
                                 ['state', 'UF'],
                             ].map(([field, label]) => (
@@ -181,7 +239,11 @@ export default function TreatmentPlanCreateModal({
                                                   ? formatCnpj(
                                                         profile[field] || '',
                                                     )
-                                                  : profile[field] || ''
+                                                  : field === 'zip_code'
+                                                    ? formatCep(
+                                                          profile[field] || '',
+                                                      )
+                                                    : profile[field] || ''
                                         }
                                         type={
                                             field ===
@@ -206,7 +268,7 @@ export default function TreatmentPlanCreateModal({
                                                 ? '+5511999990000'
                                                 : undefined
                                         }
-                                        onChange={event =>
+                                        onChange={event => {
                                             setProfile(current => ({
                                                 ...current,
                                                 [field]:
@@ -220,11 +282,60 @@ export default function TreatmentPlanCreateModal({
                                                                 event.target
                                                                     .value,
                                                             )
-                                                          : event.target.value,
-                                            }))
-                                        }
+                                                          : field === 'zip_code'
+                                                            ? formatCep(
+                                                                  event.target
+                                                                      .value,
+                                                              )
+                                                            : event.target
+                                                                  .value,
+                                            }));
+                                            if (field === 'zip_code') {
+                                                lookupCep(event.target.value);
+                                            }
+                                        }}
                                         disabled={saving || savingProfile}
+                                        autoComplete={
+                                            field === 'zip_code'
+                                                ? 'postal-code'
+                                                : field === 'phone'
+                                                  ? 'tel'
+                                                  : undefined
+                                        }
+                                        inputMode={
+                                            field === 'zip_code' ||
+                                            field === 'phone'
+                                                ? 'tel'
+                                                : undefined
+                                        }
                                     />
+                                    {field === 'zip_code' &&
+                                        cepStatus === 'loading' && (
+                                            <span className={styles.cepStatus}>
+                                                Buscando CEP...
+                                            </span>
+                                        )}
+                                    {field === 'zip_code' &&
+                                        cepStatus === 'not_found' && (
+                                            <span
+                                                className={
+                                                    styles.cepStatusError
+                                                }
+                                            >
+                                                CEP não encontrado
+                                            </span>
+                                        )}
+                                    {field === 'zip_code' &&
+                                        cepStatus === 'error' && (
+                                            <span
+                                                className={
+                                                    styles.cepStatusError
+                                                }
+                                            >
+                                                Sem conexão — preencha
+                                                manualmente
+                                            </span>
+                                        )}
                                 </label>
                             ))}
                         </div>

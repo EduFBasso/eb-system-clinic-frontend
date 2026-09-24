@@ -24,19 +24,14 @@ export function clearStoredAuth(options?: { clearNewClientId?: boolean }) {
     clearStaleLocalStorageKeys();
 }
 
-// Remove do localStorage: cache de nomes de clientes (PII) e chaves órfãs do
-// extinto fluxo de Face ID/WebAuthn (`hasWebAuthn_<email>`, nunca mais escrito).
+// Remove do localStorage caches antigos de nomes de clientes (PII).
 // Cobre o formato atual `clinic:<scope>:client.name.<id>` e o legado `client.name.<id>`.
 function clearStaleLocalStorageKeys() {
     try {
         const keysToRemove: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
-            if (
-                key &&
-                (/^(clinic:[^:]*:)?client\.name\.\d+$/.test(key) ||
-                    key.startsWith('hasWebAuthn_'))
-            ) {
+            if (key && /^(clinic:[^:]*:)?client\.name\.\d+$/.test(key)) {
                 keysToRemove.push(key);
             }
         }

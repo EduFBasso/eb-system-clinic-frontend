@@ -1,60 +1,10 @@
 import React from 'react';
 import styles from './AnamnesisPreviewFields.module.css';
 
-export type YesNoDetailValue = 'Não' | `Sim: ${string}`;
-
 export type MultiChoiceValue = {
     selected: string[];
     otherText: string;
 };
-
-export function parseMultiChoiceValue(value: string, options: string[]) {
-    const entries = parseConcatenatedEntries(value);
-    const selected = options.filter(option =>
-        option !== 'Outros'
-            ? entries.includes(option)
-            : entries.includes('Outros') ||
-              entries.some(item => item.startsWith('Outros:')),
-    );
-    const otherEntry = entries.find(item => item.startsWith('Outros: '));
-    return {
-        selected,
-        otherText: otherEntry ? otherEntry.slice(8).trim() : '',
-    } satisfies MultiChoiceValue;
-}
-
-export function parseConcatenatedEntries(value: string): string[] {
-    return (value || '')
-        .split(',')
-        .map(item => item.trim())
-        .filter(Boolean);
-}
-
-export function buildConcatenatedEntries(entries: string[]): string {
-    return entries
-        .map(item => item.trim())
-        .filter(Boolean)
-        .join(', ');
-}
-
-export function parseYesNoDetail(value: YesNoDetailValue) {
-    if (value.startsWith('Sim: ')) {
-        return { checked: 'Sim' as const, detail: value.slice(5) };
-    }
-    return { checked: 'Não' as const, detail: '' };
-}
-
-export function formatMultiChoiceValue(value: MultiChoiceValue) {
-    const base = value.selected.filter(option => option !== 'Outros');
-    if (value.selected.includes('Outros')) {
-        base.push(
-            value.otherText.trim()
-                ? `Outros: ${value.otherText.trim()}`
-                : 'Outros',
-        );
-    }
-    return buildConcatenatedEntries(base) || 'Sem resposta';
-}
 
 export function FieldShell({
     label,

@@ -16,13 +16,20 @@ type Professional = {
     specialty?: string;
     register_number?: string;
     address?: string;
-    street?: string;
     number?: string;
     neighborhood?: string;
     zip_code?: string;
-    cnpj?: string;
     city?: string;
     state?: string;
+    cnpj?: string;
+    tenant?: {
+        street?: string;
+        number?: string;
+        neighborhood?: string;
+        zip_code?: string;
+        city?: string;
+        state?: string;
+    };
 };
 
 type Props = {
@@ -59,6 +66,7 @@ function paginateItems(items: CatalogPrintItem[]): CatalogPrintItem[][] {
 
 export function CatalogPrintView({ title, items }: Props) {
     const professional = React.useMemo(loadProfessional, []);
+    const tenant = professional.tenant ?? {};
     const clinicName =
         professional.display_name ||
         [professional.first_name, professional.last_name]
@@ -66,21 +74,20 @@ export function CatalogPrintView({ title, items }: Props) {
             .join(' ') ||
         'Consultório Odontológico';
     const addressLine = [
-        professional.address || professional.street,
-        professional.number,
+        professional.address || tenant.street,
+        professional.number || tenant.number,
     ]
         .filter(Boolean)
         .join(', ');
     const locationLine = [
-        professional.neighborhood,
-        professional.city,
-        professional.state,
+        professional.neighborhood || tenant.neighborhood,
+        professional.city || tenant.city,
+        professional.state || tenant.state,
     ]
         .filter(Boolean)
         .join(' - ');
-    const postalLine = professional.zip_code
-        ? `CEP ${professional.zip_code}`
-        : '';
+    const postalCode = professional.zip_code || tenant.zip_code;
+    const postalLine = postalCode ? `CEP ${postalCode}` : '';
     const businessAddress = [addressLine, locationLine, postalLine]
         .filter(Boolean)
         .join(' | ');

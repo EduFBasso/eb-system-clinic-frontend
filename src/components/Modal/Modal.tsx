@@ -195,12 +195,28 @@ export function AppModal(props: AppModalProps) {
         return window.matchMedia('(hover: none) and (pointer: coarse)').matches;
     }, []);
 
+    React.useLayoutEffect(() => {
+        if (!open) return;
+
+        const active = document.activeElement as HTMLElement | null;
+        const content = contentRef.current;
+        const currentRoot = content?.closest('.MuiModal-root');
+        const activeRoot = active?.closest('.MuiModal-root');
+
+        if (active && activeRoot && activeRoot !== currentRoot) {
+            prevActiveElRef.current = active;
+            active.blur();
+        } else if (!prevActiveElRef.current) {
+            prevActiveElRef.current = active;
+        }
+
+        content?.setAttribute('tabindex', '-1');
+        content?.focus();
+    }, [open]);
+
     React.useEffect(() => {
         if (!open) return;
         try {
-            // Memoriza elemento ativo para restaurar foco sem deslocar a página
-            prevActiveElRef.current =
-                (document.activeElement as HTMLElement | null) || null;
             // Detecta posição atual de scroll da janela
             const winY = (() => {
                 try {
@@ -345,11 +361,8 @@ export function AppModal(props: AppModalProps) {
             );
         }
 
-        // Dar foco ao conteúdo do modal para capturar imediatamente a interação
+        // Garante scroll interno no topo ao abrir
         try {
-            contentRef.current?.setAttribute('tabindex', '-1');
-            contentRef.current?.focus();
-            // Garante scroll interno no topo ao abrir
             if (contentRef.current) contentRef.current.scrollTop = 0;
         } catch {
             /* noop */
@@ -635,7 +648,7 @@ export function AppModal(props: AppModalProps) {
 
     // Restauração imediata no ciclo de desmontagem.
     // IMPORTANTE: não condicionar ao valor de 'open' — componentes pai podem
-    // retornar null com open=true ainda no closure (ex.: BudgetModal), fazendo
+    // retornar null com open=true ainda no closure, fazendo
     // com que o AppModal seja desmontado SEM ter passado por open=false.
     // O efeito com [] garante que o cleanup roda em todo unmount.
     // ATENÇÃO: verificar se outro modal ainda está aberto antes de limpar os locks,
@@ -699,6 +712,7 @@ export function AppModal(props: AppModalProps) {
             disableEscapeKeyDown={disableEscapeKeyDown || !closeOnEscape}
             // Apenas mantém montado quando não pedimos unmount explícito
             keepMounted={!unmountOnClose}
+            disableEnforceFocus
             disableScrollLock
         >
             <div
@@ -805,7 +819,9 @@ export function AppModal(props: AppModalProps) {
                                         }
                                       : {}),
                                   // Impede scroll chaining/scroll da página abaixo
-                                  overscrollBehaviorY: 'contain',
+                                  overscrollBehaviorY: disableOuterScroll
+                                      ? 'none'
+                                      : 'contain',
                                   overscrollBehaviorX: 'none',
                                   pointerEvents: 'auto',
                                   // Garante que o conteúdo esteja acima do overlay e de backdrops residuais

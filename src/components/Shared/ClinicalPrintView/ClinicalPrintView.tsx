@@ -23,14 +23,22 @@ type Professional = {
     phone?: string;
     register_number?: string;
     address?: string;
-    street?: string;
     number?: string;
     neighborhood?: string;
     zip_code?: string;
-    cnpj?: string;
     city?: string;
     state?: string;
+    cnpj?: string;
     odonto_quote_validity_days?: number | string;
+    tenant?: {
+        street?: string;
+        number?: string;
+        neighborhood?: string;
+        zip_code?: string;
+        city?: string;
+        state?: string;
+        odonto_quote_validity_days?: number | string;
+    };
 };
 
 type PrintableItem = {
@@ -101,6 +109,8 @@ export default function ClinicalPrintView({
     const prof = React.useMemo(loadProfessional, [professionalVersion]);
     if (!plan) return null;
 
+    const tenant = prof.tenant ?? {};
+
     // Container rows (e.g. "Produtos usados") are excluded — only leaf lines are printed.
     const containerIds = new Set(
         items.map(i => i.parent_item).filter((id): id is number => id != null),
@@ -113,13 +123,21 @@ export default function ClinicalPrintView({
         prof.display_name ||
         [prof.first_name, prof.last_name].filter(Boolean).join(' ') ||
         'Consultório Clínico';
-    const addressLine = [prof.address || prof.street, prof.number]
+    const addressLine = [
+        prof.address || tenant.street,
+        prof.number || tenant.number,
+    ]
         .filter(Boolean)
         .join(', ');
-    const locationLine = [prof.neighborhood, prof.city, prof.state]
+    const locationLine = [
+        prof.neighborhood || tenant.neighborhood,
+        prof.city || tenant.city,
+        prof.state || tenant.state,
+    ]
         .filter(Boolean)
         .join(' - ');
-    const postalLine = prof.zip_code ? `CEP ${prof.zip_code}` : '';
+    const postalCode = prof.zip_code || tenant.zip_code;
+    const postalLine = postalCode ? `CEP ${postalCode}` : '';
     const businessAddress =
         [addressLine, locationLine, postalLine].filter(Boolean).join(' | ') ||
         'Endereço comercial não informado';
@@ -128,7 +146,10 @@ export default function ClinicalPrintView({
     const printDate = new Intl.DateTimeFormat('pt-BR').format(new Date());
     const validityDays = Math.max(
         1,
-        Number(prof.odonto_quote_validity_days) || 30,
+        Number(
+            prof.odonto_quote_validity_days ??
+                tenant.odonto_quote_validity_days,
+        ) || 30,
     );
     const pages = paginateItems([
         ...services.map(item => ({
@@ -266,21 +287,7 @@ export default function ClinicalPrintView({
                                     <tbody>
                                         {pageProducts.map(item => (
                                             <tr key={item.id}>
-                                                <td>
-                                                    <div>
-                                                        {item.custom_name}
-                                                    </div>
-                                                    <small
-                                                        className={
-                                                            styles.printItemNotes
-                                                        }
-                                                    >
-                                                        {item.quantity ?? 1}x
-                                                        {item.notes
-                                                            ? ` — ${item.notes}`
-                                                            : ''}
-                                                    </small>
-                                                </td>
+                                                <td>{item.custom_name}</td>
                                                 <td className={styles.colValue}>
                                                     {formatMoney(
                                                         Number(
@@ -301,27 +308,7 @@ export default function ClinicalPrintView({
                         </section>
 
                         {isLastPage && (
-                            <div className={styles.printClosingBlock}>
-                                <section
-                                    className={`${styles.printSection} ${styles.clinicalNotes}`}
-                                >
-                                    <h2 className={styles.printSubtitle}>
-                                        Observações
-                                    </h2>
-                                    {plan.notes?.trim() ? (
-                                        <p className={styles.printNotesText}>
-                                            {plan.notes}
-                                        </p>
-                                    ) : (
-                                        <div
-                                            className={styles.observationLines}
-                                            aria-hidden='true'
-                                        >
-                                            <div />
-                                        </div>
-                                    )}
-                                </section>
-
+                            <>
                                 <section className={styles.printSection}>
                                     <hr className={styles.printDivider} />
                                     <div className={styles.printTotalRow}>
@@ -330,6 +317,26 @@ export default function ClinicalPrintView({
                                             {formatMoney(planTotal)}
                                         </strong>
                                     </div>
+                                </section>
+
+                                <div className={styles.printClosingBlock}>
+                                    <section
+                                        className={`${styles.printSection} ${styles.clinicalNotes}`}
+                                    >
+                                        <h2 className={styles.printSubtitle}>
+                                            Observações
+                                        </h2>
+                                        {plan.notes?.trim() ? (
+                                            <p
+                                                className={
+                                                    styles.printNotesText
+                                                }
+                                            >
+                                                {plan.notes}
+                                            </p>
+                                        ) : null}
+                                    </section>
+
                                     <p className={styles.printPaymentLine}>
                                         {paymentCondition === 'avista'
                                             ? 'Forma de pagamento: À Vista'
@@ -337,18 +344,19 @@ export default function ClinicalPrintView({
                                                   installmentValue,
                                               )} com vencimento inicial em ${formatDate(firstDueDate)}`}
                                     </p>
-                                </section>
 
-                                <p className={styles.validityText}>
-                                    Este orçamento é válido por {validityDays}{' '}
-                                    dias a partir da data de impressão.
-                                </p>
+                                    <p className={styles.validityText}>
+                                        Este orçamento é válido por{' '}
+                                        {validityDays} dias a partir da data de
+                                        impressão.
+                                    </p>
 
-                                <div className={styles.signatureBlock}>
-                                    <div className={styles.signatureLine} />
-                                    <span>Assinatura do responsável</span>
+                                    <div className={styles.signatureBlock}>
+                                        <div className={styles.signatureLine} />
+                                        <span>Assinatura do responsável</span>
+                                    </div>
                                 </div>
-                            </div>
+                            </>
                         )}
 
                         <footer className={styles.printFooter}>

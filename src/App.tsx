@@ -24,7 +24,6 @@ const LazyDesktopAgenda: React.ComponentType = lazy(async () => {
     }
 });
 const ClientFormPage = lazy(() => import('./pages/Clients/ClientFormPage'));
-const AdminPage = lazy(() => import('./pages/AdminPage'));
 const ProductFormPage = lazy(() => import('./pages/Catalog/ProductFormPage'));
 const TreatmentFormPage = lazy(
     () => import('./pages/Catalog/TreatmentFormPage'),
@@ -132,7 +131,6 @@ function App() {
                             path='/catalog/services'
                             element={<TreatmentListPage />}
                         />
-                        <Route path='/admin' element={<AdminPage />} />
                         <Route path='/consulta' element={<ConsultaPage />} />
                         <Route
                             path='/anamnesis/public'
