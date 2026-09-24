@@ -5,7 +5,7 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "node -e \"if(process.env.VERCEL_ENV==='production'&&process.env.VERCEL_GIT_COMMIT_REF!=='main'){console.error('Blocked production build: non-main branch');process.exit(1)}\" && node -e \"process.env.VITE_API_BASE = process.env.VITE_API_BASE || process.env.BASE_API_VITE || ''; const { execSync } = require('child_process'); execSync('tsc -b && vite build', { stdio: 'inherit' });\"",
+        "build": "node -e \"if(process.env.VERCEL_ENV==='production'&&process.env.VERCEL_GIT_COMMIT_REF&&process.env.VERCEL_GIT_COMMIT_REF!=='main'){console.error('Blocked production build: non-main branch');process.exit(1)}\" && node -e \"process.env.VITE_API_BASE = process.env.VITE_API_BASE || process.env.BASE_API_VITE || ''; const { execSync } = require('child_process'); execSync('tsc -b && vite build', { stdio: 'inherit' });\"",
         "typecheck": "tsc -p tsconfig.json --noEmit",
         "lint": "eslint .",
         "preview": "vite preview",
@@ -37,7 +37,7 @@
         "eslint-formatter-compact": "^9.0.1",
         "eslint-plugin-react-hooks": "^5.2.0",
         "eslint-plugin-react-refresh": "^0.4.20",
-        "esbuild": "^0.27.0",
+        "esbuild": "^0.28.2",
         "globals": "^16.3.0",
         "jsdom": "^27.0.0",
         "postcss": "^8.5.6",
