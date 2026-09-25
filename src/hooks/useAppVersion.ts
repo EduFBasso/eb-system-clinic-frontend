@@ -20,15 +20,15 @@ const LS_LAST_SEEN_KEY = 'app.version.lastSeen';
 
 export async function fetchServerVersion(): Promise<ServerVersionInfo | null> {
     try {
-        // Prefer /health/full which returns a body with version too
-        const res = await fetch(`${API_BASE}/health/full`, {
+        // VersionHeaderMiddleware adds X-App-Version without requiring a DB check.
+        const res = await fetch(`${API_BASE}/health/`, {
             method: 'GET',
             credentials: 'omit',
         });
         const header = res.headers.get('X-App-Version') || undefined;
         let bodyVer: string | undefined;
         try {
-            // health/full returns { status, database, version, time }
+            // Keep body parsing for compatible deployments that return version JSON.
             const json = (await res.json()) as { version?: string };
             if (
                 json &&

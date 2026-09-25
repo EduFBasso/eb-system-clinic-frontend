@@ -205,7 +205,9 @@ export default function ClientCardAgendaSection({
                                 className={styles.value}
                                 style={{ color: valueColor }}
                             >
-                                {client.next_appointment_title || 'Consulta'}
+                                {notifyAppt?.title ||
+                                    client.next_appointment_title ||
+                                    'Consulta'}
                             </span>
                             <button
                                 className={styles.iconButton}

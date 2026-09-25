@@ -70,7 +70,37 @@ export function useAppointmentSets(clientsLength: number): AppointmentSets {
                 return;
             }
 
-            const scheduledUrl = `${API_BASE}/agenda/appointments/?status=scheduled&ordering=-end_at&limit=300&ts=${Date.now()}`;
+            // Limites do dia de amanhã em hora local, enviados ao servidor em UTC.
+            const tmw = new Date();
+            tmw.setDate(tmw.getDate() + 1);
+            const tmwStartDate = new Date(
+                tmw.getFullYear(),
+                tmw.getMonth(),
+                tmw.getDate(),
+                0,
+                0,
+                0,
+                0,
+            );
+            const tmwEndDate = new Date(
+                tmw.getFullYear(),
+                tmw.getMonth(),
+                tmw.getDate() + 1,
+                0,
+                0,
+                0,
+                0,
+            );
+            const tmwStart = tmwStartDate.getTime();
+            const tmwEnd = tmwEndDate.getTime();
+            const scheduledParams = new URLSearchParams({
+                status: 'scheduled',
+                ordering: 'start_at',
+                start: tmwStartDate.toISOString(),
+                end: tmwEndDate.toISOString(),
+                ts: String(Date.now()),
+            });
+            const scheduledUrl = `${API_BASE}/agenda/appointments/?${scheduledParams}`;
 
             try {
                 const scheduledDataRaw = await apiFetch(scheduledUrl, {
@@ -84,28 +114,6 @@ export function useAppointmentSets(clientsLength: number): AppointmentSets {
                     number,
                     ScheduledAppointmentLike
                 >();
-
-                // Limites do dia de amanhã em hora local
-                const tmw = new Date();
-                tmw.setDate(tmw.getDate() + 1);
-                const tmwStart = new Date(
-                    tmw.getFullYear(),
-                    tmw.getMonth(),
-                    tmw.getDate(),
-                    0,
-                    0,
-                    0,
-                    0,
-                ).getTime();
-                const tmwEnd = new Date(
-                    tmw.getFullYear(),
-                    tmw.getMonth(),
-                    tmw.getDate(),
-                    23,
-                    59,
-                    59,
-                    999,
-                ).getTime();
 
                 // Ordena por start_at para garantir que o primeiro de amanhã seja o mais cedo
                 const sortedScheduled = [...scheduledData].sort((a, b) => {
@@ -123,7 +131,7 @@ export function useAppointmentSets(clientsLength: number): AppointmentSets {
                     if (
                         Number.isFinite(startMs) &&
                         startMs >= tmwStart &&
-                        startMs <= tmwEnd
+                        startMs < tmwEnd
                     ) {
                         tomorrowIds.add(clientId);
                         if (!tomorrowAppts.has(clientId)) {
