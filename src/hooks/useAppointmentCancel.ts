@@ -1,5 +1,6 @@
 import React from 'react';
 import { dispatchers } from '../events/dispatchers';
+import { cancelAppointment } from '../services/appointments';
 import type { Appointment } from './useAppointments';
 import { track } from '../utils/telemetry';
 import { focusClientCard } from '../utils/focusClientCard';
@@ -42,9 +43,6 @@ export function useAppointmentCancel({
     const handleCancel = React.useCallback(
         async (a: Appointment) => {
             try {
-                const { cancelAppointment } = await import(
-                    '../services/appointments'
-                );
                 const res = await cancelAppointment(a.id);
                 if (!res.ok) {
                     throw new Error(res.text || 'Erro ao cancelar');
