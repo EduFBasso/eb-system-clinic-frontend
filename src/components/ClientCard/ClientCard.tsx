@@ -152,8 +152,10 @@ function ClientCardBase({
         }
     }, []);
     const isTomorrowFilter = filterMode === 'tomorrow' && !!notifyAppt;
+    const hasScheduledAppointmentForActiveDay = isScheduled || isTomorrowFilter;
 
-    const hasAgendaLine = isScheduled || futureAppointments.length > 0;
+    const hasAgendaLine =
+        hasScheduledAppointmentForActiveDay || futureAppointments.length > 0;
 
     // Ações unificadas (+) para agenda e fallback
     const createActionAgenda = useClientCreateAction({
@@ -572,7 +574,7 @@ function ClientCardBase({
                 client={client}
                 notifyAppt={notifyAppt}
                 hasAgendaLine={hasAgendaLine}
-                isScheduled={isScheduled}
+                isScheduled={hasScheduledAppointmentForActiveDay}
                 activeStartISO={activeStartISO}
                 activeEndISO={activeEndISO}
                 displayStartISO={client.next_appointment_start_at || null}
