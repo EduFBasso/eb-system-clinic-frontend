@@ -28,6 +28,8 @@ interface ClientFormProps {
     onPublicSubmitSuccess?: () => void;
 }
 
+type RequiredClientField = 'first_name' | 'last_name' | 'phone';
+
 function buildDefaultClientData(cliente?: Partial<ClientData>): ClientData {
     return {
         first_name: cliente?.first_name ?? '',
@@ -162,22 +164,36 @@ export function ClientForm({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cliente?.id]);
 
-    const [feedback, setFeedback] = useState<{
-        type: 'error';
-        message: string;
-    } | null>(null);
-    const [infoModal, setInfoModal] = useState<{
-        title: string;
-        message: string;
-    } | null>(null);
-
-    const { deleteModalOpen, handleDelete, confirmDelete, cancelDelete } =
-        useClientDelete({ cliente, setFeedback });
-
     const [openSection, setOpenSection] = useState<string | null>(null);
     const toggleSection = (sectionId: string) => {
         setOpenSection(prev => (prev === sectionId ? null : sectionId));
     };
+
+    const [infoModal, setInfoModal] = useState<{
+        title: string;
+        message: string;
+        closeAction: 'stay' | 'exit';
+        focusField?: RequiredClientField;
+    } | null>(null);
+
+    function showErrorModal(message: string, focusField?: RequiredClientField) {
+        if (focusField) setOpenSection('personal');
+        setInfoModal({
+            title: 'Atenção',
+            message,
+            closeAction: 'stay',
+            focusField,
+        });
+    }
+
+    const { deleteModalOpen, handleDelete, confirmDelete, cancelDelete } =
+        useClientDelete({
+            cliente,
+            setFeedback: feedback => {
+                if (feedback) showErrorModal(feedback.message);
+            },
+        });
+
     function handleChange(
         fieldOrEvent:
             | keyof ClientData
@@ -349,19 +365,15 @@ export function ClientForm({
 
         if (isPublicMode) {
             if (!publicToken) {
-                setFeedback({
-                    type: 'error',
-                    message: 'Token público inválido. Solicite um novo link.',
-                });
+                showErrorModal(
+                    'Token público inválido. Solicite um novo link.',
+                );
                 return;
             }
 
             const payload = buildPublicPayload();
             if (!payload.first_name || !payload.last_name) {
-                setFeedback({
-                    type: 'error',
-                    message: 'Nome e Sobrenome são obrigatórios.',
-                });
+                showErrorModal('Nome e Sobrenome são obrigatórios.');
                 return;
             }
 
@@ -389,7 +401,7 @@ export function ClientForm({
                         }
                     }
                     const errorMsg = parseApiError(errorData, response.status);
-                    setFeedback({ type: 'error', message: errorMsg });
+                    showErrorModal(errorMsg);
                     return;
                 }
 
@@ -408,31 +420,33 @@ export function ClientForm({
                     title: 'Obrigado!',
                     message:
                         'Sua ficha de saúde e endereço foram atualizados com sucesso.',
+                    closeAction: 'exit',
                 });
             } catch (err) {
-                setFeedback({
-                    type: 'error',
-                    message:
-                        'Erro ao salvar: ' +
+                showErrorModal(
+                    'Erro ao salvar: ' +
                         (err instanceof Error ? err.message : 'desconhecido'),
-                });
+                );
             }
             return;
         }
 
         const token = getAccessToken();
         if (!token) {
-            setFeedback({ type: 'error', message: 'Usuário não autenticado.' });
+            showErrorModal('Usuário não autenticado.');
             return;
         }
 
         const payload = buildNestedPayload();
 
-        if (!payload.first_name || !payload.last_name || !payload.phone) {
-            setFeedback({
-                type: 'error',
-                message: 'Nome, Sobrenome e Telefone são obrigatórios.',
-            });
+        const missingField = (
+            ['first_name', 'last_name', 'phone'] as RequiredClientField[]
+        ).find(field => !payload[field]);
+        if (missingField) {
+            showErrorModal(
+                'Nome, Sobrenome e Telefone são obrigatórios.',
+                missingField,
+            );
             return;
         }
 
@@ -466,12 +480,17 @@ export function ClientForm({
                     /telefone|phone/i.test(errorMsg) &&
                     /cadastr|existe|duplicad/i.test(errorMsg)
                 ) {
-                    setInfoModal({ title: 'Atenção', message: errorMsg });
+                    setInfoModal({
+                        title: 'Atenção',
+                        message:
+                            'Este telefone já está cadastrado. Altere o número para continuar.',
+                        closeAction: 'stay',
+                    });
                     const err = new Error(errorMsg) as HandledError;
                     err.handled = true;
                     throw err;
                 }
-                setFeedback({ type: 'error', message: errorMsg });
+                showErrorModal(errorMsg);
                 const err = new Error(errorMsg) as HandledError;
                 err.handled = true;
                 throw err;
@@ -527,15 +546,14 @@ export function ClientForm({
                 message: isEdit
                     ? 'Cliente atualizado com sucesso!'
                     : 'Cliente cadastrado com sucesso!',
+                closeAction: 'exit',
             });
         } catch (err) {
             if (isHandledError(err) && err.handled) return;
-            setFeedback({
-                type: 'error',
-                message:
-                    'Erro ao salvar: ' +
+            showErrorModal(
+                'Erro ao salvar: ' +
                     (err instanceof Error ? err.message : 'desconhecido'),
-            });
+            );
         }
     };
 
@@ -561,7 +579,6 @@ export function ClientForm({
                     <ClientPersonalDataForm
                         formData={formData}
                         handleChange={handleChange}
-                        feedback={feedback}
                         isEdit={isEdit}
                         lockRequiredFields={isPublicMode}
                         themeOverride={themeOverride}
@@ -642,8 +659,21 @@ export function ClientForm({
                     title={infoModal.title}
                     message={infoModal.message}
                     onClose={() => {
+                        const { closeAction, focusField } = infoModal;
                         setInfoModal(null);
-                        closeSuccessAndExit();
+                        if (closeAction === 'exit') {
+                            closeSuccessAndExit();
+                            return;
+                        }
+                        if (focusField) {
+                            window.requestAnimationFrame(() => {
+                                const field =
+                                    formRef.current?.querySelector<HTMLInputElement>(
+                                        `[name="${focusField}"]`,
+                                    );
+                                field?.focus();
+                            });
+                        }
                     }}
                 />
             )}

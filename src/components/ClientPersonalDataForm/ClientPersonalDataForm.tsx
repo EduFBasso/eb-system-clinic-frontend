@@ -20,7 +20,6 @@ type ChangeHandler = (
 interface Props {
     formData: ClientData;
     handleChange: ChangeHandler;
-    feedback?: { type: 'error'; message: string } | null;
     isEdit?: boolean;
     lockRequiredFields?: boolean;
     themeOverride?: AppTheme;
@@ -29,7 +28,6 @@ interface Props {
 export default function ClientPersonalDataForm({
     formData,
     handleChange,
-    feedback,
     isEdit = false,
     lockRequiredFields = false,
     themeOverride,
@@ -46,12 +44,6 @@ export default function ClientPersonalDataForm({
                     </span>
                     <h2 className={styles.title}>Dados Pessoais</h2>
                 </header>
-
-                {feedback?.type === 'error' && (
-                    <p role='alert' className={styles.errorBanner}>
-                        {feedback.message}
-                    </p>
-                )}
 
                 <div className={styles.grid}>
                     <InputField
