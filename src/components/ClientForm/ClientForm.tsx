@@ -177,7 +177,11 @@ export function ClientForm({
     } | null>(null);
 
     function showErrorModal(message: string, focusField?: RequiredClientField) {
-        if (focusField) setOpenSection('personal');
+        if (focusField) {
+            setOpenSection(current =>
+                current === 'personal' ? current : 'personal',
+            );
+        }
         setInfoModal({
             title: 'Atenção',
             message,
@@ -480,12 +484,10 @@ export function ClientForm({
                     /telefone|phone/i.test(errorMsg) &&
                     /cadastr|existe|duplicad/i.test(errorMsg)
                 ) {
-                    setInfoModal({
-                        title: 'Atenção',
-                        message:
-                            'Este telefone já está cadastrado. Altere o número para continuar.',
-                        closeAction: 'stay',
-                    });
+                    showErrorModal(
+                        'Este telefone já está cadastrado. Altere o número para continuar.',
+                        'phone',
+                    );
                     const err = new Error(errorMsg) as HandledError;
                     err.handled = true;
                     throw err;
