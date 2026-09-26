@@ -7,10 +7,30 @@ interface InfoModalProps {
 }
 
 export default function InfoModal({ title, message, onClose }: InfoModalProps) {
+    const closeButtonRef = React.useRef<HTMLButtonElement>(null);
+    const previousActiveElementRef = React.useRef<HTMLElement | null>(null);
+
+    React.useEffect(() => {
+        const activeElement = document.activeElement;
+        previousActiveElementRef.current =
+            activeElement instanceof HTMLElement ? activeElement : null;
+        closeButtonRef.current?.focus();
+
+        return () => {
+            previousActiveElementRef.current?.focus();
+        };
+    }, []);
+
     return (
         <div
             role='dialog'
             aria-modal='true'
+            onKeyDown={event => {
+                if (event.key === 'Tab') {
+                    event.preventDefault();
+                    closeButtonRef.current?.focus();
+                }
+            }}
             style={{
                 position: 'fixed',
                 inset: 0,
@@ -41,6 +61,7 @@ export default function InfoModal({ title, message, onClose }: InfoModalProps) {
                 </p>
                 <div style={{ textAlign: 'right' }}>
                     <button
+                        ref={closeButtonRef}
                         type='button'
                         onClick={onClose}
                         style={{
