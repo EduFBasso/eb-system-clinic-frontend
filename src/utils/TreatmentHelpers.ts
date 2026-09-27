@@ -164,8 +164,16 @@ export function computePlanTotal(items: TreatmentItem[]): number {
         );
 }
 
+export const MIN_INSTALLMENTS_COUNT = 2;
+export const MAX_INSTALLMENTS_COUNT = 24;
+
 export function normalizeInstallmentsCount(value: string): number {
-    return Math.max(2, Number(value) || 2);
+    const count = Number(value);
+    if (!Number.isInteger(count)) return MIN_INSTALLMENTS_COUNT;
+    return Math.min(
+        MAX_INSTALLMENTS_COUNT,
+        Math.max(MIN_INSTALLMENTS_COUNT, count),
+    );
 }
 
 /** Returns today in YYYY-MM-DD using local timezone (avoids UTC-shift at night). */

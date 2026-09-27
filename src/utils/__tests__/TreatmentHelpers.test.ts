@@ -8,5 +8,8 @@ describe('normalizeInstallmentsCount', () => {
         expect(normalizeInstallmentsCount('1')).toBe(2);
         expect(normalizeInstallmentsCount('2')).toBe(2);
         expect(normalizeInstallmentsCount('5')).toBe(5);
+        expect(normalizeInstallmentsCount('24')).toBe(24);
+        expect(normalizeInstallmentsCount('25')).toBe(24);
+        expect(normalizeInstallmentsCount('2.5')).toBe(2);
     });
 });
