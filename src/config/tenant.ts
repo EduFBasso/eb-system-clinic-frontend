@@ -1,4 +1,8 @@
 const CLINIC_ROOT_DOMAINS = ['clinic.eb.com', 'clinic.eb.localhost'];
+const CLINIC_PUBLIC_HOST_TENANTS: Record<string, string> = {
+    'odontologia.clinic.ebsis.com.br': 'consultorio-odontologia',
+    'podologia.clinic.ebsis.com.br': 'consultorio-podologia',
+};
 
 // Diretriz 1: a query string `?tenant=` é um fallback provisório enquanto o
 // projeto não possui domínio/subdomínio próprio contratado. O deploy atual
@@ -61,6 +65,29 @@ function persistSlug(slug: string): void {
     }
 }
 
+export function resolveClinicTenantSlugFromHostname(
+    hostname: string,
+): string | null {
+    const normalizedHostname = hostname.trim().toLowerCase();
+    const mappedSlug = CLINIC_PUBLIC_HOST_TENANTS[normalizedHostname];
+    if (mappedSlug) {
+        return mappedSlug;
+    }
+
+    const rootDomain = CLINIC_ROOT_DOMAINS.find(
+        root =>
+            normalizedHostname === root ||
+            normalizedHostname.endsWith(`.${root}`),
+    );
+
+    if (!rootDomain || normalizedHostname === rootDomain) {
+        return null;
+    }
+
+    const slug = normalizedHostname.slice(0, -(rootDomain.length + 1));
+    return slug && !slug.includes('.') ? slug : null;
+}
+
 /**
  * O hostname seleciona a empresa; as capabilities retornadas pelo backend
  * selecionam a especialidade dentro do frontend Clinic compartilhado.
@@ -85,17 +112,10 @@ export function resolveClinicTenantSlug(): string | null {
         return querySlug || configuredSlug?.trim() || null;
     }
 
-    const rootDomain = CLINIC_ROOT_DOMAINS.find(
-        root => hostname === root || hostname.endsWith(`.${root}`),
-    );
-
-    if (rootDomain && hostname !== rootDomain) {
-        const slug = hostname.slice(0, -(rootDomain.length + 1));
-        if (slug && !slug.includes('.')) {
-            persistSlug(slug);
-            return slug;
-        }
-        return null;
+    const hostnameSlug = resolveClinicTenantSlugFromHostname(hostname);
+    if (hostnameSlug) {
+        persistSlug(hostnameSlug);
+        return hostnameSlug;
     }
 
     // Permite desenvolvimento em http://localhost:5173 sem criar um tenant
