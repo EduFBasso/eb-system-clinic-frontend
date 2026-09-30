@@ -5,23 +5,23 @@ describe('resolveClinicTenantSlugFromHostname', () => {
     it('maps the approved public Clinic hosts to internal tenant slugs', () => {
         expect(
             resolveClinicTenantSlugFromHostname(
-                'odontologia.clinic.ebsis.com.br',
+                'odontologia.clinica.ebsis.com.br',
             ),
         ).toBe('consultorio-odontologia');
         expect(
             resolveClinicTenantSlugFromHostname(
-                'podologia.clinic.ebsis.com.br',
+                'podologia.clinica.ebsis.com.br',
             ),
         ).toBe('consultorio-podologia');
     });
 
     it('does not resolve unknown ebsis Clinic hosts as tenants', () => {
         expect(
-            resolveClinicTenantSlugFromHostname('outra.clinic.ebsis.com.br'),
+            resolveClinicTenantSlugFromHostname('outra.clinica.ebsis.com.br'),
         ).toBeNull();
-        expect(resolveClinicTenantSlugFromHostname('clinic.ebsis.com.br')).toBe(
-            null,
-        );
+        expect(
+            resolveClinicTenantSlugFromHostname('clinica.ebsis.com.br'),
+        ).toBeNull();
     });
 
     it('keeps the existing development hostname convention', () => {

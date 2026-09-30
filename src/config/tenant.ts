@@ -1,7 +1,7 @@
 const CLINIC_ROOT_DOMAINS = ['clinic.eb.com', 'clinic.eb.localhost'];
 const CLINIC_PUBLIC_HOST_TENANTS: Record<string, string> = {
-    'odontologia.clinic.ebsis.com.br': 'consultorio-odontologia',
-    'podologia.clinic.ebsis.com.br': 'consultorio-podologia',
+    'odontologia.clinica.ebsis.com.br': 'consultorio-odontologia',
+    'podologia.clinica.ebsis.com.br': 'consultorio-podologia',
 };
 
 // Diretriz 1: a query string `?tenant=` é um fallback provisório enquanto o
