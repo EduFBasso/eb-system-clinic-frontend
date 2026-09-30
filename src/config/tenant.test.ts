@@ -1,5 +1,12 @@
-import { describe, expect, it } from 'vitest';
-import { resolveClinicTenantSlugFromHostname } from './tenant';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+    resolveClinicTenantSlug,
+    resolveClinicTenantSlugFromHostname,
+} from './tenant';
+
+afterEach(() => {
+    vi.unstubAllGlobals();
+});
 
 describe('resolveClinicTenantSlugFromHostname', () => {
     it('maps the approved public Clinic hosts to internal tenant slugs', () => {
@@ -22,6 +29,17 @@ describe('resolveClinicTenantSlugFromHostname', () => {
         expect(
             resolveClinicTenantSlugFromHostname('clinica.ebsis.com.br'),
         ).toBeNull();
+    });
+
+    it('blocks tenant query fallbacks on unknown public Clinic hosts', () => {
+        vi.stubGlobal('window', {
+            location: {
+                hostname: 'outra.clinica.ebsis.com.br',
+                search: '?tenant=consultorio-podologia',
+            },
+        });
+
+        expect(resolveClinicTenantSlug()).toBeNull();
     });
 
     it('keeps the existing development hostname convention', () => {

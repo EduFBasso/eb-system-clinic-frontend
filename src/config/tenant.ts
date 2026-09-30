@@ -3,6 +3,7 @@ const CLINIC_PUBLIC_HOST_TENANTS: Record<string, string> = {
     'odontologia.clinica.ebsis.com.br': 'consultorio-odontologia',
     'podologia.clinica.ebsis.com.br': 'consultorio-podologia',
 };
+const CLINIC_PUBLIC_ROOT_DOMAIN = 'clinica.ebsis.com.br';
 
 // Diretriz 1: a query string `?tenant=` é um fallback provisório enquanto o
 // projeto não possui domínio/subdomínio próprio contratado. O deploy atual
@@ -88,6 +89,13 @@ export function resolveClinicTenantSlugFromHostname(
     return slug && !slug.includes('.') ? slug : null;
 }
 
+function isPublicClinicHostname(hostname: string): boolean {
+    return (
+        hostname === CLINIC_PUBLIC_ROOT_DOMAIN ||
+        hostname.endsWith(`.${CLINIC_PUBLIC_ROOT_DOMAIN}`)
+    );
+}
+
 /**
  * O hostname seleciona a empresa; as capabilities retornadas pelo backend
  * selecionam a especialidade dentro do frontend Clinic compartilhado.
@@ -116,6 +124,12 @@ export function resolveClinicTenantSlug(): string | null {
     if (hostnameSlug) {
         persistSlug(hostnameSlug);
         return hostnameSlug;
+    }
+
+    // Hosts publicos Clinic nao mapeados devem falhar fechados. Nao permitir
+    // que query string ou storage selecionem outro tenant nesse contexto.
+    if (isPublicClinicHostname(hostname)) {
+        return null;
     }
 
     // Permite desenvolvimento em http://localhost:5173 sem criar um tenant
