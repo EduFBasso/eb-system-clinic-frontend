@@ -7,15 +7,13 @@ import PodologyEditProcedureModal from './PodologyEditProcedureModal';
 import ProductItemCard from './ProductItemCard';
 import { usePodologyItemFlows } from './usePodologyItemFlows';
 import { useClinicalCatalogs } from '../../hooks/useClinicalCatalogs';
-import {
-    formatMoney,
-    normalizeInstallmentsCount,
-} from '../../utils/TreatmentHelpers';
+import { formatMoney } from '../../utils/TreatmentHelpers';
 import type {
     PaymentCondition,
     PlanListItem,
     TreatmentItem,
 } from '../../utils/TreatmentHelpers';
+import { InstallmentsCountInput } from '../Shared/InstallmentsCountInput';
 import styles from '../Shared/TreatmentWorkspacePage/TreatmentWorkspacePage.module.css';
 
 type Props = {
@@ -323,19 +321,10 @@ export default function PodologyPlanWorkspace({
                         <div className={styles.paymentFields}>
                             <label className={styles.label}>
                                 Número de Parcelas
-                                <input
+                                <InstallmentsCountInput
                                     className={styles.input}
-                                    type='number'
-                                    min={2}
-                                    max={24}
                                     value={installmentsCount}
-                                    onChange={e =>
-                                        onInstallmentsCountChange(
-                                            normalizeInstallmentsCount(
-                                                e.target.value,
-                                            ),
-                                        )
-                                    }
+                                    onValueChange={onInstallmentsCountChange}
                                     disabled={isPlanLocked}
                                 />
                             </label>
