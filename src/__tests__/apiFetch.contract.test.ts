@@ -1,9 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-    ApiError,
-    apiFetch,
-    extractApiErrorMessage,
-} from '../utils/apiFetch';
+import { ApiError, apiFetch, extractApiErrorMessage } from '../utils/apiFetch';
 import { on } from '../events/bus';
 
 function jsonResponse(body: unknown, status = 200) {
@@ -57,9 +53,7 @@ describe('apiFetch backend contract', () => {
 
         localStorage.setItem('accessToken', 'stored');
         await apiFetch('/token/', { headers: { Authorization: 'Bearer own' } });
-        expect(lastRequest(fetchMock).headers.Authorization).toBe(
-            'Bearer own',
-        );
+        expect(lastRequest(fetchMock).headers.Authorization).toBe('Bearer own');
     });
 
     it('serializes object bodies as JSON', async () => {
