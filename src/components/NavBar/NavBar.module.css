@@ -462,7 +462,7 @@
         text-align: left;
     }
 
-    /* Mobile: botão Entrar abaixo do input e input com ~50% da coluna direita */
+    /* Mobile: use the full right column and stack the login controls. */
     .passBlock {
         width: 100%;
         flex-direction: column;
@@ -471,7 +471,9 @@
     }
 
     .passInlineRow {
-        width: 56%;
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
     }
 
     .passInlineRow .loginInput {
@@ -480,7 +482,7 @@
     }
 
     .enterButton {
-        width: 56%;
+        width: 100%;
         min-width: 0;
     }
 }
