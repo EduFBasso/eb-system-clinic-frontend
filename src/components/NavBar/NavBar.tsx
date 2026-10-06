@@ -20,68 +20,14 @@ import { startPerformanceSpan } from '../../utils/telemetry';
 type VerifyResponse = {
     access?: string;
     refresh?: string;
-    professional?: ProfessionalBasic;
+    professional?: Professional;
     // Dados comerciais/políticas Odonto do tenant ativo (endereço etc.).
-    tenant?: ProfessionalBasic['tenant'];
+    tenant?: Professional['tenant'];
     active_sessions_count?: number;
     device_id?: string;
     message?: string;
 };
-type ProfessionalLoginOption = {
-    id: number;
-    email: string;
-    first_name: string;
-    last_name: string;
-    specialty?: string;
-    // Diretriz 6/7: capabilities do tenant Clinic ao qual esta membership
-    // pertence (ex.: { clinic: true, odonto: true }), usado para filtrar o
-    // dropdown por especialidade.
-    tenant_capabilities?: Record<string, unknown>;
-};
-
-type ClinicCapability = 'odonto' | 'podologia';
-
-function resolveTenantCapability(
-    capabilities: Record<string, unknown> | undefined,
-): ClinicCapability | null {
-    if (!capabilities) {
-        return null;
-    }
-    const modules =
-        typeof capabilities.modules === 'object' &&
-        capabilities.modules !== null
-            ? (capabilities.modules as Record<string, unknown>)
-            : null;
-    if (capabilities.odonto === true || modules?.odonto === true) {
-        return 'odonto';
-    }
-    if (capabilities.podologia === true || modules?.podologia === true) {
-        return 'podologia';
-    }
-    return null;
-}
-
-// Diretriz 5/7: um tenant Clinic tem sempre uma única especialidade ativa.
-// O backend já delimita a lista por tenant_slug, então este filtro é hoje
-// redundante em produção — mas protege a UI caso um tenant futuro passe a
-// listar profissionais de especialidades diferentes por engano.
-function filterProfessionalsByCapability(
-    list: ProfessionalLoginOption[],
-): ProfessionalLoginOption[] {
-    const capabilities = list
-        .map(item => resolveTenantCapability(item.tenant_capabilities))
-        .filter((value): value is ClinicCapability => value !== null);
-    const expectedCapability = capabilities[0] ?? null;
-    if (!expectedCapability) {
-        return list;
-    }
-    return list.filter(
-        item =>
-            resolveTenantCapability(item.tenant_capabilities) ===
-            expectedCapability,
-    );
-}
-import type { Professional as ProfessionalBasic } from '../../types/models';
+import type { Professional } from '../../types/models';
 import styles from './NavBar.module.css';
 import { AgendaSettingsModal } from '../AgendaSettingsModal/AgendaSettingsModal';
 // formatTime removido: não exibimos mais relógio no header
@@ -115,17 +61,14 @@ export const NavBar: React.FC<NavBarProps> = ({
     const navigate = useNavigate();
 
     // Viewport listener removido (usado apenas pelo relógio)
-    const [loginEmail, setLoginEmail] = useState<string>(
-        () => localStorage.getItem('lastLoginEmail') ?? '',
-    );
+    const [loginEmail, setLoginEmail] = useState<string>(() => {
+        const tenantSlug = resolveClinicTenantSlug() ?? 'unknown';
+        return localStorage.getItem(`clinic:lastLogin:${tenantSlug}`) ?? '';
+    });
     const [loginPassword, setLoginPassword] = useState('');
     const [loadingLogin, setLoadingLogin] = useState(false);
-    const [professionals, setProfessionals] = useState<
-        ProfessionalLoginOption[]
-    >([]);
-    const [loadingProfessionals, setLoadingProfessionals] = useState(false);
     const [loggedProfessional, setLoggedProfessional] =
-        useState<ProfessionalBasic | null>(() => {
+        useState<Professional | null>(() => {
             const stored = localStorage.getItem('loggedProfessional');
             return stored ? JSON.parse(stored) : null;
         });
@@ -139,9 +82,6 @@ export const NavBar: React.FC<NavBarProps> = ({
     // Consulta dropdown state
     const [consultaDropdownOpen, setConsultaDropdownOpen] = useState(false);
     const consultaDropdownRef = useRef<HTMLDivElement>(null);
-    const [professionalDropdownOpen, setProfessionalDropdownOpen] =
-        useState(false);
-    const professionalDropdownRef = useRef<HTMLDivElement>(null);
     const loginButtonRef = useRef<HTMLButtonElement>(null);
 
     // Modal state
@@ -162,7 +102,6 @@ export const NavBar: React.FC<NavBarProps> = ({
         'Sua sessão expirou. Por favor, faça login novamente.',
     );
 
-    // Fecha dropdown ao clicar fora (Corrigido)
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             const target = event.target as Node;
@@ -182,24 +121,13 @@ export const NavBar: React.FC<NavBarProps> = ({
             ) {
                 setConsultaDropdownOpen(false);
             }
-            if (
-                professionalDropdownRef.current &&
-                !professionalDropdownRef.current.contains(target)
-            ) {
-                setProfessionalDropdownOpen(false);
-            }
         }
 
         document.addEventListener('mousedown', handleClickOutside);
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [
-        dropdownRef,
-        agendaDropdownRef,
-        consultaDropdownRef,
-        professionalDropdownRef,
-    ]);
+    }, [dropdownRef, agendaDropdownRef, consultaDropdownRef]);
 
     useEffect(() => {
         const token = getAccessToken();
@@ -211,61 +139,6 @@ export const NavBar: React.FC<NavBarProps> = ({
             if (stored) setLoggedProfessional(JSON.parse(stored));
         }
     }, []);
-
-    useEffect(() => {
-        let active = true;
-        if (loggedProfessional) {
-            return;
-        }
-        const tenantSlug = resolveClinicTenantSlug();
-        if (!tenantSlug) {
-            setProfessionals([]);
-            setLoadingProfessionals(false);
-            return;
-        }
-        const loadProfessionals = async () => {
-            setLoadingProfessionals(true);
-            const finishPerformance = startPerformanceSpan(
-                'api:professionals-basic',
-            );
-            try {
-                const res = await fetch(
-                    `${API_BASE}/register/professionals-basic/?ecosystem=clinic&tenant_slug=${encodeURIComponent(tenantSlug)}`,
-                );
-                finishPerformance({ ok: res.ok, status: res.status });
-                if (!res.ok) {
-                    throw new Error('Falha ao carregar profissionais.');
-                }
-                const data = await res.json();
-                const items = Array.isArray(data)
-                    ? data
-                    : Array.isArray(data?.results)
-                      ? data.results
-                      : [];
-                if (!active) {
-                    return;
-                }
-                setProfessionals(filterProfessionalsByCapability(items));
-            } catch (error) {
-                finishPerformance({
-                    ok: false,
-                    error:
-                        error instanceof Error ? error.message : String(error),
-                });
-                if (active) {
-                    setProfessionals([]);
-                }
-            } finally {
-                if (active) {
-                    setLoadingProfessionals(false);
-                }
-            }
-        };
-        void loadProfessionals();
-        return () => {
-            active = false;
-        };
-    }, [loggedProfessional]);
 
     useEffect(() => {
         const disposeLogin = on('auth:login', () => {
@@ -557,277 +430,176 @@ export const NavBar: React.FC<NavBarProps> = ({
                         </button>
                     </div>
                 ) : (
-                    <>
-                        {(() => {
-                            const selected = professionals.find(
-                                p => p.email === loginEmail,
-                            );
-                            const buttonLabel = selected
-                                ? `Alterar profissional: ${selected.first_name} ${selected.last_name}`
-                                : loadingProfessionals
-                                  ? 'Carregando profissionais'
-                                  : 'Selecionar profissional';
-                            return (
-                                <div
-                                    className={styles.dropdownWrapper}
-                                    ref={professionalDropdownRef}
-                                >
-                                    <button
-                                        className={`${styles.menuButton} ${styles.profSelectorBtn} ${styles.profSelectorLayout}`}
-                                        type='button'
-                                        onClick={() =>
-                                            setProfessionalDropdownOpen(
-                                                open => !open,
-                                            )
-                                        }
-                                        aria-haspopup='listbox'
-                                        aria-expanded={professionalDropdownOpen}
-                                        aria-label={buttonLabel}
-                                        title={buttonLabel}
-                                    >
-                                        <span className={styles.profIcon}>
-                                            🧑‍⚕️
-                                        </span>
-                                        {selected ? (
-                                            <span
-                                                className={
-                                                    styles.selectedProfName
-                                                }
-                                                title={`${selected.first_name} ${selected.last_name}${selected.specialty ? ' • ' + selected.specialty : ''}`}
-                                            >
-                                                {selected.first_name}
-                                            </span>
-                                        ) : (
-                                            <span
-                                                className={
-                                                    styles.selectedProfName
-                                                }
-                                            >
-                                                Profissional
-                                            </span>
-                                        )}
-                                        <span className={styles.caret}>▼</span>
-                                    </button>
-                                    {professionalDropdownOpen && (
-                                        <div
-                                            className={`${styles.dropdownMenu} ${styles.dropdownMenuRight}`}
-                                            role='listbox'
-                                        >
-                                            {professionals.length === 0 ? (
-                                                <button
-                                                    type='button'
-                                                    className={
-                                                        styles.dropdownItem
-                                                    }
-                                                    disabled
-                                                >
-                                                    Nenhum profissional
-                                                    disponível
-                                                </button>
-                                            ) : (
-                                                professionals.map(prof => (
-                                                    <button
-                                                        key={prof.id}
-                                                        type='button'
-                                                        className={
-                                                            styles.dropdownItem
-                                                        }
-                                                        onClick={() => {
-                                                            setLoginEmail(
-                                                                prof.email,
-                                                            );
-                                                            setProfessionalDropdownOpen(
-                                                                false,
-                                                            );
-                                                        }}
-                                                    >
-                                                        {prof.first_name}{' '}
-                                                        {prof.last_name} •{' '}
-                                                        {prof.specialty ||
-                                                            'Sem especialidade'}
-                                                    </button>
-                                                ))
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })()}
-                        {loginEmail && (
-                            <div className={styles.passBlock}>
-                                <div className={styles.passInlineRow}>
-                                    <input
-                                        type='text'
-                                        value={loginEmail}
-                                        readOnly
-                                        tabIndex={-1}
-                                        aria-hidden='true'
-                                        autoComplete='username'
-                                        className={styles.authHiddenField}
-                                    />
-                                    <input
-                                        type='password'
-                                        name='clinic-password'
-                                        placeholder='Senha'
-                                        className={styles.loginInput}
-                                        value={loginPassword}
-                                        onChange={e =>
-                                            setLoginPassword(e.target.value)
-                                        }
-                                        autoComplete='current-password'
-                                        autoCorrect='off'
-                                        autoCapitalize='off'
-                                        spellCheck={false}
-                                        autoFocus
-                                        onKeyDown={e => {
-                                            if (e.key === 'Enter') {
-                                                e.preventDefault();
-                                                loginButtonRef.current?.click();
-                                            }
-                                        }}
-                                    />
-                                </div>
-                                <button
-                                    ref={loginButtonRef}
-                                    className={`${styles.loginButton} ${styles.enterButton}`}
-                                    disabled={loadingLogin || !loginPassword}
-                                    aria-busy={loadingLogin}
-                                    onClick={async () => {
-                                        setLoadingLogin(true);
-                                        try {
-                                            const deviceIdKey = 'device_id';
-                                            const deviceId =
-                                                getOrCreateDeviceId(
-                                                    deviceIdKey,
-                                                );
-                                            const tenantSlug =
-                                                resolveClinicTenantSlug();
-                                            if (!tenantSlug) {
-                                                setModalMessage(
-                                                    'Acesso bloqueado: domínio da clínica não reconhecido.',
-                                                );
-                                                setModalOpen(true);
-                                                setLoadingLogin(false);
-                                                return;
-                                            }
-                                            const finishLoginPerformance =
-                                                startPerformanceSpan(
-                                                    'api:token',
-                                                );
-                                            let res: Response;
-                                            try {
-                                                res = await fetch(
-                                                    `${API_BASE}/token/`,
-                                                    {
-                                                        method: 'POST',
-                                                        headers: {
-                                                            'Content-Type':
-                                                                'application/json',
-                                                        },
-                                                        body: JSON.stringify({
-                                                            email: loginEmail,
-                                                            password:
-                                                                loginPassword,
-                                                            device_id: deviceId,
-                                                            tenant_slug:
-                                                                tenantSlug,
-                                                        }),
-                                                    },
-                                                );
-                                            } catch (error) {
-                                                finishLoginPerformance({
-                                                    ok: false,
-                                                    error:
-                                                        error instanceof Error
-                                                            ? error.message
-                                                            : String(error),
-                                                });
-                                                throw error;
-                                            }
-                                            finishLoginPerformance({
-                                                ok: res.ok,
-                                                status: res.status,
-                                            });
-                                            let data: VerifyResponse = {};
-                                            try {
-                                                data = await res.json();
-                                            } catch {
-                                                data = {
-                                                    message:
-                                                        'Falha ao interpretar resposta do servidor',
-                                                };
-                                            }
-                                            if (res.ok && data.access) {
-                                                setModalMessage(
-                                                    'Login realizado! Dados dos clientes liberados.',
-                                                );
-                                                setModalOpen(true);
-                                                localStorage.setItem(
-                                                    'accessToken',
-                                                    data.access,
-                                                );
-                                                setLoginPassword('');
-                                                // Endereço/políticas vêm do tenant; CNPJ vem do professional.
-                                                const loggedProfessionalData =
-                                                    data.professional
-                                                        ? {
-                                                              ...data.professional,
-                                                              tenant: data.tenant,
-                                                          }
-                                                        : null;
-                                                setLoggedProfessional(
-                                                    loggedProfessionalData,
-                                                );
-                                                localStorage.setItem(
-                                                    'loggedProfessional',
-                                                    JSON.stringify(
-                                                        loggedProfessionalData,
-                                                    ),
-                                                );
-                                                if (data.device_id) {
-                                                    localStorage.setItem(
-                                                        deviceIdKey,
-                                                        String(data.device_id),
-                                                    );
-                                                }
-                                                emit('auth:login', undefined);
-                                                window.dispatchEvent(
-                                                    new Event('updateClients'),
-                                                );
-                                                window.dispatchEvent(
-                                                    new Event('clearClients'),
-                                                );
-                                                localStorage.setItem(
-                                                    'lastLoginEmail',
-                                                    loginEmail,
-                                                );
-                                            } else {
-                                                setModalMessage(
-                                                    extractApiErrorMessage(
-                                                        data,
-                                                        'Credenciais inválidas',
-                                                    ),
-                                                );
-                                                setModalOpen(true);
-                                            }
-                                        } catch (err) {
-                                            const detail =
-                                                err instanceof Error
-                                                    ? err.message
-                                                    : String(err);
-                                            setModalMessage(
-                                                `Erro ao validar credenciais: ${detail}`,
-                                            );
-                                            setModalOpen(true);
-                                        }
+                    <div className={styles.passBlock}>
+                        <div className={styles.passInlineRow}>
+                            <input
+                                type='text'
+                                name='clinic-login'
+                                placeholder='Apelido ou e-mail'
+                                className={styles.loginInput}
+                                value={loginEmail}
+                                onChange={e => setLoginEmail(e.target.value)}
+                                autoComplete='username'
+                                autoCorrect='off'
+                                autoCapitalize='off'
+                                spellCheck={false}
+                            />
+                            <input
+                                type='password'
+                                name='clinic-password'
+                                placeholder='Senha'
+                                className={styles.loginInput}
+                                value={loginPassword}
+                                onChange={e => setLoginPassword(e.target.value)}
+                                autoComplete='current-password'
+                                autoCorrect='off'
+                                autoCapitalize='off'
+                                spellCheck={false}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        loginButtonRef.current?.click();
+                                    }
+                                }}
+                            />
+                        </div>
+                        <button
+                            ref={loginButtonRef}
+                            className={`${styles.loginButton} ${styles.enterButton}`}
+                            disabled={loadingLogin || !loginPassword}
+                            aria-busy={loadingLogin}
+                            onClick={async () => {
+                                setLoadingLogin(true);
+                                try {
+                                    const deviceIdKey = 'device_id';
+                                    const deviceId =
+                                        getOrCreateDeviceId(deviceIdKey);
+                                    const tenantSlug =
+                                        resolveClinicTenantSlug();
+                                    if (!tenantSlug) {
+                                        setModalMessage(
+                                            'Acesso bloqueado: domínio da clínica não reconhecido.',
+                                        );
+                                        setModalOpen(true);
                                         setLoadingLogin(false);
-                                    }}
-                                >
-                                    {loadingLogin ? 'Entrando...' : 'Entrar'}
-                                </button>
-                            </div>
-                        )}
-                    </>
+                                        return;
+                                    }
+                                    const finishLoginPerformance =
+                                        startPerformanceSpan('api:token');
+                                    let res: Response;
+                                    try {
+                                        res = await fetch(
+                                            `${API_BASE}/token/`,
+                                            {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type':
+                                                        'application/json',
+                                                },
+                                                body: JSON.stringify({
+                                                    login: loginEmail,
+                                                    password: loginPassword,
+                                                    device_id: deviceId,
+                                                    tenant_slug: tenantSlug,
+                                                }),
+                                            },
+                                        );
+                                    } catch (error) {
+                                        finishLoginPerformance({
+                                            ok: false,
+                                            error:
+                                                error instanceof Error
+                                                    ? error.message
+                                                    : String(error),
+                                        });
+                                        throw error;
+                                    }
+                                    finishLoginPerformance({
+                                        ok: res.ok,
+                                        status: res.status,
+                                    });
+                                    let data: VerifyResponse = {};
+                                    try {
+                                        data = await res.json();
+                                    } catch {
+                                        data = {
+                                            message:
+                                                'Falha ao interpretar resposta do servidor',
+                                        };
+                                    }
+                                    if (res.ok && data.access) {
+                                        setModalMessage(
+                                            'Login realizado! Dados dos clientes liberados.',
+                                        );
+                                        setModalOpen(true);
+                                        localStorage.setItem(
+                                            'accessToken',
+                                            data.access,
+                                        );
+                                        setLoginPassword('');
+                                        // Endereço/políticas vêm do tenant; CNPJ vem do professional.
+                                        const loggedProfessionalData =
+                                            data.professional
+                                                ? {
+                                                      ...data.professional,
+                                                      tenant: data.tenant,
+                                                  }
+                                                : null;
+                                        setLoggedProfessional(
+                                            loggedProfessionalData,
+                                        );
+                                        localStorage.setItem(
+                                            'loggedProfessional',
+                                            JSON.stringify(
+                                                loggedProfessionalData,
+                                            ),
+                                        );
+                                        if (data.device_id) {
+                                            localStorage.setItem(
+                                                deviceIdKey,
+                                                String(data.device_id),
+                                            );
+                                        }
+                                        emit('auth:login', undefined);
+                                        window.dispatchEvent(
+                                            new Event('updateClients'),
+                                        );
+                                        window.dispatchEvent(
+                                            new Event('clearClients'),
+                                        );
+                                        const tenantKey =
+                                            resolveClinicTenantSlug();
+                                        if (tenantKey) {
+                                            localStorage.setItem(
+                                                `clinic:lastLogin:${tenantKey}`,
+                                                loginEmail,
+                                            );
+                                        }
+                                    } else {
+                                        setModalMessage(
+                                            extractApiErrorMessage(
+                                                data,
+                                                'Credenciais inválidas',
+                                            ),
+                                        );
+                                        setModalOpen(true);
+                                    }
+                                } catch (err) {
+                                    const detail =
+                                        err instanceof Error
+                                            ? err.message
+                                            : String(err);
+                                    setModalMessage(
+                                        `Erro ao validar credenciais: ${detail}`,
+                                    );
+                                    setModalOpen(true);
+                                }
+                                setLoadingLogin(false);
+                            }}
+                        >
+                            {loadingLogin ? 'Entrando...' : 'Entrar'}
+                        </button>
+                    </div>
                 )}
             </div>
 
