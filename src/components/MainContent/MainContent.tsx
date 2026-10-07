@@ -25,6 +25,12 @@ function normalizeText(s: string) {
         .trim();
 }
 
+function normalizePhoneDigits(value: string | null | undefined) {
+    return String(value ?? '').replace(/\D/g, '');
+}
+
+const MIN_PHONE_SEARCH_DIGITS = 5;
+
 interface MainContentProps {
     selectedClientId: number | null;
     setSelectedClientId: (id: number | null) => void;
@@ -523,12 +529,16 @@ export const MainContent: React.FC<MainContentProps> = ({
     // Memoizado: só recalcula quando `clients` ou `filter` mudam — evita .sort() de 1235 itens a cada render.
     const filteredClients = React.useMemo(() => {
         const norm = normalizeText(filter);
+        const filterDigits = normalizePhoneDigits(filter);
 
         const entries = clients.map(client => {
             const fullName = `${client.first_name} ${client.last_name}`;
             const normalizedFirstName = normalizeText(client.first_name);
             const normalizedLastName = normalizeText(client.last_name);
             const normalizedFullName = normalizeText(fullName);
+            const phoneMatches =
+                filterDigits.length >= MIN_PHONE_SEARCH_DIGITS &&
+                normalizePhoneDigits(client.phone).includes(filterDigits);
 
             let affinityWeight: 1 | 2 | 3 | null = null;
             if (norm) {
@@ -542,7 +552,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                     affinityWeight = 1;
                 } else if (lastNameStarts) {
                     affinityWeight = 2;
-                } else if (includesSomewhere) {
+                } else if (includesSomewhere || phoneMatches) {
                     affinityWeight = 3;
                 }
             }
