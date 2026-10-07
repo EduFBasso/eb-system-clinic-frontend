@@ -65,10 +65,10 @@ export function useClinicalTreatmentPlans(
             const stored = localStorage.getItem('loggedProfessional');
             if (!stored) return;
             const professional = JSON.parse(stored) as {
-                tenant?: { lock_odonto_plan_after_print?: boolean };
+                lock_odonto_plan_after_print?: boolean;
             };
             setLockAfterPrint(
-                professional.tenant?.lock_odonto_plan_after_print !== false,
+                professional.lock_odonto_plan_after_print !== false,
             );
         } catch {
             setLockAfterPrint(true);
@@ -102,7 +102,7 @@ export function useClinicalTreatmentPlans(
         setError(null);
         try {
             const [plansRes, clientRes] = await Promise.all([
-                apiFetch(`/api/v1/clinic/clinic/treatment/plans/?client=${numericClientId}`),
+                apiFetch(`/api/v1/clinic/treatment/plans/?client=${numericClientId}`),
                 apiFetch(`/api/v1/clinic/register/clients/${numericClientId}/`).catch(
                     () => null,
                 ),
@@ -132,7 +132,7 @@ export function useClinicalTreatmentPlans(
                         hydratePlanDetails(refreshed);
                     }
                     const itemsRes = await apiFetch(
-                        `/api/v1/clinic/clinic/treatment/items/?plan=${refreshed.id}`,
+                        `/api/v1/clinic/treatment/items/?plan=${refreshed.id}`,
                     );
                     setItems(asList<TreatmentItem>(itemsRes));
                 } else {
@@ -167,7 +167,7 @@ export function useClinicalTreatmentPlans(
         if (!numericClientId || savingCreatePlan) return;
         setSavingCreatePlan(true);
         try {
-            const created = (await apiFetch('/api/v1/clinic/clinic/treatment/plans/', {
+            const created = (await apiFetch('/api/v1/clinic/treatment/plans/', {
                 method: 'POST',
                 body: {
                     client: numericClientId,
@@ -212,7 +212,7 @@ export function useClinicalTreatmentPlans(
         hydratePlanDetails(found);
         try {
             const res = await apiFetch(
-                `/api/v1/clinic/clinic/treatment/items/?plan=${planId}`,
+                `/api/v1/clinic/treatment/items/?plan=${planId}`,
             );
             setItems(asList<TreatmentItem>(res));
         } catch {
@@ -243,7 +243,7 @@ export function useClinicalTreatmentPlans(
         const { planId } = deleteConfirmation;
         setDeleteConfirmation(null);
         try {
-            await apiFetch(`/api/v1/clinic/clinic/treatment/plans/${planId}/`, {
+            await apiFetch(`/api/v1/clinic/treatment/plans/${planId}/`, {
                 method: 'DELETE',
             });
             setAllPlans(prev => prev.filter(p => p.id !== planId));
@@ -276,7 +276,7 @@ export function useClinicalTreatmentPlans(
             setSavingPlanDetails(true);
             try {
                 const updated = (await apiFetch(
-                    `/api/v1/clinic/clinic/treatment/plans/${plan.id}/`,
+                    `/api/v1/clinic/treatment/plans/${plan.id}/`,
                     {
                         method: 'PATCH',
                         body: {
@@ -378,7 +378,7 @@ export function useClinicalTreatmentPlans(
         setMarkingPrinted(true);
         try {
             const updated = (await apiFetch(
-                `/api/v1/clinic/clinic/treatment/plans/${plan.id}/mark-printed/`,
+                `/api/v1/clinic/treatment/plans/${plan.id}/mark-printed/`,
                 { method: 'POST' },
             )) as PlanListItem;
             setPlan(updated);
@@ -405,7 +405,7 @@ export function useClinicalTreatmentPlans(
     async function updateLockAfterPrint(enabled: boolean) {
         setLockAfterPrint(enabled);
         try {
-            const updated = (await apiFetch('/api/v1/clinic/register/tenant/profile/', {
+            const updated = (await apiFetch('/api/v1/clinic/register/professionals/me/', {
                 method: 'PATCH',
                 body: { lock_odonto_plan_after_print: enabled },
             })) as { lock_odonto_plan_after_print?: boolean };
@@ -416,7 +416,8 @@ export function useClinicalTreatmentPlans(
                 'loggedProfessional',
                 JSON.stringify({
                     ...previous,
-                    tenant: { ...previous.tenant, ...updated },
+                    lock_odonto_plan_after_print:
+                        updated.lock_odonto_plan_after_print ?? enabled,
                 }),
             );
             emit('systemMessage', {

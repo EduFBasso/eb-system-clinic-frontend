@@ -156,7 +156,7 @@ export function useOdontoItemFlows(
                 const amount = row.value.trim() ? parseAmount(row.value) : null;
                 const dentalContext = dentalContextFromServiceRow(row);
 
-                await apiFetch('/api/v1/clinic/clinic/treatment/items/', {
+                await apiFetch('/api/v1/clinic/treatment/items/', {
                     method: 'POST',
                     body: {
                         plan: plan.id,
