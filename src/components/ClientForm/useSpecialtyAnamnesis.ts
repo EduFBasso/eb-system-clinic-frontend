@@ -139,7 +139,7 @@ export function useSpecialtyAnamnesis({
         if (state.kind !== 'odonto') return;
 
         const response = await fetch(
-            `${API_BASE}/clinic/treatment/anamnesis/`,
+            `${API_BASE}/api/v1/clinic/clinic/treatment/anamnesis/`,
             {
                 method: 'POST',
                 headers: {

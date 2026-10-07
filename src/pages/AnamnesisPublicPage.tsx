@@ -70,7 +70,7 @@ export default function AnamnesisPublicPage() {
             }
 
             try {
-                const validateUrl = `${API_BASE}/register/clients/validate-anamnesis-token/`;
+                const validateUrl = `${API_BASE}/api/v1/clinic/register/clients/validate-anamnesis-token/`;
                 if (import.meta.env.DEV) {
                     console.info(
                         '[anamnesis-public] validate-url',

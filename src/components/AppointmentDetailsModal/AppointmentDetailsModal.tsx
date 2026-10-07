@@ -131,7 +131,7 @@ export function AppointmentDetailsModal({
             setHoveredPaymentId(null);
             return;
         }
-        apiFetch(`${API_BASE}/agenda/charges/?appointment=${appt.id}`)
+        apiFetch(`${API_BASE}/api/v1/clinic/agenda/charges/?appointment=${appt.id}`)
             .then(data => {
                 const raw = data as { results?: Charge[] } | Charge[];
                 const list = Array.isArray(raw)
@@ -205,7 +205,7 @@ export function AppointmentDetailsModal({
                                 : chargeItem,
                         );
                         return (await apiFetch(
-                            `${API_BASE}/agenda/charges/${charge.id}/`,
+                            `${API_BASE}/api/v1/clinic/agenda/charges/${charge.id}/`,
                             { method: 'PATCH', body: { items } },
                         )) as Charge;
                     }),

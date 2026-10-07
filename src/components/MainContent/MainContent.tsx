@@ -844,7 +844,7 @@ export const MainContent: React.FC<MainContentProps> = ({
         } catch {
             /* noop */
         }
-        apiFetch(`/register/clients/${cliente.id}/`, {
+        apiFetch(`/api/v1/clinic/register/clients/${cliente.id}/`, {
             timeoutMs: 12000,
         })
             .then(data => {

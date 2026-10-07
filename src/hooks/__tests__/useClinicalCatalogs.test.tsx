@@ -43,7 +43,7 @@ describe('useClinicalCatalogs treatment categories', () => {
 
         expect(apiFetchMock).toHaveBeenNthCalledWith(
             1,
-            expect.stringContaining('/inventory/services/'),
+            expect.stringContaining('/api/v1/clinic/inventory/services/'),
             {
                 method: 'POST',
                 body: {
@@ -103,7 +103,7 @@ describe('useClinicalCatalogs treatment categories', () => {
 
         expect(apiFetchMock).toHaveBeenNthCalledWith(
             2,
-            expect.stringContaining('/inventory/services/20/'),
+            expect.stringContaining('/api/v1/clinic/inventory/services/20/'),
             {
                 method: 'PATCH',
                 body: { treatment_scopes: ['tooth', 'arch'] },

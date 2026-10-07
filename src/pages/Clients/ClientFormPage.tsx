@@ -40,7 +40,7 @@ export default function ClientFormPage() {
             setLoading(true);
             setError('');
             const token = getAccessToken();
-            const url = `${API_BASE}/register/clients/${id}/`;
+            const url = `${API_BASE}/api/v1/clinic/register/clients/${id}/`;
             fetch(url, {
                 headers: {
                     Authorization: `Bearer ${token}`,

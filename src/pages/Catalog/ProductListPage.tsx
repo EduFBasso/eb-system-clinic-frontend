@@ -69,7 +69,7 @@ export default function ProductListPage() {
             setLoading(true);
             setError(null);
             try {
-                const data = await apiFetch(`${API_BASE}/inventory/products/`);
+                const data = await apiFetch(`${API_BASE}/api/v1/clinic/inventory/products/`);
                 if (!mounted) return;
                 const list = (Array.isArray(data) ? data : []) as Product[];
                 setItems(list);
@@ -119,7 +119,7 @@ export default function ProductListPage() {
 
         for (const productId of ids) {
             try {
-                await apiFetch(`${API_BASE}/inventory/products/${productId}/`, {
+                await apiFetch(`${API_BASE}/api/v1/clinic/inventory/products/${productId}/`, {
                     method: 'DELETE',
                 });
                 deletedIds.push(productId);

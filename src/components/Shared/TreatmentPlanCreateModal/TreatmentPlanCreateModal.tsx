@@ -112,7 +112,7 @@ export default function TreatmentPlanCreateModal({
             })();
 
             const updatedPersonal = (await apiFetch(
-                '/register/professionals/me/',
+                '/api/v1/clinic/register/professionals/me/',
                 {
                     method: 'PATCH',
                     body: personalPayload,

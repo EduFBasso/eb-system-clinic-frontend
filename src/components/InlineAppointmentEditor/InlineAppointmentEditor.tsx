@@ -90,7 +90,7 @@ export function InlineAppointmentEditor({
                 /* ignore */
             }
             const resp = await fetch(
-                `${API_BASE}/agenda/appointments/${effective.id}/`,
+                `${API_BASE}/api/v1/clinic/agenda/appointments/${effective.id}/`,
                 {
                     method: 'PATCH',
                     headers,

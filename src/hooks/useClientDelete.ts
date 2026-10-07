@@ -43,7 +43,7 @@ export function useClientDelete({
             return;
         }
 
-        fetch(`${API_BASE}/register/clients/${cliente?.id}/`, {
+        fetch(`${API_BASE}/api/v1/clinic/register/clients/${cliente?.id}/`, {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${token}` },
         })

@@ -121,7 +121,7 @@ export default function Home() {
                         let appt: Appointment | null = null;
                         if (token) {
                             const res = await fetch(
-                                `${API_BASE}/agenda/appointments/${editId}/`,
+                                `${API_BASE}/api/v1/clinic/agenda/appointments/${editId}/`,
                                 {
                                     headers: {
                                         Authorization: `Bearer ${token}`,

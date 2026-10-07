@@ -114,7 +114,7 @@ export default function ClientCardAgendaSection({
 
             const token = getAccessToken();
             fetch(
-                `${API_BASE}/agenda/appointments/${client.next_appointment_id}/`,
+                `${API_BASE}/api/v1/clinic/agenda/appointments/${client.next_appointment_id}/`,
                 {
                     headers: {
                         Authorization: token ? `Bearer ${token}` : '',

@@ -147,7 +147,7 @@ export function useQuickScheduleSave({
 
             if (currentEdit) {
                 const resp = await fetch(
-                    `${API_BASE}/agenda/appointments/${currentEdit.id}/`,
+                    `${API_BASE}/api/v1/clinic/agenda/appointments/${currentEdit.id}/`,
                     {
                         method: 'PATCH',
                         headers,
@@ -186,7 +186,7 @@ export function useQuickScheduleSave({
                     /* noop */
                 }
 
-                let resp = await fetch(`${API_BASE}/agenda/appointments/`, {
+                let resp = await fetch(`${API_BASE}/api/v1/clinic/agenda/appointments/`, {
                     method: 'POST',
                     headers: { ...headers, ...buildDeviceHeaders() },
                     body: JSON.stringify({
@@ -206,7 +206,7 @@ export function useQuickScheduleSave({
                     } catch {
                         /* noop */
                     }
-                    resp = await fetch(`${API_BASE}/agenda/appointments/`, {
+                    resp = await fetch(`${API_BASE}/api/v1/clinic/agenda/appointments/`, {
                         method: 'POST',
                         headers: { ...headers, ...buildDeviceHeaders() },
                         body: JSON.stringify({

@@ -119,7 +119,7 @@ export default function DesktopAgendaPage() {
             if (apptId) payload = { appointmentId: apptId };
         }
         if (!payload?.appointmentId) return;
-        apiFetch(`/agenda/appointments/${payload.appointmentId}/`)
+        apiFetch(`/api/v1/clinic/agenda/appointments/${payload.appointmentId}/`)
             .then(appt => {
                 if (appt) {
                     setDetailsReturnContext(payload?.returnContext ?? null);

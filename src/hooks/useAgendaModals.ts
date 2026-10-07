@@ -71,7 +71,7 @@ export async function ensureClientBasic(id: number): Promise<ClientBasic> {
             email: '',
         } as ClientBasic;
     try {
-        const res = await fetch(`${API_BASE}/register/clients/${id}/`, {
+        const res = await fetch(`${API_BASE}/api/v1/clinic/register/clients/${id}/`, {
             headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {

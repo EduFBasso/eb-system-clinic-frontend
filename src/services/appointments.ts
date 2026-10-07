@@ -3,7 +3,7 @@ import ensureDeviceSession from './sessions';
 
 export async function postDone(apptId: number): Promise<boolean> {
     try {
-        await apiFetch(`/agenda/appointments/${apptId}/done/`, {
+        await apiFetch(`/api/v1/clinic/agenda/appointments/${apptId}/done/`, {
             method: 'POST',
         });
         return true;
@@ -32,7 +32,7 @@ export async function cancelAppointment(
         text?: string;
     }> {
         try {
-            await apiFetch(`/agenda/appointments/${apptId}/cancel/`, {
+            await apiFetch(`/api/v1/clinic/agenda/appointments/${apptId}/cancel/`, {
                 method: 'POST',
                 cache: 'no-store',
             });
@@ -72,7 +72,7 @@ export async function fetchFutureAppointments(
 > {
     try {
         const data = (await apiFetch(
-            `/agenda/appointments/?start=${encodeURIComponent(startRefISO)}&limit=${limitOverfetch}&ordering=start_at&client=${clientId}`,
+            `/api/v1/clinic/agenda/appointments/?start=${encodeURIComponent(startRefISO)}&limit=${limitOverfetch}&ordering=start_at&client=${clientId}`,
         )) as unknown as unknown[];
         const arr = Array.isArray(data) ? data : [];
         return arr

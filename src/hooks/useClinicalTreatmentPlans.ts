@@ -102,8 +102,8 @@ export function useClinicalTreatmentPlans(
         setError(null);
         try {
             const [plansRes, clientRes] = await Promise.all([
-                apiFetch(`/clinic/treatment/plans/?client=${numericClientId}`),
-                apiFetch(`/register/clients/${numericClientId}/`).catch(
+                apiFetch(`/api/v1/clinic/clinic/treatment/plans/?client=${numericClientId}`),
+                apiFetch(`/api/v1/clinic/register/clients/${numericClientId}/`).catch(
                     () => null,
                 ),
             ]);
@@ -132,7 +132,7 @@ export function useClinicalTreatmentPlans(
                         hydratePlanDetails(refreshed);
                     }
                     const itemsRes = await apiFetch(
-                        `/clinic/treatment/items/?plan=${refreshed.id}`,
+                        `/api/v1/clinic/clinic/treatment/items/?plan=${refreshed.id}`,
                     );
                     setItems(asList<TreatmentItem>(itemsRes));
                 } else {
@@ -167,7 +167,7 @@ export function useClinicalTreatmentPlans(
         if (!numericClientId || savingCreatePlan) return;
         setSavingCreatePlan(true);
         try {
-            const created = (await apiFetch('/clinic/treatment/plans/', {
+            const created = (await apiFetch('/api/v1/clinic/clinic/treatment/plans/', {
                 method: 'POST',
                 body: {
                     client: numericClientId,
@@ -212,7 +212,7 @@ export function useClinicalTreatmentPlans(
         hydratePlanDetails(found);
         try {
             const res = await apiFetch(
-                `/clinic/treatment/items/?plan=${planId}`,
+                `/api/v1/clinic/clinic/treatment/items/?plan=${planId}`,
             );
             setItems(asList<TreatmentItem>(res));
         } catch {
@@ -243,7 +243,7 @@ export function useClinicalTreatmentPlans(
         const { planId } = deleteConfirmation;
         setDeleteConfirmation(null);
         try {
-            await apiFetch(`/clinic/treatment/plans/${planId}/`, {
+            await apiFetch(`/api/v1/clinic/clinic/treatment/plans/${planId}/`, {
                 method: 'DELETE',
             });
             setAllPlans(prev => prev.filter(p => p.id !== planId));
@@ -276,7 +276,7 @@ export function useClinicalTreatmentPlans(
             setSavingPlanDetails(true);
             try {
                 const updated = (await apiFetch(
-                    `/clinic/treatment/plans/${plan.id}/`,
+                    `/api/v1/clinic/clinic/treatment/plans/${plan.id}/`,
                     {
                         method: 'PATCH',
                         body: {
@@ -378,7 +378,7 @@ export function useClinicalTreatmentPlans(
         setMarkingPrinted(true);
         try {
             const updated = (await apiFetch(
-                `/clinic/treatment/plans/${plan.id}/mark-printed/`,
+                `/api/v1/clinic/clinic/treatment/plans/${plan.id}/mark-printed/`,
                 { method: 'POST' },
             )) as PlanListItem;
             setPlan(updated);
@@ -405,7 +405,7 @@ export function useClinicalTreatmentPlans(
     async function updateLockAfterPrint(enabled: boolean) {
         setLockAfterPrint(enabled);
         try {
-            const updated = (await apiFetch('/register/tenant/profile/', {
+            const updated = (await apiFetch('/api/v1/clinic/register/tenant/profile/', {
                 method: 'PATCH',
                 body: { lock_odonto_plan_after_print: enabled },
             })) as { lock_odonto_plan_after_print?: boolean };

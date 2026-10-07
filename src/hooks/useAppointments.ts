@@ -73,7 +73,7 @@ export function useAppointmentsRange(
             setItems([]);
         }
         rangeRef.current = { startISO, endISO, clientId };
-        const url = `${API_BASE}/agenda/appointments/?start=${encodeURIComponent(
+        const url = `${API_BASE}/api/v1/clinic/agenda/appointments/?start=${encodeURIComponent(
             startISO,
         )}&end=${encodeURIComponent(endISO)}${
             clientId ? `&client=${clientId}` : ''

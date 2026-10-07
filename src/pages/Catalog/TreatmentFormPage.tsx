@@ -89,7 +89,7 @@ export default function TreatmentFormPage() {
             setError(null);
             try {
                 const raw = await apiFetch(
-                    `${API_BASE}/inventory/services/${id}/`,
+                    `${API_BASE}/api/v1/clinic/inventory/services/${id}/`,
                 );
                 const data = (raw || {}) as Partial<Service>;
                 if (!mounted) return;
@@ -132,12 +132,12 @@ export default function TreatmentFormPage() {
                 treatment_scopes: treatmentScopes,
             };
             if (id) {
-                await apiFetch(`${API_BASE}/inventory/services/${id}/`, {
+                await apiFetch(`${API_BASE}/api/v1/clinic/inventory/services/${id}/`, {
                     method: 'PUT',
                     body,
                 });
             } else {
-                await apiFetch(`${API_BASE}/inventory/services/`, {
+                await apiFetch(`${API_BASE}/api/v1/clinic/inventory/services/`, {
                     method: 'POST',
                     body,
                 });

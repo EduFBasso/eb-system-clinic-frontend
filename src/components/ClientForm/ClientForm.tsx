@@ -383,7 +383,7 @@ export function ClientForm({
 
             try {
                 const response = await fetch(
-                    `${API_BASE}/register/clients/submit-public-anamnesis/`,
+                    `${API_BASE}/api/v1/clinic/register/clients/submit-public-anamnesis/`,
                     {
                         method: 'POST',
                         headers: {
@@ -455,8 +455,8 @@ export function ClientForm({
         }
 
         const endpoint = isEdit
-            ? `${API_BASE}/register/clients/${cliente?.id}/`
-            : `${API_BASE}/register/clients/`;
+            ? `${API_BASE}/api/v1/clinic/register/clients/${cliente?.id}/`
+            : `${API_BASE}/api/v1/clinic/register/clients/`;
 
         try {
             const response = await fetch(endpoint, {

@@ -77,7 +77,7 @@ describe('apiFetch backend contract', () => {
             ),
         );
 
-        const error = await apiFetch('/agenda/appointments/').catch(
+        const error = await apiFetch('/api/v1/clinic/agenda/appointments/').catch(
             (e: unknown) => e,
         );
 
@@ -153,8 +153,8 @@ describe('apiFetch backend contract', () => {
                 jsonResponse({ detail: 'Sem permissão.' }, 403),
             );
 
-            await apiFetch('/agenda/appointments/').catch(() => undefined);
-            await apiFetch('/agenda/appointments/').catch(() => undefined);
+            await apiFetch('/api/v1/clinic/agenda/appointments/').catch(() => undefined);
+            await apiFetch('/api/v1/clinic/agenda/appointments/').catch(() => undefined);
 
             expect(localStorage.getItem('accessToken')).toBe('access-123');
             expect(logoutReasons).toEqual([]);

@@ -61,11 +61,11 @@ export function useConsultaRegister({
                 };
                 if (apptState.chargeId) {
                     await apiFetch(
-                        `${API_BASE}/agenda/charges/${apptState.chargeId}/`,
+                        `${API_BASE}/api/v1/clinic/agenda/charges/${apptState.chargeId}/`,
                         { method: 'PATCH', body: payload },
                     );
                 } else {
-                    await apiFetch(`${API_BASE}/agenda/charges/`, {
+                    await apiFetch(`${API_BASE}/api/v1/clinic/agenda/charges/`, {
                         method: 'POST',
                         body: payload,
                     });

@@ -73,11 +73,11 @@ describe('catalog selection mode', () => {
 
         await waitFor(() => {
             expect(apiFetchMock).toHaveBeenCalledWith(
-                expect.stringContaining('/inventory/products/1/'),
+                expect.stringContaining('/api/v1/clinic/inventory/products/1/'),
                 { method: 'DELETE' },
             );
             expect(apiFetchMock).toHaveBeenCalledWith(
-                expect.stringContaining('/inventory/products/2/'),
+                expect.stringContaining('/api/v1/clinic/inventory/products/2/'),
                 { method: 'DELETE' },
             );
         });
@@ -108,7 +108,7 @@ describe('catalog selection mode', () => {
 
         await waitFor(() =>
             expect(apiFetchMock).toHaveBeenCalledWith(
-                expect.stringContaining('/inventory/services/7/'),
+                expect.stringContaining('/api/v1/clinic/inventory/services/7/'),
                 { method: 'DELETE' },
             ),
         );

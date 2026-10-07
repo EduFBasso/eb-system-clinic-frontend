@@ -48,7 +48,7 @@ export function useClients() {
             // Only show the big loading state if we have no data yet (initial load)
             const isInitial = (clientsRef.current?.length || 0) === 0;
             if (isInitial) setLoading(true);
-            const url = `${API_BASE}/register/clients-basic/`;
+            const url = `${API_BASE}/api/v1/clinic/register/clients-basic/`;
             console.debug('[useClients] API_BASE =', API_BASE, 'fetching', url);
             const timeoutMs = isInitial ? 30000 : 12000;
             try {
@@ -60,7 +60,7 @@ export function useClients() {
                     attempt += 1
                 ) {
                     try {
-                        data = await apiFetch('/register/clients-basic/', {
+                        data = await apiFetch('/api/v1/clinic/register/clients-basic/', {
                             timeoutMs,
                         });
                         lastError = undefined;

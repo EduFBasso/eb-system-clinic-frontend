@@ -170,7 +170,7 @@ export function useHomeResumeFlows(params: {
         const token = getAccessToken();
         if (!token) return;
 
-        fetch(`${API_BASE}/agenda/appointments/${payload.appointmentId}/`, {
+        fetch(`${API_BASE}/api/v1/clinic/agenda/appointments/${payload.appointmentId}/`, {
             headers: { Authorization: `Bearer ${token}` },
         })
             .then(r => (r.ok ? r.json() : null))

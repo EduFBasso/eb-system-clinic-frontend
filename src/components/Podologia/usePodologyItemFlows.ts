@@ -132,7 +132,7 @@ export function usePodologyItemFlows(
                 const amount = row.value.trim() ? parseAmount(row.value) : null;
                 const podologyContext = podologyContextFromServiceRow(row);
 
-                await apiFetch('/clinic/treatment/items/', {
+                await apiFetch('/api/v1/clinic/clinic/treatment/items/', {
                     method: 'POST',
                     body: {
                         plan: plan.id,

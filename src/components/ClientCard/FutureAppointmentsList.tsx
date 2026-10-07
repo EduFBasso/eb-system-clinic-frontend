@@ -99,7 +99,7 @@ export default function FutureAppointmentsList({
                                     const token =
                                         getAccessToken();
                                     fetch(
-                                        `${API_BASE}/agenda/appointments/${f.id}/`,
+                                        `${API_BASE}/api/v1/clinic/agenda/appointments/${f.id}/`,
                                         {
                                             headers: {
                                                 Authorization: token
