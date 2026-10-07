@@ -163,9 +163,7 @@ export const NavBar: React.FC<NavBarProps> = ({
 
             if (detail?.reason && detail.reason !== 'manual') {
                 setSessionExpiredMessage(
-                    detail.reason === 'device_session_invalid'
-                        ? 'Sua sessão deste dispositivo foi encerrada ou invalidada. Faça login novamente para continuar usando agenda, notificações e ações protegidas.'
-                        : 'Sua sessão expirou. Faça login novamente para continuar usando agenda, notificações e ações protegidas.',
+                    'Sua sessão expirou. Faça login novamente para continuar usando agenda, notificações e ações protegidas.',
                 );
                 setSessionExpiredOpen(true);
             }
@@ -179,9 +177,7 @@ export const NavBar: React.FC<NavBarProps> = ({
 
     const openSessionExpiredState = React.useCallback(
         (
-            reason:
-                | 'session_expired'
-                | 'device_session_invalid' = 'session_expired',
+            reason: 'session_expired' = 'session_expired',
         ) => {
             dispatchLogout(reason);
         },

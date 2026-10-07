@@ -1,12 +1,9 @@
-// Centralized fetch wrapper to automatically attach auth/device headers
-// and handle device session invalidation responses.
+// Centralized fetch wrapper to automatically attach auth/device audit headers.
 // Usage: import { apiFetch } from '../utils/apiFetch';
-// const data = await apiFetch('/sessions/summary');
+// const data = await apiFetch('/api/v1/clinic/agenda/appointments/');
 
 import { API_BASE } from '../config/api';
-import { emit } from '../events/bus';
 import { getOrCreateDeviceId } from './device';
-import { clearStoredAuth } from './auth/session';
 import { startPerformanceSpan } from './telemetry';
 
 // Custom error shape so callers can differentiate
@@ -54,14 +51,9 @@ export function extractApiErrorMessage(
     return fallback;
 }
 
-// Event names for global auth state changes
-export const AUTH_LOGOUT_EVENT = 'auth:logout';
-
 type JsonSerializable = Record<string, unknown> | unknown[];
 
 interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
-    // If true, won't trigger logout auto handling; just surfaces the error.
-    suppressAutoLogout?: boolean;
     // If relative path provided, it's joined with API_BASE.
     body?: RequestInit['body'] | JsonSerializable;
     timeoutMs?: number;
@@ -103,38 +95,8 @@ function createRequestSignal(signal?: AbortSignal, timeoutMs?: number) {
     };
 }
 
-// Back-end messages to match for device session invalidation (Portuguese messages from authentication class)
-const DEVICE_SESSION_ERROR_FRAGMENTS = [
-    'Sessão de dispositivo revogada',
-    'Sessão de dispositivo inativa',
-    'Sessão de dispositivo não encontrada',
-];
-
-function shouldTriggerDeviceLogout(status: number, bodyText: string) {
-    if (status !== 401 && status !== 403) return false;
-    const lower = bodyText.toLowerCase();
-    return DEVICE_SESSION_ERROR_FRAGMENTS.some(f =>
-        lower.includes(f.toLowerCase()),
-    );
-}
-
-function performLocalLogout(reason: string) {
-    try {
-        clearStoredAuth();
-    } catch {
-        // ignore storage errors (quota, disabled cookies, etc.)
-    }
-    // Dispatch a global event so any auth context / components can react.
-    emit(AUTH_LOGOUT_EVENT, {
-        reason:
-            reason === 'device_session_invalid'
-                ? 'device_session_invalid'
-                : 'session_expired',
-    });
-}
-
 export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
-    const { suppressAutoLogout, headers, timeoutMs, signal, ...rest } = options;
+    const { headers, timeoutMs, signal, ...rest } = options;
     const deviceId = getOrCreateDeviceId('device_id');
     const token =
         typeof window !== 'undefined'
@@ -232,12 +194,6 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
 
     if (!response.ok) {
         finishPerformance({ ok: false, status: response.status });
-        if (
-            !suppressAutoLogout &&
-            shouldTriggerDeviceLogout(response.status, bodyText)
-        ) {
-            performLocalLogout('device_session_invalid');
-        }
         const detail = (json && (json['detail'] as string)) || undefined;
         const msgField = (json && (json['message'] as string)) || undefined;
         const code = (json && (json['code'] as string)) || undefined;
