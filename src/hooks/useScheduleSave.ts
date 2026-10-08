@@ -52,8 +52,8 @@ export function useScheduleSave({
         try {
             const isEdit = !!editingId;
             const path = isEdit
-                ? `/agenda/appointments/${editingId}/`
-                : `/agenda/appointments/`;
+                ? `/api/v1/clinic/agenda/appointments/${editingId}/`
+                : `/api/v1/clinic/agenda/appointments/`;
             const method = isEdit ? 'PATCH' : 'POST';
             if (!client) {
                 setError('Selecione um cliente antes de salvar.');
@@ -73,7 +73,7 @@ export function useScheduleSave({
                     setOfferReplace(true);
                     try {
                         const list = await apiFetch(
-                            `/agenda/appointments/?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}&status=scheduled`,
+                            `/api/v1/clinic/agenda/appointments/?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}&status=scheduled`,
                         ) as unknown;
                         setConflicts((Array.isArray(list) ? list : []) as Appointment[]);
                     } catch { /* ignore */ }
@@ -120,12 +120,12 @@ export function useScheduleSave({
         setSaving(true);
         try {
             const list = await apiFetch(
-                `/agenda/appointments/?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}&status=scheduled`,
+                `/api/v1/clinic/agenda/appointments/?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}&status=scheduled`,
             ) as unknown;
             const conflictList = (Array.isArray(list) ? list : []) as Array<{ id: number }>;
             for (const c of conflictList) {
                 try {
-                    await apiFetch(`/agenda/appointments/${c.id}/`, { method: 'PATCH', body: { status: 'canceled' } });
+                    await apiFetch(`/api/v1/clinic/agenda/appointments/${c.id}/`, { method: 'PATCH', body: { status: 'canceled' } });
                 } catch { /* ignore individual cancel errors */ }
             }
             await submitCreate(true);

@@ -5,13 +5,11 @@ import React, { useEffect, Suspense, lazy } from 'react';
 import Home from '../src/pages/Home';
 import { on } from './events/bus';
 import { SystemMessageModal } from './components/SystemMessageModal/SystemMessageModal';
-import ensureDeviceSession from './services/sessions';
 import {
     hydrateAgendaSettings,
     resetAgendaSettings,
 } from './utils/agendaSettings';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { getAccessToken } from './utils/auth/session';
 
 // Rotas secundárias com Lazy Loading para reduzir o bundle inicial
 const LazyDesktopAgenda: React.ComponentType = lazy(async () => {
@@ -47,15 +45,8 @@ function App() {
     } | null>(null);
 
     useEffect(() => {
-        // Pre-warm device session once app loads if token exists
         try {
-            const token = getAccessToken();
-            if (token) {
-                ensureDeviceSession().catch(() => {});
-                hydrateAgendaSettings().catch(() => {});
-            } else {
-                resetAgendaSettings();
-            }
+            hydrateAgendaSettings().catch(() => {});
         } catch {
             /* noop */
         }

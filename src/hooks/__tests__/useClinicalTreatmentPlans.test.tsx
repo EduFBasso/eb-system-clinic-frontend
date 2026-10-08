@@ -81,7 +81,7 @@ describe('useClinicalTreatmentPlans payment and printing flow', () => {
 
         await waitFor(() =>
             expect(apiFetchMock).toHaveBeenCalledWith(
-                '/clinic/treatment/plans/7/',
+                '/api/v1/clinic/treatment/plans/7/',
                 {
                     method: 'PATCH',
                     body: {
@@ -117,7 +117,7 @@ describe('useClinicalTreatmentPlans payment and printing flow', () => {
         );
         await waitFor(() =>
             expect(apiFetchMock).toHaveBeenCalledWith(
-                '/clinic/treatment/plans/7/',
+                '/api/v1/clinic/treatment/plans/7/',
                 expect.objectContaining({
                     method: 'PATCH',
                     body: expect.objectContaining({ notes: 'Orientacao ' }),
@@ -184,7 +184,7 @@ describe('useClinicalTreatmentPlans payment and printing flow', () => {
         });
 
         expect(apiFetchMock).toHaveBeenLastCalledWith(
-            '/clinic/treatment/plans/7/mark-printed/',
+            '/api/v1/clinic/treatment/plans/7/mark-printed/',
             { method: 'POST' },
         );
         expect(printSpy).toHaveBeenCalledTimes(1);

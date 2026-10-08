@@ -303,7 +303,7 @@ function ClientCardBase({
         setSendingAnamnesisLink(true);
         try {
             const response = await fetch(
-                `${API_BASE}/register/clients/${client.id}/generate-anamnesis-token/`,
+                `${API_BASE}/api/v1/clinic/register/clients/${client.id}/generate-anamnesis-token/`,
                 {
                     method: 'POST',
                     headers: {

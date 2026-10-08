@@ -49,6 +49,11 @@ export default defineConfig({
         strictPort: true,
         allowedHosts: true,
         proxy: {
+            '/api': {
+                target: 'http://localhost:8000',
+                changeOrigin: true,
+                secure: false,
+            },
             '/register': {
                 target: 'http://localhost:8000',
                 changeOrigin: true,
@@ -99,11 +104,6 @@ export default defineConfig({
                 },
             },
             '/token': {
-                target: 'http://localhost:8000',
-                changeOrigin: true,
-                secure: false,
-            },
-            '/sessions': {
                 target: 'http://localhost:8000',
                 changeOrigin: true,
                 secure: false,

@@ -46,7 +46,7 @@ export function useClientFutureAppointments({
         if (!startRef) return;
         setLoadingFuture(true);
         const overfetchLimit = dynLimit + 5;
-        const url = `${API_BASE}/agenda/appointments/?start=${encodeURIComponent(
+        const url = `${API_BASE}/api/v1/clinic/agenda/appointments/?start=${encodeURIComponent(
             startRef,
         )}&limit=${overfetchLimit}&ordering=start_at&client=${client.id}`;
         fetch(url, { headers: { Authorization: `Bearer ${token}` } })

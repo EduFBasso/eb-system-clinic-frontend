@@ -51,7 +51,7 @@ export default function ProductFormPage() {
         (async () => {
             try {
                 const data = await apiFetch(
-                    `${API_BASE}/inventory/products/${id}/`,
+                    `${API_BASE}/api/v1/clinic/inventory/products/${id}/`,
                 );
                 if (!mounted) return;
                 const p = data as {
@@ -88,12 +88,12 @@ export default function ProductFormPage() {
                 price: parseBRToNumber(priceStr) || 0,
             };
             if (id) {
-                await apiFetch(`${API_BASE}/inventory/products/${id}/`, {
+                await apiFetch(`${API_BASE}/api/v1/clinic/inventory/products/${id}/`, {
                     method: 'PATCH',
                     body,
                 });
             } else {
-                await apiFetch(`${API_BASE}/inventory/products/`, {
+                await apiFetch(`${API_BASE}/api/v1/clinic/inventory/products/`, {
                     method: 'POST',
                     body,
                 });

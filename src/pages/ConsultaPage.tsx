@@ -85,8 +85,8 @@ export default function ConsultaPage() {
         setLoading(true);
         setFetchError(null);
         Promise.all([
-            apiFetch(`${API_BASE}/inventory/services/`),
-            apiFetch(`${API_BASE}/inventory/products/`),
+            apiFetch(`${API_BASE}/api/v1/clinic/inventory/services/`),
+            apiFetch(`${API_BASE}/api/v1/clinic/inventory/products/`),
         ])
             .then(([svcRaw, proRaw]) => {
                 if (!mounted) return;

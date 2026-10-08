@@ -374,7 +374,7 @@ async function fetchProfessionalSettings(
     );
     let res: Response;
     try {
-        res = await fetch(`${API_BASE}/register/professionals/settings/`, {
+        res = await fetch(`${API_BASE}/api/v1/clinic/register/professionals/settings/`, {
             ...init,
             headers: {
                 'Content-Type': 'application/json',
@@ -567,7 +567,7 @@ export async function startTelegramLink(): Promise<TelegramLinkStartResult> {
     }
 
     const res = await fetch(
-        `${API_BASE}/register/professionals/telegram/link-start/`,
+        `${API_BASE}/api/v1/clinic/register/professionals/telegram/link-start/`,
         {
             method: 'GET',
             headers: {
@@ -609,7 +609,7 @@ export async function verifyTelegramLink(
     }
 
     const res = await fetch(
-        `${API_BASE}/register/professionals/telegram/link-verify/`,
+        `${API_BASE}/api/v1/clinic/register/professionals/telegram/link-verify/`,
         {
             method: 'POST',
             headers: {
@@ -646,7 +646,7 @@ export async function sendTelegramTest(): Promise<void> {
     }
 
     const res = await fetch(
-        `${API_BASE}/register/professionals/telegram/test-send/`,
+        `${API_BASE}/api/v1/clinic/register/professionals/telegram/test-send/`,
         {
             method: 'POST',
             headers: {

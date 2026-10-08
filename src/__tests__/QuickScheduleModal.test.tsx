@@ -17,12 +17,6 @@ vi.mock('../hooks/useAppointments', () => ({
     useAppointmentsRange: vi.fn(),
 }));
 
-// Stub ensureDeviceSession so it never consumes fetch mock slots
-vi.mock('../services/sessions', () => ({
-    default: () => Promise.resolve(),
-    ensureDeviceSession: () => Promise.resolve(),
-}));
-
 interface FetchResponse {
     ok: boolean;
     headers?: { get: (k: string) => string | null };

@@ -36,7 +36,7 @@ export type AgendaCloseAllPayload = undefined;
 export type EnsureScrollUnlockedPayload = undefined;
 export type AuthLoginPayload = undefined;
 export type AuthLogoutPayload = {
-    reason?: 'manual' | 'session_expired' | 'device_session_invalid';
+    reason?: 'manual' | 'session_expired';
 };
 export type AppointmentStatusChangedPayload = {
     id?: number;

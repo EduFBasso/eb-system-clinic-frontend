@@ -4,10 +4,8 @@
  * We generate and persist a random device_id and include coarse info
  * about platform, userAgent, and screen. No PII.
  *
- * IMPORTANT: The backend enforces an active device session for the
- * provided device id. We must use the SAME storage key as the code
- * that creates sessions (utils/getOrCreateDeviceId with key 'device_id').
- * Below we migrate any legacy key to the new canonical key.
+ * The backend stores this information as creation audit metadata only; it
+ * does not represent an authenticated device session.
  */
 
 import { getOrCreateDeviceId } from '../utils/device';
@@ -16,7 +14,7 @@ const LEGACY_LS_DEVICE_ID = 'device.id.v1';
 
 export function getDeviceId(): string {
     try {
-        // Migrate legacy key -> canonical key used by ensureDeviceSession/apiFetch
+        // Migrate the legacy key to the current audit identifier.
         const current = localStorage.getItem('device_id');
         if (current && current.length > 0) return current;
         const legacy = localStorage.getItem(LEGACY_LS_DEVICE_ID);

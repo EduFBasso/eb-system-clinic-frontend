@@ -96,7 +96,7 @@ async function persistThemeToBackend(theme: AppTheme) {
     const token = getAccessToken();
     if (!token) return;
     try {
-        const updated = await apiFetch('/register/professionals/me/', {
+        const updated = await apiFetch('/api/v1/clinic/register/professionals/me/', {
             method: 'PATCH',
             body: { ui_theme: theme },
         });

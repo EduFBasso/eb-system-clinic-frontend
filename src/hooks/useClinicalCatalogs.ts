@@ -46,7 +46,7 @@ export function useClinicalCatalogs(
 
     const loadServiceCatalog = React.useCallback(async () => {
         try {
-            const response = await apiFetch(`${API_BASE}/inventory/services/`);
+            const response = await apiFetch(`${API_BASE}/api/v1/clinic/inventory/services/`);
             const services = asList<{
                 id: number;
                 name: string;
@@ -78,7 +78,7 @@ export function useClinicalCatalogs(
     const loadProductCatalog = React.useCallback(async () => {
         try {
             const response = await apiFetch(
-                `${API_BASE}/inventory/products/?is_active=true`,
+                `${API_BASE}/api/v1/clinic/inventory/products/?is_active=true`,
             );
             const products = asList<{
                 id: number;
@@ -140,7 +140,7 @@ export function useClinicalCatalogs(
                               )
                             : existingItem.treatment_scopes;
                         return apiFetch(
-                            `${API_BASE}/inventory/services/${existingItem.id}/`,
+                            `${API_BASE}/api/v1/clinic/inventory/services/${existingItem.id}/`,
                             {
                                 method: 'PATCH',
                                 body: {
@@ -155,7 +155,7 @@ export function useClinicalCatalogs(
                         );
                     }
 
-                    return apiFetch(`${API_BASE}/inventory/services/`, {
+                    return apiFetch(`${API_BASE}/api/v1/clinic/inventory/services/`, {
                         method: 'POST',
                         body: {
                             name,
@@ -218,7 +218,7 @@ export function useClinicalCatalogs(
                               )
                             : existingItem.treatment_scopes;
                         await apiFetch(
-                            `${API_BASE}/inventory/services/${existingItem.id}/`,
+                            `${API_BASE}/api/v1/clinic/inventory/services/${existingItem.id}/`,
                             {
                                 method: 'PATCH',
                                 body: { treatment_scopes: treatmentScopes },
@@ -229,7 +229,7 @@ export function useClinicalCatalogs(
                     }
 
                     const created = await apiFetch(
-                        `${API_BASE}/inventory/services/`,
+                        `${API_BASE}/api/v1/clinic/inventory/services/`,
                         {
                             method: 'POST',
                             body: {
@@ -265,7 +265,7 @@ export function useClinicalCatalogs(
     async function deleteFromCatalog(serviceId: number) {
         if (!window.confirm('Remover este serviço do catálogo?')) return;
         try {
-            await apiFetch(`${API_BASE}/inventory/services/${serviceId}/`, {
+            await apiFetch(`${API_BASE}/api/v1/clinic/inventory/services/${serviceId}/`, {
                 method: 'DELETE',
             });
             await loadServiceCatalog();
@@ -305,7 +305,7 @@ export function useClinicalCatalogs(
                     const priceValue = row.value.trim()
                         ? parseAmount(row.value)
                         : 0;
-                    return apiFetch(`${API_BASE}/inventory/products/`, {
+                    return apiFetch(`${API_BASE}/api/v1/clinic/inventory/products/`, {
                         method: 'POST',
                         body: {
                             name,

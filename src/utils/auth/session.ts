@@ -3,8 +3,7 @@ import { isTokenExpired } from '../jwt';
 
 export type LogoutReason =
     | 'manual'
-    | 'session_expired'
-    | 'device_session_invalid';
+    | 'session_expired';
 
 /** Centralised token accessor — always returns a string (empty when absent). */
 export function getAccessToken(): string {

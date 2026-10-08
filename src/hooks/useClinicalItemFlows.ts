@@ -106,7 +106,7 @@ export function useClinicalItemFlows(
         setSavingProductFlow(true);
         try {
             const dateToUse = todayISODate();
-            const parent = (await apiFetch('/clinic/treatment/items/', {
+            const parent = (await apiFetch('/api/v1/clinic/treatment/items/', {
                 method: 'POST',
                 body: {
                     plan: plan.id,
@@ -120,7 +120,7 @@ export function useClinicalItemFlows(
             for (const row of valid) {
                 const amount = row.value.trim() ? parseAmount(row.value) : null;
                 const quantity = Number(row.quantity || 1);
-                await apiFetch('/clinic/treatment/items/', {
+                await apiFetch('/api/v1/clinic/treatment/items/', {
                     method: 'POST',
                     body: {
                         plan: plan.id,
@@ -196,7 +196,7 @@ export function useClinicalItemFlows(
         }
         setSavingEditItem(true);
         try {
-            await apiFetch(`/clinic/treatment/items/${editingItem.id}/`, {
+            await apiFetch(`/api/v1/clinic/treatment/items/${editingItem.id}/`, {
                 method: 'PATCH',
                 body: {
                     patient_price: editingItemValue.trim()
@@ -229,7 +229,7 @@ export function useClinicalItemFlows(
     async function deleteItem(itemId: number) {
         if (!window.confirm('Deseja apagar este item?')) return;
         try {
-            await apiFetch(`/clinic/treatment/items/${itemId}/`, {
+            await apiFetch(`/api/v1/clinic/treatment/items/${itemId}/`, {
                 method: 'DELETE',
             });
             await refreshPlan();

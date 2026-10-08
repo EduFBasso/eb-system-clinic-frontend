@@ -6,7 +6,6 @@ import { AUTO_CLOSE_QUICK_SCHEDULE_ON_CREATE } from '../config/limits';
 import { API_BASE } from '../config/api';
 import { track } from '../utils/telemetry';
 import { buildDeviceHeaders } from '../services/device';
-import ensureDeviceSession from '../services/sessions';
 import { pad2, toMinutes, fromMinutes } from '../utils/hmTime';
 import { unlockPageScroll } from '../utils/unlockPageScroll';
 import { getAccessToken } from '../utils/auth/session';
@@ -147,7 +146,7 @@ export function useQuickScheduleSave({
 
             if (currentEdit) {
                 const resp = await fetch(
-                    `${API_BASE}/agenda/appointments/${currentEdit.id}/`,
+                    `${API_BASE}/api/v1/clinic/agenda/appointments/${currentEdit.id}/`,
                     {
                         method: 'PATCH',
                         headers,
@@ -180,13 +179,7 @@ export function useQuickScheduleSave({
                 }
                 updatedId = currentEdit.id;
             } else {
-                try {
-                    await ensureDeviceSession();
-                } catch {
-                    /* noop */
-                }
-
-                let resp = await fetch(`${API_BASE}/agenda/appointments/`, {
+                const resp = await fetch(`${API_BASE}/api/v1/clinic/agenda/appointments/`, {
                     method: 'POST',
                     headers: { ...headers, ...buildDeviceHeaders() },
                     body: JSON.stringify({
@@ -199,27 +192,6 @@ export function useQuickScheduleSave({
                         notes,
                     }),
                 });
-
-                if (resp.status === 401 || resp.status === 403) {
-                    try {
-                        await ensureDeviceSession(true);
-                    } catch {
-                        /* noop */
-                    }
-                    resp = await fetch(`${API_BASE}/agenda/appointments/`, {
-                        method: 'POST',
-                        headers: { ...headers, ...buildDeviceHeaders() },
-                        body: JSON.stringify({
-                            client: clientId,
-                            title,
-                            start_at: startISO,
-                            end_at: endISO,
-                            visit_type: visitType,
-                            status: 'scheduled',
-                            notes,
-                        }),
-                    });
-                }
 
                 if (!resp.ok) {
                     let text = '';

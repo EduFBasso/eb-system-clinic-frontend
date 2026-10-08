@@ -48,7 +48,7 @@ export function useClients() {
             // Only show the big loading state if we have no data yet (initial load)
             const isInitial = (clientsRef.current?.length || 0) === 0;
             if (isInitial) setLoading(true);
-            const url = `${API_BASE}/register/clients-basic/`;
+            const url = `${API_BASE}/api/v1/clinic/register/clients-basic/`;
             console.debug('[useClients] API_BASE =', API_BASE, 'fetching', url);
             const timeoutMs = isInitial ? 30000 : 12000;
             try {
@@ -60,7 +60,7 @@ export function useClients() {
                     attempt += 1
                 ) {
                     try {
-                        data = await apiFetch('/register/clients-basic/', {
+                        data = await apiFetch('/api/v1/clinic/register/clients-basic/', {
                             timeoutMs,
                         });
                         lastError = undefined;
@@ -82,24 +82,11 @@ export function useClients() {
             } catch (err) {
                 const rawMessage =
                     err instanceof Error ? err.message : String(err);
-                const isDeviceSessionInvalid =
-                    /Sessão de dispositivo não encontrada|Sessão de dispositivo revogada|Sessão de dispositivo inativa/i.test(
-                        rawMessage,
-                    );
                 const isNetworkError =
                     /Failed to fetch|NetworkError|Load failed|Tempo limite/i.test(
                         rawMessage,
                     );
                 const hasCachedClients = (clientsRef.current?.length || 0) > 0;
-
-                if (isDeviceSessionInvalid) {
-                    // apiFetch já faz logout global neste caso; evita poluir UI com erro técnico.
-                    setClients([]);
-                    clientsRef.current = [];
-                    setError(null);
-                    setLoading(false);
-                    return;
-                }
 
                 if (hasCachedClients) {
                     // Em refresh em segundo plano, preserva a lista já exibida sem poluir a UI.

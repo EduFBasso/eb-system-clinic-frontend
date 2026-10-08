@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, apiFetch, extractApiErrorMessage } from '../utils/apiFetch';
-import { on } from '../events/bus';
 
 function jsonResponse(body: unknown, status = 200) {
     return new Response(JSON.stringify(body), {
@@ -31,12 +30,12 @@ describe('apiFetch backend contract', () => {
         localStorage.setItem('accessToken', 'access-123');
         fetchMock.mockResolvedValue(jsonResponse({ count: 1 }));
 
-        await apiFetch('/sessions/summary');
+        await apiFetch('/api/v1/clinic/agenda/appointments/');
         const first = lastRequest(fetchMock);
-        await apiFetch('/sessions/summary');
+        await apiFetch('/api/v1/clinic/agenda/appointments/');
         const second = lastRequest(fetchMock);
 
-        expect(first.url.endsWith('/sessions/summary')).toBe(true);
+        expect(first.url.endsWith('/api/v1/clinic/agenda/appointments/')).toBe(true);
         expect(first.headers.Accept).toBe('application/json');
         expect(first.headers.Authorization).toBe('Bearer access-123');
         expect(first.headers['X-Device-Id']).toBeTruthy();
@@ -56,19 +55,6 @@ describe('apiFetch backend contract', () => {
         expect(lastRequest(fetchMock).headers.Authorization).toBe('Bearer own');
     });
 
-    it('serializes object bodies as JSON', async () => {
-        fetchMock.mockResolvedValue(jsonResponse({ ok: true }));
-
-        await apiFetch('/sessions/revoke', {
-            method: 'POST',
-            body: { mode: 'all_except_current' },
-        });
-
-        const { init, headers } = lastRequest(fetchMock);
-        expect(headers['Content-Type']).toBe('application/json');
-        expect(init.body).toBe('{"mode":"all_except_current"}');
-    });
-
     it('throws ApiError with status, code and the backend detail', async () => {
         fetchMock.mockResolvedValue(
             jsonResponse(
@@ -77,7 +63,7 @@ describe('apiFetch backend contract', () => {
             ),
         );
 
-        const error = await apiFetch('/agenda/appointments/').catch(
+        const error = await apiFetch('/api/v1/clinic/agenda/appointments/').catch(
             (e: unknown) => e,
         );
 
@@ -89,75 +75,27 @@ describe('apiFetch backend contract', () => {
         });
     });
 
+    it('serializes object bodies as JSON', async () => {
+        fetchMock.mockResolvedValue(jsonResponse({ ok: true }));
+
+        await apiFetch('/api/v1/clinic/agenda/appointments/', {
+            method: 'POST',
+            body: { client: 1 },
+        });
+
+        const { init, headers } = lastRequest(fetchMock);
+        expect(headers['Content-Type']).toBe('application/json');
+        expect(init.body).toBe('{"client":1}');
+    });
+
     it('wraps network failures as ApiError with status 0', async () => {
         fetchMock.mockRejectedValue(new Error('offline'));
 
-        await expect(apiFetch('/sessions/summary')).rejects.toMatchObject({
+        await expect(
+            apiFetch('/api/v1/clinic/agenda/appointments/'),
+        ).rejects.toMatchObject({
             status: 0,
             message: 'offline',
-        });
-    });
-
-    describe('device session invalidation', () => {
-        const logoutReasons: (string | undefined)[] = [];
-        let dispose: () => void;
-
-        beforeEach(() => {
-            logoutReasons.length = 0;
-            dispose = on('auth:logout', payload =>
-                logoutReasons.push(payload?.reason),
-            );
-        });
-
-        afterEach(() => dispose());
-
-        it.each([
-            'Sessão de dispositivo revogada/inativa.',
-            'Sessão de dispositivo revogada ou inexistente.',
-            'Sessão de dispositivo não encontrada.',
-        ])('logs out when the backend says "%s"', async detail => {
-            localStorage.setItem('accessToken', 'access-123');
-            fetchMock.mockResolvedValue(jsonResponse({ detail }, 401));
-
-            await expect(apiFetch('/sessions/summary')).rejects.toBeInstanceOf(
-                ApiError,
-            );
-
-            expect(localStorage.getItem('accessToken')).toBeNull();
-            expect(logoutReasons).toEqual(['device_session_invalid']);
-        });
-
-        it('does not log out when suppressAutoLogout is set', async () => {
-            localStorage.setItem('accessToken', 'access-123');
-            fetchMock.mockResolvedValue(
-                jsonResponse(
-                    { detail: 'Sessão de dispositivo revogada/inativa.' },
-                    401,
-                ),
-            );
-
-            await expect(
-                apiFetch('/sessions/summary', { suppressAutoLogout: true }),
-            ).rejects.toBeInstanceOf(ApiError);
-
-            expect(localStorage.getItem('accessToken')).toBe('access-123');
-            expect(logoutReasons).toEqual([]);
-        });
-
-        it('keeps the session for unrelated 401 and 403 responses', async () => {
-            localStorage.setItem('accessToken', 'access-123');
-            fetchMock.mockResolvedValueOnce(
-                jsonResponse({ detail: 'Token inválido.' }, 401),
-            );
-            fetchMock.mockResolvedValueOnce(
-                jsonResponse({ detail: 'Sem permissão.' }, 403),
-            );
-
-            await apiFetch('/agenda/appointments/').catch(() => undefined);
-            await apiFetch('/agenda/appointments/').catch(() => undefined);
-
-            expect(localStorage.getItem('accessToken')).toBe('access-123');
-            expect(logoutReasons).toEqual([]);
         });
     });
 });

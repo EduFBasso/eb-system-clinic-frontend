@@ -83,7 +83,7 @@ export default function TreatmentListPage() {
             setLoading(true);
             setError(null);
             try {
-                const raw = await apiFetch(`${API_BASE}/inventory/services/`);
+                const raw = await apiFetch(`${API_BASE}/api/v1/clinic/inventory/services/`);
                 if (!mounted) return;
                 const data = (Array.isArray(raw) ? raw : []) as Service[];
                 setItems(data);
@@ -133,7 +133,7 @@ export default function TreatmentListPage() {
 
         for (const serviceId of ids) {
             try {
-                await apiFetch(`${API_BASE}/inventory/services/${serviceId}/`, {
+                await apiFetch(`${API_BASE}/api/v1/clinic/inventory/services/${serviceId}/`, {
                     method: 'DELETE',
                 });
                 deletedIds.push(serviceId);

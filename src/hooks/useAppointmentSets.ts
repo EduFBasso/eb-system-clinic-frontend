@@ -100,7 +100,7 @@ export function useAppointmentSets(clientsLength: number): AppointmentSets {
                 end: tmwEndDate.toISOString(),
                 ts: String(Date.now()),
             });
-            const scheduledUrl = `${API_BASE}/agenda/appointments/?${scheduledParams}`;
+            const scheduledUrl = `${API_BASE}/api/v1/clinic/agenda/appointments/?${scheduledParams}`;
 
             try {
                 const scheduledDataRaw = await apiFetch(scheduledUrl, {
