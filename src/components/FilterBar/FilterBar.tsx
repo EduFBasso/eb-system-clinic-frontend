@@ -153,6 +153,13 @@ export const FilterBar = React.memo(function FilterBar({
                         onClick={handleFilterClearClick}
                         aria-label='Limpar filtro'
                         tabIndex={-1}
+                        onPointerDown={event => {
+                            // No iOS, o blur acontece antes do click e pode
+                            // reenviar o valor anterior ao componente pai.
+                            event.preventDefault();
+                            handleFilterClearClick();
+                        }}
+                        onClick={handleFilterClearClick}
                         style={{
                             opacity: localFilter ? 1 : 0,
                             pointerEvents: localFilter ? 'auto' : 'none',
