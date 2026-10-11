@@ -49,9 +49,12 @@ export const FilterBar = React.memo(function FilterBar({
     }, []);
     const isIOSWebKit = React.useMemo(() => {
         if (typeof navigator === 'undefined') return false;
+        const userAgent = navigator.userAgent;
+        const isTouchMac =
+            /Macintosh/i.test(userAgent) && navigator.maxTouchPoints > 1;
         return (
-            /iPhone|iPad|iPod/i.test(navigator.userAgent) &&
-            /AppleWebKit/i.test(navigator.userAgent)
+            (/iPhone|iPad|iPod/i.test(userAgent) || isTouchMac) &&
+            /AppleWebKit/i.test(userAgent)
         );
     }, []);
 
