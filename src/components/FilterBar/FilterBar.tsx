@@ -41,6 +41,8 @@ export const FilterBar = React.memo(function FilterBar({
     const debounceRef = React.useRef<number | null>(null);
     const inputRef = React.useRef<HTMLInputElement | null>(null);
     const isInputFocusedRef = React.useRef(false);
+    const isClearingFilterRef = React.useRef(false);
+    const lastClearPointerDownRef = React.useRef(0);
     const isMobileUA = React.useMemo(() => {
         if (typeof navigator === 'undefined') return false;
         return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -106,6 +108,10 @@ export const FilterBar = React.memo(function FilterBar({
                 __filterInputFocused?: boolean;
             }
         ).__filterInputFocused = false;
+        if (isClearingFilterRef.current) {
+            isClearingFilterRef.current = false;
+            return;
+        }
         if (debounceRef.current) {
             window.clearTimeout(debounceRef.current);
             debounceRef.current = null;
@@ -120,7 +126,24 @@ export const FilterBar = React.memo(function FilterBar({
             debounceRef.current = null;
         }
         onFilterClear();
+        inputRef.current?.blur();
     }, [onFilterClear]);
+
+    const handleFilterClearPointerDown = React.useCallback(
+        (event: React.PointerEvent<HTMLButtonElement>) => {
+            event.preventDefault();
+            isClearingFilterRef.current = true;
+            lastClearPointerDownRef.current = Date.now();
+            handleFilterClearClick();
+        },
+        [handleFilterClearClick],
+    );
+
+    const handleFilterClearButtonClick = React.useCallback(() => {
+        if (Date.now() - lastClearPointerDownRef.current < 500) return;
+        isClearingFilterRef.current = true;
+        handleFilterClearClick();
+    }, [handleFilterClearClick]);
 
     return (
         <div
@@ -152,13 +175,8 @@ export const FilterBar = React.memo(function FilterBar({
                         className={styles.filterClearBtn}
                         aria-label='Limpar filtro'
                         tabIndex={-1}
-                        onPointerDown={event => {
-                            // No iOS, o blur acontece antes do click e pode
-                            // reenviar o valor anterior ao componente pai.
-                            event.preventDefault();
-                            handleFilterClearClick();
-                        }}
-                        onClick={handleFilterClearClick}
+                        onPointerDown={handleFilterClearPointerDown}
+                        onClick={handleFilterClearButtonClick}
                         style={{
                             opacity: localFilter ? 1 : 0,
                             pointerEvents: localFilter ? 'auto' : 'none',

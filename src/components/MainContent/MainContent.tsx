@@ -784,7 +784,6 @@ export const MainContent: React.FC<MainContentProps> = ({
 
     const handleFilterClear = React.useCallback(() => {
         setFilter('');
-        document.getElementById('client-filter')?.focus();
     }, []);
 
     const handleOpenMobileFilters = React.useCallback(
