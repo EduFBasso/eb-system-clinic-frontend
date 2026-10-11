@@ -47,6 +47,13 @@ export const FilterBar = React.memo(function FilterBar({
         if (typeof navigator === 'undefined') return false;
         return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     }, []);
+    const isIOSWebKit = React.useMemo(() => {
+        if (typeof navigator === 'undefined') return false;
+        return (
+            /iPhone|iPad|iPod/i.test(navigator.userAgent) &&
+            /AppleWebKit/i.test(navigator.userAgent)
+        );
+    }, []);
 
     React.useEffect(() => {
         if (!isInputFocusedRef.current) {
@@ -120,19 +127,23 @@ export const FilterBar = React.memo(function FilterBar({
     }, [commitFilter, localFilter]);
 
     const handleFilterClearClick = React.useCallback(() => {
+        const shouldIgnoreNextBlur =
+            isIOSWebKit && document.activeElement === inputRef.current;
+        isClearingFilterRef.current = shouldIgnoreNextBlur;
         setLocalFilter('');
         if (debounceRef.current) {
             window.clearTimeout(debounceRef.current);
             debounceRef.current = null;
         }
         onFilterClear();
-        inputRef.current?.blur();
-    }, [onFilterClear]);
+        if (shouldIgnoreNextBlur) {
+            inputRef.current?.blur();
+        }
+    }, [isIOSWebKit, onFilterClear]);
 
     const handleFilterClearPointerDown = React.useCallback(
         (event: React.PointerEvent<HTMLButtonElement>) => {
             event.preventDefault();
-            isClearingFilterRef.current = true;
             lastClearPointerDownRef.current = Date.now();
             handleFilterClearClick();
         },
@@ -141,7 +152,6 @@ export const FilterBar = React.memo(function FilterBar({
 
     const handleFilterClearButtonClick = React.useCallback(() => {
         if (Date.now() - lastClearPointerDownRef.current < 500) return;
-        isClearingFilterRef.current = true;
         handleFilterClearClick();
     }, [handleFilterClearClick]);
 
