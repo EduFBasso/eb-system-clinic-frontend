@@ -150,7 +150,6 @@ export const FilterBar = React.memo(function FilterBar({
                     <button
                         type='button'
                         className={styles.filterClearBtn}
-                        onClick={handleFilterClearClick}
                         aria-label='Limpar filtro'
                         tabIndex={-1}
                         onPointerDown={event => {
