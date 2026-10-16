@@ -121,17 +121,6 @@ export function DailyAgendaModal({
         }
     }, []);
 
-    // Forçar um refetch imediato ao abrir (caso evento appointments:changed tenha sido perdido antes de abrir)
-    const prevOpenRef = React.useRef(open);
-    React.useEffect(() => {
-        if (!prevOpenRef.current && open) {
-            // pequeno atraso para garantir que POST de criação já foi commitado
-            const t = setTimeout(() => setReloadKey(x => x + 1), 80);
-            return () => clearTimeout(t);
-        }
-        prevOpenRef.current = open;
-    }, [open]);
-
     // Instrumentação opcional: localStorage.setItem('debugAppointments','1')
     React.useEffect(() => {
         if (!open) return;
