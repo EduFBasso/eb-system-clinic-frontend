@@ -498,6 +498,7 @@ export const AgendaSettingsModal: React.FC<AgendaSettingsModalProps> = ({
         setTelegramTestBusy(true);
         try {
             await sendTelegramTest();
+            setTelegramLastError('');
             emit('systemMessage', {
                 text: 'Mensagem de teste enviada com sucesso!',
                 type: 'success',
