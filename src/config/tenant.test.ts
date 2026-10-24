@@ -12,6 +12,11 @@ describe('resolveClinicTenantSlugFromHostname', () => {
     it('maps the approved public Clinic hosts to internal tenant slugs', () => {
         expect(
             resolveClinicTenantSlugFromHostname(
+                'dra-cassiana.clinica.ebsis.com.br',
+            ),
+        ).toBe('dra-cassiana');
+        expect(
+            resolveClinicTenantSlugFromHostname(
                 'odontologia.clinica.ebsis.com.br',
             ),
         ).toBe('consultorio-odontologia');

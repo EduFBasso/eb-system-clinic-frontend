@@ -1,5 +1,6 @@
 const CLINIC_ROOT_DOMAINS = ['clinic.eb.com', 'clinic.eb.localhost'];
 const CLINIC_PUBLIC_HOST_TENANTS: Record<string, string> = {
+    'dra-cassiana.clinica.ebsis.com.br': 'dra-cassiana',
     'odontologia.clinica.ebsis.com.br': 'consultorio-odontologia',
     'podologia.clinica.ebsis.com.br': 'consultorio-podologia',
 };
