@@ -25,6 +25,11 @@ describe('resolveClinicTenantSlugFromHostname', () => {
                 'podologia.clinica.ebsis.com.br',
             ),
         ).toBe('consultorio-podologia');
+        expect(
+            resolveClinicTenantSlugFromHostname(
+                'podologia-ju.clinica.ebsis.com.br',
+            ),
+        ).toBe('podologia-ju');
     });
 
     it('does not resolve unknown ebsis Clinic hosts as tenants', () => {
